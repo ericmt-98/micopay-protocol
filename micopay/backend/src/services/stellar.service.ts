@@ -58,11 +58,19 @@ export async function callLockOnChain(params: {
     .build();
 
   // prepareTransaction = simulate + assemble footprint + add Soroban auth
-  const prepared = await rpc.prepareTransaction(tx);
+  let prepared;
+  try {
+    prepared = await rpc.prepareTransaction(tx);
+  } catch (err: any) {
+    console.error('[Stellar] Simulation failed:', err.message);
+    throw new Error(`Simulation failed: ${err.message}. Check if contract is deployed and parameters are correct.`);
+  }
+
   prepared.sign(keypair);
 
   const sendResult = await rpc.sendTransaction(prepared);
   if (sendResult.status === 'ERROR') {
+    console.error('[Stellar] Send failed:', sendResult.errorResult);
     throw new Error(`Send failed: ${JSON.stringify(sendResult.errorResult)}`);
   }
 
@@ -129,12 +137,20 @@ export async function callReleaseOnChain(params: {
     .setTimeout(60)
     .build();
 
-  const prepared = await rpc.prepareTransaction(tx);
+  let prepared;
+  try {
+    prepared = await rpc.prepareTransaction(tx);
+  } catch (err: any) {
+    console.error('[Stellar] Release simulation failed:', err.message);
+    throw new Error(`Release simulation failed: ${err.message}. Check if trade exists in contract.`);
+  }
+
   prepared.sign(keypair);
 
   const sendResult = await rpc.sendTransaction(prepared);
   if (sendResult.status === 'ERROR') {
-    throw new Error(`Release failed: ${JSON.stringify(sendResult.errorResult)}`);
+    console.error('[Stellar] Release send failed:', sendResult.errorResult);
+    throw new Error(`Release send failed: ${JSON.stringify(sendResult.errorResult)}`);
   }
 
   const txHash = sendResult.hash;
