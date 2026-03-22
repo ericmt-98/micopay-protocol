@@ -7,10 +7,13 @@ interface SuccessScreenProps {
     received: string;
     agentName: string;
     tradeId?: string;
+    lockTxHash?: string | null;
     onHome: () => void;
 }
 
-const SuccessScreen = ({ type, amount, commission, received, agentName, tradeId, onHome }: SuccessScreenProps) => {
+const STELLAR_EXPLORER = 'https://stellar.expert/explorer/testnet/tx';
+
+const SuccessScreen = ({ type, amount, commission, received, agentName, tradeId, lockTxHash, onHome }: SuccessScreenProps) => {
     return (
         <main className="min-h-screen flex flex-col items-center justify-between px-6 py-12 max-w-md mx-auto bg-surface-container-lowest font-body text-on-surface antialiased">
             {/* Success Header Section */}
@@ -74,12 +77,24 @@ const SuccessScreen = ({ type, amount, commission, received, agentName, tradeId,
             {/* Hash & Rating */}
             <div className="w-full space-y-8 text-center">
                 <section>
-                    <button className="text-primary font-bold text-sm hover:opacity-80 transition-opacity flex items-center justify-center gap-2 mx-auto">
-                        Ver transacción on-chain
-                        <span className="material-symbols-outlined text-[18px]">open_in_new</span>
-                    </button>
+                    {lockTxHash ? (
+                        <a
+                            href={`${STELLAR_EXPLORER}/${lockTxHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary font-bold text-sm hover:opacity-80 transition-opacity flex items-center justify-center gap-2 mx-auto"
+                        >
+                            Ver transacción on-chain
+                            <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                        </a>
+                    ) : (
+                        <span className="text-primary font-bold text-sm opacity-40 flex items-center justify-center gap-2">
+                            Ver transacción on-chain
+                            <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                        </span>
+                    )}
                     <p className="font-mono text-[11px] text-on-surface-variant opacity-60 tracking-tight mt-1">
-                        {tradeId ? `Trade: ${tradeId.substring(0, 8)}...` : 'Hash: GBXYZ...4K2M'}
+                        {lockTxHash ? lockTxHash.substring(0, 16) + '…' : tradeId ? `Trade: ${tradeId.substring(0, 8)}…` : ''}
                     </p>
                 </section>
 

@@ -10,9 +10,12 @@ interface Message {
 interface ChatRoomProps {
     onBack: () => void;
     onViewQR: () => void;
+    lockTxHash?: string | null;
 }
 
-const ChatRoom = ({ onBack, onViewQR }: ChatRoomProps) => {
+const STELLAR_EXPLORER = 'https://stellar.expert/explorer/testnet/tx';
+
+const ChatRoom = ({ onBack, onViewQR, lockTxHash }: ChatRoomProps) => {
     const [messages] = useState<Message[]>([
         { id: '1', text: 'Buen día recibimos su solicitud.', sender: 'agent', timestamp: '09:41 AM' },
         { id: '2', text: 'Hola! Estoy aqui alado llego en un momento.', sender: 'user', timestamp: '09:43 AM' },
@@ -55,11 +58,27 @@ const ChatRoom = ({ onBack, onViewQR }: ChatRoomProps) => {
             {/* Content Area */}
             <main className="flex-1 mt-[72px] mb-24 px-4 max-w-2xl mx-auto w-full flex flex-col">
                 {/* Status Banner */}
-                <div className="my-4 p-4 rounded-xl bg-primary-container/10 border border-primary/10 flex items-center gap-3">
-                    <div className="bg-primary text-white rounded-full p-1 flex items-center justify-center">
+                <div className="my-4 p-4 rounded-xl bg-primary-container/10 border border-primary/10 flex items-start gap-3">
+                    <div className="bg-primary text-white rounded-full p-1 flex items-center justify-center shrink-0 mt-0.5">
                         <span className="material-symbols-outlined text-sm">check</span>
                     </div>
-                    <p className="text-sm font-semibold text-primary">✓ Oferta aceptada · Saldo bloqueado</p>
+                    <div className="flex flex-col gap-1 min-w-0">
+                        <p className="text-sm font-semibold text-primary">✓ Oferta aceptada · Saldo bloqueado en escrow</p>
+                        {lockTxHash ? (
+                            <a
+                                href={`${STELLAR_EXPLORER}/${lockTxHash}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors font-mono truncate"
+                            >
+                                <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                                Ver en Stellar Testnet
+                                <span className="truncate opacity-60">· {lockTxHash.substring(0, 12)}…</span>
+                            </a>
+                        ) : (
+                            <p className="text-xs text-on-surface/40">Confirmando en blockchain…</p>
+                        )}
+                    </div>
                 </div>
 
                 {/* Date Separator */}

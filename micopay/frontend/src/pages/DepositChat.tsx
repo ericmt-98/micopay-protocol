@@ -11,9 +11,12 @@ interface Message {
 interface DepositChatProps {
     onBack: () => void;
     onViewQR: () => void;
+    lockTxHash?: string | null;
 }
 
-const DepositChat = ({ onBack, onViewQR }: DepositChatProps) => {
+const STELLAR_EXPLORER = 'https://stellar.expert/explorer/testnet/tx';
+
+const DepositChat = ({ onBack, onViewQR, lockTxHash }: DepositChatProps) => {
     const [messages] = useState<Message[]>([
         { id: '1', text: 'Hola Juan, ya recibí tu solicitud. Te comparto la ubicación, Av. Leones 32.', sender: 'agent', timestamp: '14:20' },
         { id: '2', sender: 'agent', timestamp: '14:20', isMap: true },
@@ -50,13 +53,27 @@ const DepositChat = ({ onBack, onViewQR }: DepositChatProps) => {
             <main className="flex-1 max-w-2xl mx-auto flex flex-col w-full bg-[radial-gradient(circle_at_2px_2px,rgba(0,105,76,0.03)_1px,transparent_0)] bg-[length:24px_24px]">
                 {/* Status Banner */}
                 <section className="px-6 py-4">
-                    <div className="bg-white border border-primary/10 shadow-sm rounded-2xl p-4 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <div className="bg-white border border-primary/10 shadow-sm rounded-2xl p-4 flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
                             <span className="material-symbols-outlined" style={{ fontVariationSettings: '"FILL" 1' }}>task_alt</span>
                         </div>
-                        <div className="flex flex-col">
-                            <p className="text-sm font-bold text-primary font-headline">Oferta aceptada · Saldo bloqueado</p>
-                            <p className="text-xs text-on-surface/60">Tu depósito está protegido por el sistema de seguridad.</p>
+                        <div className="flex flex-col gap-1 min-w-0">
+                            <p className="text-sm font-bold text-primary font-headline">Oferta aceptada · Saldo bloqueado en escrow</p>
+                            <p className="text-xs text-on-surface/60">Tu depósito está protegido por el contrato inteligente.</p>
+                            {lockTxHash ? (
+                                <a
+                                    href={`${STELLAR_EXPLORER}/${lockTxHash}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors font-mono truncate mt-1"
+                                >
+                                    <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                                    Ver en Stellar Testnet
+                                    <span className="truncate opacity-60">· {lockTxHash.substring(0, 12)}…</span>
+                                </a>
+                            ) : (
+                                <p className="text-xs text-on-surface/40 mt-1">Confirmando en blockchain…</p>
+                            )}
                         </div>
                     </div>
                 </section>

@@ -3,9 +3,10 @@ import MapSim from '../components/MapSim';
 interface DepositMapProps {
     onBack: () => void;
     onSelectOffer: (offerId: string) => void;
+    loading?: boolean;
 }
 
-const DepositMap = ({ onBack, onSelectOffer }: DepositMapProps) => {
+const DepositMap = ({ onBack, onSelectOffer, loading }: DepositMapProps) => {
     return (
         <div className="bg-surface text-on-surface min-h-screen pb-24">
             {/* TopAppBar */}
@@ -79,11 +80,12 @@ const DepositMap = ({ onBack, onSelectOffer }: DepositMapProps) => {
                                     <p className="font-bold text-on-surface text-lg">498 MXN</p>
                                 </div>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => onSelectOffer('don_pepe')}
-                                className="w-full h-[46px] bg-gradient-to-r from-primary to-primary-container text-white font-semibold rounded-lg shadow-md active:scale-95 duration-200 transition-all hover:opacity-90"
+                                disabled={loading}
+                                className="w-full h-[46px] bg-gradient-to-r from-primary to-primary-container text-white font-semibold rounded-lg shadow-md active:scale-95 duration-200 transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-wait"
                             >
-                                Aceptar esta oferta
+                                {loading ? 'Bloqueando fondos…' : 'Aceptar esta oferta'}
                             </button>
                         </div>
                     </div>

@@ -84,69 +84,6 @@ const Home = ({ onNavigateCashout, onNavigateDeposit }: HomeProps) => {
                     </div>
                 </div>
 
-                {/* Featured Ecosystem Services */}
-                <section className="mb-10">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="font-headline font-bold text-lg text-on-surface">Servicios Ecosistema</h2>
-                        <span className="text-[11px] font-bold text-primary tracking-wider uppercase">Ver todos</span>
-                    </div>
-                    <div className="flex gap-4 overflow-x-auto pb-4 -mx-2 px-2 no-scrollbar">
-                        {/* Etherfuse Cetes */}
-                        <div className="flex-shrink-0 w-[240px] bg-gradient-to-br from-primary/10 to-primary/5 p-5 rounded-[28px] border border-primary/10 shadow-sm">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                                    <span className="material-symbols-outlined text-primary">trending_up</span>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-primary uppercase">Etherfuse</p>
-                                    <p className="font-headline font-bold text-sm text-on-surface">Inversión Cetes</p>
-                                </div>
-                            </div>
-                            <p className="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">Ahorra y gana con instrumentos del gobierno (Cetes) tokenizados.</p>
-                            <div className="mt-4 flex items-center justify-between">
-                                <span className="text-[12px] font-bold text-primary">11.45% APY</span>
-                                <span className="material-symbols-outlined text-primary text-sm">arrow_forward</span>
-                            </div>
-                        </div>
-
-                        {/* Blend DeFi */}
-                        <div className="flex-shrink-0 w-[240px] bg-gradient-to-br from-on-surface-variant/10 to-transparent p-5 rounded-[28px] border border-outline-variant/10 shadow-sm">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                                    <span className="material-symbols-outlined text-[#1A2830]">account_balance</span>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-on-surface-variant uppercase">Blend Protocol</p>
-                                    <p className="font-headline font-bold text-sm text-on-surface">Préstamos DeFi</p>
-                                </div>
-                            </div>
-                            <p className="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">Colateraliza tus USDC y recibe préstamos instantáneos.</p>
-                            <div className="mt-4 flex items-center justify-between">
-                                <span className="text-[12px] font-bold text-on-surface">Explorar pools</span>
-                                <span className="material-symbols-outlined text-on-surface text-sm">arrow_forward</span>
-                            </div>
-                        </div>
-
-                        {/* Etherfuse Ramps */}
-                        <div className="flex-shrink-0 w-[240px] bg-gradient-to-br from-primary/10 to-primary/5 p-5 rounded-[28px] border border-primary/10 shadow-sm">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                                    <span className="material-symbols-outlined text-primary">account_balance_wallet</span>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] font-bold text-primary uppercase">Etherfuse</p>
-                                    <p className="font-headline font-bold text-sm text-on-surface">On/Off Ramp</p>
-                                </div>
-                            </div>
-                            <p className="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">Recarga o retira fondos directamente con cuentas bancarias.</p>
-                            <div className="mt-4 flex items-center justify-between">
-                                <span className="text-[12px] font-bold text-primary">Depósito rápido</span>
-                                <span className="material-symbols-outlined text-primary text-sm">arrow_forward</span>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
                 {/* Primary CTA Area */}
                 <div className="flex flex-col items-center gap-4">
                     <button 

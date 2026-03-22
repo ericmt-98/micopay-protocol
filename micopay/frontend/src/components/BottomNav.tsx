@@ -32,17 +32,17 @@ const BottomNav = ({ currentPage, onNavigate }: BottomNavProps) => {
         <span className="font-['Manrope'] font-medium text-[10px] tracking-wide">Pagar</span>
       </button>
 
-      {/* Mercado */}
+      {/* Explorar */}
       <button 
-        onClick={() => onNavigate('market')}
+        onClick={() => onNavigate('explore')}
         className={`flex flex-col items-center justify-center rounded-full px-5 py-2 transition-all active:scale-90 duration-150 ${
-          currentPage === 'market' 
+          currentPage === 'explore' 
             ? 'bg-[#E1F5EE] dark:bg-[#00694C]/30 text-[#00694C] dark:text-[#5DCAA5]' 
             : 'text-[#0B1E26] dark:text-slate-400 opacity-70 hover:opacity-100'
         }`}
       >
-        <span className="material-symbols-outlined" style={{ fontVariationSettings: currentPage === 'market' ? '"FILL" 1' : '"FILL" 0' }}>storefront</span>
-        <span className="font-['Manrope'] font-medium text-[10px] tracking-wide">Mercado</span>
+        <span className="material-symbols-outlined" style={{ fontVariationSettings: currentPage === 'explore' ? '"FILL" 1' : '"FILL" 0' }}>explore</span>
+        <span className="font-['Manrope'] font-medium text-[10px] tracking-wide">Explorar</span>
       </button>
 
       {/* Perfil */}

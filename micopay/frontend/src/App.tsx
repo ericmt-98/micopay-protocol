@@ -9,6 +9,7 @@ import DepositChat from './pages/DepositChat'
 import QRReveal from './pages/QRReveal'
 import DepositQR from './pages/DepositQR'
 import SuccessScreen from './pages/SuccessScreen'
+import Explore from './pages/Explore'
 import BottomNav from './components/BottomNav'
 import { registerUser, createTrade, lockTrade, revealTrade, UserData, TradeData } from './services/api'
 
@@ -20,6 +21,7 @@ function App() {
   const [buyerUser, setBuyerUser] = useState<UserData | null>(null)
   const [sellerUser, setSellerUser] = useState<UserData | null>(null)
   const [activeTrade, setActiveTrade] = useState<TradeData | null>(null)
+  const [lockTxHash, setLockTxHash] = useState<string | null>(null)
   const [activeAmount, setActiveAmount] = useState(500)
   const [tradeLoading, setTradeLoading] = useState(false)
 
@@ -67,15 +69,38 @@ function App() {
     setTradeLoading(true)
     try {
       const trade = await createTrade(sellerUser.id, activeAmount, buyerUser.token)
-      await lockTrade(trade.id, sellerUser.token)
+      const { lock_tx_hash } = await lockTrade(trade.id, sellerUser.token)
       await revealTrade(trade.id, sellerUser.token)
       setActiveTrade(trade)
-      console.log('✅ Trade ready:', trade.id)
+      setLockTxHash(lock_tx_hash)
+      console.log('✅ Trade ready:', trade.id, 'lock_tx_hash:', lock_tx_hash)
     } catch (e) {
       console.error('Trade flow failed, continuing as demo', e)
     } finally {
       setTradeLoading(false)
       setCurrentPage('chat')
+    }
+  }
+
+  // Deposit flow: buyer selects offer → create + lock trade → navigate to deposit chat
+  const handleDepositOfferSelected = async (offerId: string) => {
+    if (!buyerUser || !sellerUser) {
+      setCurrentPage('chat_deposit')
+      return
+    }
+    setTradeLoading(true)
+    try {
+      const trade = await createTrade(sellerUser.id, activeAmount, buyerUser.token)
+      const { lock_tx_hash } = await lockTrade(trade.id, sellerUser.token)
+      await revealTrade(trade.id, sellerUser.token)
+      setActiveTrade(trade)
+      setLockTxHash(lock_tx_hash)
+      console.log('✅ Deposit trade ready:', trade.id, 'lock_tx_hash:', lock_tx_hash)
+    } catch (e) {
+      console.error('Deposit trade flow failed, continuing as demo', e)
+    } finally {
+      setTradeLoading(false)
+      setCurrentPage('chat_deposit')
     }
   }
 
@@ -110,10 +135,8 @@ function App() {
       {currentPage === 'map_deposit' && (
         <DepositMap
           onBack={() => setCurrentPage('deposit')}
-          onSelectOffer={(offerId) => {
-            console.log('Selected deposit offer:', offerId)
-            setCurrentPage('chat_deposit')
-          }}
+          onSelectOffer={handleDepositOfferSelected}
+          loading={tradeLoading}
         />
       )}
 
@@ -128,6 +151,7 @@ function App() {
 
       {currentPage === 'chat' && (
         <ChatRoom
+          lockTxHash={lockTxHash}
           onBack={() => setCurrentPage('map')}
           onViewQR={() => {
             setCurrentPage('qr_reveal')
@@ -137,6 +161,7 @@ function App() {
 
       {currentPage === 'chat_deposit' && (
         <DepositChat
+          lockTxHash={lockTxHash}
           onBack={() => setCurrentPage('map_deposit')}
           onViewQR={() => {
             setCurrentPage('qr_deposit')
@@ -180,12 +205,18 @@ function App() {
           }
           agentName={flow === 'cashout' ? 'Farmacia Guadalupe' : 'Tienda Don Pepe'}
           tradeId={activeTrade?.id}
+          lockTxHash={lockTxHash}
           onHome={() => {
             setFlow(null)
             setActiveTrade(null)
+            setLockTxHash(null)
             setCurrentPage('home')
           }}
         />
+      )}
+
+      {currentPage === 'explore' && (
+        <Explore onBack={() => setCurrentPage('home')} />
       )}
 
       {!['chat', 'chat_deposit', 'qr_reveal', 'qr_deposit', 'success'].includes(currentPage) && (
