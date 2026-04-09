@@ -2,7 +2,7 @@ import {
   Contract,
   Keypair,
   Networks,
-  SorobanRpc,
+  rpc as SorobanRpc,
   Transaction,
   TransactionBuilder,
   xdr,
@@ -96,7 +96,6 @@ export async function waitForConfirmation(
       throw new Error(`Transaction failed on-chain: ${txHash}`);
     }
 
-    // NOT_FOUND means still pending
     await sleep(2000);
   }
 
@@ -107,28 +106,18 @@ export async function waitForConfirmation(
  * Generate a 32-byte random secret and its SHA-256 hash.
  * Returns hex strings.
  */
-export function generateSecret(): { secret: string; secretHash: string } {
+export async function generateSecret(): Promise<{ secret: string; secretHash: string }> {
   const secretBytes = crypto.getRandomValues(new Uint8Array(32));
   const secret = Buffer.from(secretBytes).toString("hex");
-  const secretHash = sha256Hex(secretBytes);
+  const hashBytes = await crypto.subtle.digest("SHA-256", secretBytes);
+  const secretHash = Buffer.from(hashBytes).toString("hex");
   return { secret, secretHash };
-}
-
-/**
- * Compute SHA-256 of bytes, return hex string.
- */
-export async function sha256Hex(data: Uint8Array): Promise<string> {
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Buffer.from(hash).toString("hex");
 }
 
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Convert hex string to Buffer.
- */
 export function hexToBytes(hex: string): Buffer {
   return Buffer.from(hex, "hex");
 }

@@ -1,4 +1,10 @@
-import { Keypair, SorobanRpc, xdr, nativeToScVal, scValToNative } from "@stellar/stellar-sdk";
+import {
+  Keypair,
+  rpc as SorobanRpc,
+  xdr,
+  nativeToScVal,
+  scValToNative,
+} from "@stellar/stellar-sdk";
 import type { SwapStatus } from "@micopay/types";
 import {
   buildContractTx,
@@ -16,21 +22,9 @@ export interface LockParams {
   timeoutLedgers: number;
 }
 
-export interface SwapState {
-  initiator: string;
-  counterparty: string;
-  token: string;
-  amount: bigint;
-  secretHash: string;
-  timeoutLedger: number;
-  status: SwapStatus;
-}
-
 /**
  * AtomicSwapClient — TypeScript wrapper for the AtomicSwapHTLC Soroban contract.
- *
- * Handles building, signing, and submitting contract calls.
- * Does NOT make any LLM calls — purely deterministic.
+ * Purely deterministic — no LLM calls.
  */
 export class AtomicSwapClient {
   private server: SorobanRpc.Server;
@@ -47,8 +41,7 @@ export class AtomicSwapClient {
   }
 
   /**
-   * Lock funds in the atomic swap contract.
-   * Returns the swap_id (hex string).
+   * Lock funds. Returns swap_id (hex string).
    */
   async lock(params: LockParams, keypair: Keypair): Promise<string> {
     const args = [
@@ -72,16 +65,19 @@ export class AtomicSwapClient {
     const hash = await signAndSubmit(this.server, tx, keypair);
     const result = await waitForConfirmation(this.server, hash);
 
-    // Extract swap_id from the return value
-    const returnVal = result.returnValue;
-    if (!returnVal) throw new Error("No return value from lock()");
+    // returnValue exists on GetSuccessfulTransactionResponse
+    const successResult = result as SorobanRpc.Api.GetSuccessfulTransactionResponse;
+    const returnVal = successResult.returnValue;
+    if (!returnVal) return hash; // fallback to tx hash
 
     const swapIdBytes = scValToNative(returnVal) as Buffer;
-    return swapIdBytes.toString("hex");
+    return Buffer.isBuffer(swapIdBytes)
+      ? swapIdBytes.toString("hex")
+      : hash;
   }
 
   /**
-   * Release funds by revealing the secret preimage.
+   * Release funds by revealing the secret.
    */
   async release(swapId: string, secret: string, keypair: Keypair): Promise<string> {
     const args = [
@@ -104,7 +100,7 @@ export class AtomicSwapClient {
   }
 
   /**
-   * Refund initiator after timeout. Anyone can call this.
+   * Refund initiator after timeout.
    */
   async refund(swapId: string, keypair: Keypair): Promise<string> {
     const args = [xdr.ScVal.scvBytes(Buffer.from(swapId, "hex"))];
@@ -124,31 +120,29 @@ export class AtomicSwapClient {
   }
 
   /**
-   * Get current swap status (view call — no fee, no signing).
+   * Get swap status (simulation — no fee).
    */
   async getStatus(swapId: string): Promise<SwapStatus> {
     const args = [xdr.ScVal.scvBytes(Buffer.from(swapId, "hex"))];
+    const dummyKeypair = Keypair.random();
 
-    const account = await this.server.getAccount(
-      Keypair.random().publicKey() // dummy for simulation
+    const tx = await buildContractTx(
+      this.server,
+      this.network,
+      dummyKeypair,
+      this.contractId,
+      "get_status",
+      args
     );
 
-    const result = await this.server.simulateTransaction(
-      await buildContractTx(
-        this.server,
-        this.network,
-        Keypair.random(),
-        this.contractId,
-        "get_status",
-        args
-      )
-    );
+    const result = await this.server.simulateTransaction(tx);
 
     if (SorobanRpc.Api.isSimulationError(result)) {
       throw new Error(`Simulation failed: ${result.error}`);
     }
 
-    const returnVal = (result as SorobanRpc.Api.SimulateTransactionSuccessResponse).result?.retval;
+    const returnVal = (result as SorobanRpc.Api.SimulateTransactionSuccessResponse)
+      .result?.retval;
     if (!returnVal) throw new Error("No return value from get_status()");
 
     const raw = scValToNative(returnVal) as string;
