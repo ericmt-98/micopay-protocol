@@ -24,6 +24,27 @@ The core primitive is an **atomic swap HTLC** (Soroban/Rust) coordinated by an A
 
 ---
 
+## 🇲🇽 The Vision: Bridging Mexico's Informal Economy
+
+Micopay was born from a simple but powerful goal: **connecting the 60%+ of Mexico's population in the informal economy with the global digital financial system.**
+
+In markets where cash is king, traditional crypto on-ramps fail. Micopay uses **Stellar and Soroban** to build a trustless, decentralized "LocalBitcoins" specifically designed for emerging markets. By using **HTLCs (Hashed Time-Lock Contracts)** as a trustless escrow, we allow anyone to exchange stablecoins for physical cash without ever needing a bank account or a centralized intermediary.
+
+---
+
+## 📱 The Consumer Layer: Emerald Horizon (Mobile App)
+
+While the Micopay Protocol provides the "plumbing" for agents, **Emerald Horizon** is the primary entry point for human users. Located in the `/micopay` directory, it is a high-performance mobile application designed for secure P2P exchanges.
+
+- **Map-Based Discovery:** Find verified "Micelio" nodes (cash endpoints) nearby in real-time.
+- **Secure P2P Chat:** Encrypted communication to coordinate exchange details.
+- **QR-Based Settlement:** Secure, one-time-use QR codes to reveal HTLC secrets and settle trades on-chain.
+*   **Reputation System:** 4-tier evolution (Espora → Micelio → Hongo → Maestro) powered by **Soulbound NFTs** on Stellar.
+
+The mobile app demonstrates the protocol's power by turning every smartphone into a potential financial hub.
+
+---
+
 ## Quick Start
 
 ```bash
