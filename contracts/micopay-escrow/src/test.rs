@@ -240,6 +240,22 @@ fn test_negative_amount_rejected() {
     t.escrow().lock(&t.seller, &t.buyer, &-100, &0, &hash, &30u32);
 }
 
+#[test]
+#[should_panic]
+fn test_duplicate_lock_same_secret_rejected() {
+    // Reusing the same secret_hash produces the same trade_id — must be rejected
+    // to prevent overwriting a locked trade and trapping funds.
+    let t = TestEnv::new();
+    let (_, hash) = t.make_secret();
+
+    t.escrow().lock(&t.seller, &t.buyer, &500_000_000, &0, &hash, &30u32);
+
+    // Mint more so the transfer can succeed if the guard is missing
+    use soroban_sdk::token::StellarAssetClient;
+    StellarAssetClient::new(&t.env, &t.token_id).mint(&t.seller, &500_000_000);
+    t.escrow().lock(&t.seller, &t.buyer, &500_000_000, &0, &hash, &30u32); // must panic
+}
+
 // ─── Accounting invariant ────────────────────────────────────────────────────
 
 #[test]

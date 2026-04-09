@@ -84,11 +84,16 @@ impl EscrowFactory {
             .get(&DataKey::TokenId)
             .ok_or(EscrowError::NotInitialized)?;
 
+        let trade_id = compute_trade_id(&env, &seller, &buyer, &secret_hash);
+
+        // Prevent duplicate trades (same secret_hash = same trade_id → funds would be stuck)
+        if env.storage().persistent().has(&DataKey::Trade(trade_id.clone())) {
+            return Err(EscrowError::TradeAlreadyExists);
+        }
+
         let total = amount + platform_fee;
         let token_client = token::Client::new(&env, &token_id);
         token_client.transfer(&seller, &env.current_contract_address(), &total);
-
-        let trade_id = compute_trade_id(&env, &seller, &buyer, &secret_hash);
 
         // ~12 ledgers per minute at 5s/ledger
         let timeout_ledger = env.ledger().sequence() + (timeout_minutes * 12);

@@ -51,7 +51,7 @@ export async function buildContractTx(
     networkPassphrase: getNetworkPassphrase(network),
   })
     .addOperation(contract.call(method, ...args))
-    .setTimeout(30)
+    .setTimeout(180)
     .build();
 
   const prepared = await server.prepareTransaction(tx);
