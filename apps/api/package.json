@@ -9,10 +9,11 @@
     "build": "tsc"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.86.1",
     "@fastify/cors": "^8.5.0",
     "@fastify/rate-limit": "^9.1.0",
-    "@micopay/types": "*",
     "@micopay/sdk": "*",
+    "@micopay/types": "*",
     "@stellar/stellar-sdk": "^13.1.0",
     "@types/node": "^20.14.0",
     "@types/pg": "^8.11.6",

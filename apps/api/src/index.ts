@@ -1,3 +1,4 @@
+import "./config.js"; // load .env into process.env first
 import Fastify from "fastify";
 import fastifyCors from "@fastify/cors";
 import { swapRoutes } from "./routes/swaps.js";

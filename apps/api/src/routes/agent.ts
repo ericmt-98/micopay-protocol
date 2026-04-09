@@ -1,21 +1,225 @@
 import type { FastifyInstance } from "fastify";
+import Anthropic from "@anthropic-ai/sdk";
 import { requirePayment } from "../middleware/x402.js";
 
-/**
- * Agent endpoints — planning and execution.
- * The actual Claude integration lives in apps/agent/
- * These endpoints are HTTP facades that trigger the agent logic.
- */
+const SYSTEM_PROMPT = `
+Eres el agente de atomic swaps de Micopay Protocol.
+
+Tu trabajo es entender la intención del usuario y producir un SwapPlan ejecutable.
+Operas sobre Stellar testnet. Los atomic swaps son cross-chain: el usuario bloquea
+fondos en Stellar y la contraparte bloquea en la cadena destino (o en un segundo
+contrato HTLC en testnet para el demo).
+
+## Reglas estrictas
+
+1. SIEMPRE usa las tools para consultar estado real antes de planificar.
+   Nunca asumas precios, disponibilidad, o reputación.
+2. El plan debe ser un JSON ejecutable — no una descripción en prosa.
+3. Si no hay contrapartes disponibles, responde con un error claro.
+4. El timeout del initiator SIEMPRE debe ser mayor al del counterparty.
+   Regla mínima: initiator_ledgers = counterparty_ledgers * 2
+5. Incluye siempre el fee total estimado en el plan.
+6. risk_level = "high" si reputation_score < 70 o completion_rate < 0.85.
+
+## Assets soportados
+- Stellar: USDC, XLM, MXNe
+
+## Flujo de un atomic swap
+1. Initiator bloquea en Stellar con secret_hash = sha256(secret)
+2. Counterparty bloquea con el mismo secret_hash
+3. Initiator revela el secret (cobra)
+4. El secret queda público en los eventos
+
+SIEMPRE termina usando la tool create_swap_plan con el plan completo.
+`.trim();
+
+const TOOLS: Anthropic.Tool[] = [
+  {
+    name: "search_swaps",
+    description: "Busca contrapartes disponibles para un atomic swap.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        sell_asset: { type: "string" },
+        buy_asset: { type: "string" },
+        amount: { type: "number" },
+      },
+      required: ["sell_asset", "buy_asset", "amount"],
+    },
+  },
+  {
+    name: "get_reputation",
+    description: "Consulta reputación on-chain de una address Stellar.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        address: { type: "string" },
+      },
+      required: ["address"],
+    },
+  },
+  {
+    name: "calculate_timeouts",
+    description: "Calcula timeouts óptimos en ledgers. initiator siempre > counterparty.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        chain_a: { type: "string" },
+        chain_b: { type: "string" },
+        amount_usd: { type: "number" },
+      },
+      required: ["chain_a", "chain_b"],
+    },
+  },
+  {
+    name: "create_swap_plan",
+    description: "Genera el plan final de ejecución. Llama esto SIEMPRE al terminar.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        counterparty_address: { type: "string" },
+        counterparty_chain: { type: "string" },
+        counterparty_reputation_score: { type: "number" },
+        sell_asset: { type: "string" },
+        sell_amount: { type: "string" },
+        buy_asset: { type: "string" },
+        buy_amount: { type: "string" },
+        exchange_rate: { type: "string" },
+        initiator_ledgers: { type: "number" },
+        counterparty_ledgers: { type: "number" },
+        total_fee_usd: { type: "string" },
+        estimated_time_seconds: { type: "number" },
+        risk_level: { type: "string", enum: ["low", "medium", "high"] },
+      },
+      required: [
+        "counterparty_address", "counterparty_chain", "sell_asset", "sell_amount",
+        "buy_asset", "buy_amount", "initiator_ledgers", "counterparty_ledgers",
+        "total_fee_usd", "estimated_time_seconds", "risk_level",
+      ],
+    },
+  },
+];
+
+async function executeTool(
+  name: string,
+  input: Record<string, unknown>,
+  apiBase: string
+): Promise<string> {
+  const paymentHeader = "mock:GAGENT_INTERNAL:0.001";
+  try {
+    switch (name) {
+      case "search_swaps": {
+        const params = new URLSearchParams({
+          sell_asset: String(input.sell_asset ?? "USDC"),
+          buy_asset: String(input.buy_asset ?? "XLM"),
+          amount: String(input.amount ?? "0"),
+        });
+        const res = await fetch(`${apiBase}/api/v1/swaps/search?${params}`, {
+          headers: { "x-payment": paymentHeader },
+        });
+        return JSON.stringify(await res.json());
+      }
+      case "get_reputation": {
+        const res = await fetch(`${apiBase}/api/v1/reputation/${input.address}`, {
+          headers: { "x-payment": paymentHeader },
+        });
+        return JSON.stringify(await res.json());
+      }
+      case "calculate_timeouts": {
+        const amountUsd = Number(input.amount_usd ?? 10);
+        const counterparty = 120 + (amountUsd > 100 ? 60 : 0);
+        return JSON.stringify({
+          initiator_ledgers: counterparty * 2,
+          counterparty_ledgers: counterparty,
+          note: "initiator = 2x counterparty for safety",
+        });
+      }
+      case "create_swap_plan":
+        return JSON.stringify({ ok: true });
+      default:
+        return JSON.stringify({ error: `Unknown tool: ${name}` });
+    }
+  } catch (err) {
+    return JSON.stringify({ error: String(err) });
+  }
+}
+
+async function planSwap(
+  intent: string,
+  userAddress: string,
+  apiBase: string
+): Promise<Record<string, unknown>> {
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const messages: Anthropic.MessageParam[] = [
+    {
+      role: "user",
+      content: `Usuario: ${intent}\nStellar address: ${userAddress}\n\nAnaliza la intención y genera un SwapPlan ejecutable.`,
+    },
+  ];
+
+  let finalPlan: Record<string, unknown> | null = null;
+
+  while (true) {
+    const response = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 2048,
+      system: SYSTEM_PROMPT,
+      tools: TOOLS,
+      messages,
+    });
+
+    messages.push({ role: "assistant", content: response.content });
+
+    if (response.stop_reason === "tool_use") {
+      const results: Anthropic.ToolResultBlockParam[] = [];
+      for (const block of response.content) {
+        if (block.type !== "tool_use") continue;
+        if (block.name === "create_swap_plan") {
+          finalPlan = block.input as Record<string, unknown>;
+        }
+        results.push({
+          type: "tool_result",
+          tool_use_id: block.id,
+          content: await executeTool(block.name, block.input as Record<string, unknown>, apiBase),
+        });
+      }
+      messages.push({ role: "user", content: results });
+      if (finalPlan) break;
+      continue;
+    }
+    break;
+  }
+
+  if (!finalPlan) throw new Error("Agent did not produce a swap plan");
+
+  const initiator = Math.max(Number(finalPlan.initiator_ledgers ?? 240), Number(finalPlan.counterparty_ledgers ?? 120) * 2);
+
+  return {
+    id: `plan_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    steps: [
+      { order: 1, action: "lock", chain: "stellar", contract: "atomic_swap", params: { initiator: userAddress, counterparty: finalPlan.counterparty_address, sell_asset: finalPlan.sell_asset, sell_amount: finalPlan.sell_amount, timeout_ledgers: initiator } },
+      { order: 2, action: "monitor", chain: String(finalPlan.counterparty_chain ?? "stellar"), contract: "atomic_swap", params: { timeout_ledgers: finalPlan.counterparty_ledgers }, depends_on: 1 },
+      { order: 3, action: "release", chain: String(finalPlan.counterparty_chain ?? "stellar"), contract: "atomic_swap", params: { buy_asset: finalPlan.buy_asset, buy_amount: finalPlan.buy_amount }, depends_on: 2 },
+    ],
+    counterparty: { address: finalPlan.counterparty_address, chain: finalPlan.counterparty_chain ?? "stellar", reputation_score: finalPlan.counterparty_reputation_score ?? 80 },
+    amounts: { sell_asset: finalPlan.sell_asset, sell_amount: finalPlan.sell_amount, buy_asset: finalPlan.buy_asset, buy_amount: finalPlan.buy_amount, exchange_rate: finalPlan.exchange_rate ?? "1.0" },
+    timeouts: { initiator_ledgers: initiator, counterparty_ledgers: finalPlan.counterparty_ledgers },
+    fees: { gas_chain_a: "0.001", gas_chain_b: "0.001", service_fee: "0.01", total_usd: finalPlan.total_fee_usd ?? "0.012" },
+    risk_level: finalPlan.risk_level ?? "medium",
+    estimated_time_seconds: finalPlan.estimated_time_seconds ?? 120,
+  };
+}
+
 export async function agentRoutes(fastify: FastifyInstance): Promise<void> {
+  const API_BASE = process.env.API_BASE_URL ?? "http://localhost:3000";
+
   /**
    * POST /api/v1/swaps/plan
-   * x402: $0.01 — Claude parses intent and produces a SwapPlan
+   * x402: $0.01 — Claude (Haiku) parses intent and produces a SwapPlan
    */
   fastify.post(
     "/api/v1/swaps/plan",
-    {
-      preHandler: requirePayment({ amount: "0.01", service: "swap_plan" }),
-    },
+    { preHandler: requirePayment({ amount: "0.01", service: "swap_plan" }) },
     async (request, reply) => {
       const body = request.body as { intent: string; user_address: string };
 
@@ -23,41 +227,16 @@ export async function agentRoutes(fastify: FastifyInstance): Promise<void> {
         return reply.status(400).send({ error: "intent is required" });
       }
 
-      // Lazy-import the agent to avoid loading Anthropic SDK unless needed
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return reply.status(503).send({ error: "Agent not configured — ANTHROPIC_API_KEY missing" });
+      }
+
       try {
-        // Dynamic import — agent module built separately
-        const agentModule = await import("../../../agent/src/intent-parser.js" as string).catch(() => null);
-        if (!agentModule) throw new Error("Agent module not available");
-        const { planSwap } = agentModule;
-        const plan = await planSwap(body.intent, body.user_address);
-        return reply.send({ plan, payer: request.payerAddress });
+        const plan = await planSwap(body.intent, body.user_address ?? "GUNKOWN", API_BASE);
+        return reply.send({ plan, payer: request.payerAddress, agent: "claude-haiku-4-5" });
       } catch (err) {
-        // Fallback: return a mock plan for demo resilience
-        fastify.log.warn(`Agent unavailable, returning mock plan: ${err}`);
-        return reply.send({
-          plan: {
-            id: `plan_${Date.now()}`,
-            steps: [
-              { order: 1, action: "lock", chain: "stellar", contract: "atomic_swap", params: {} },
-              { order: 2, action: "monitor", chain: "stellar", contract: "atomic_swap", params: {}, depends_on: 1 },
-              { order: 3, action: "release", chain: "stellar", contract: "atomic_swap", params: {}, depends_on: 2 },
-            ],
-            counterparty: { address: "GDEMO...", chain: "stellar", reputation_score: 95 },
-            amounts: {
-              sell_asset: "USDC",
-              sell_amount: "10.00",
-              buy_asset: "XLM",
-              buy_amount: "100.00",
-              exchange_rate: "10.00",
-            },
-            timeouts: { initiator_ledgers: 200, counterparty_ledgers: 100 },
-            fees: { gas_chain_a: "0.001", gas_chain_b: "0.001", service_fee: "0.01", total_usd: "0.012" },
-            risk_level: "low",
-            estimated_time_seconds: 60,
-          },
-          note: "mock_plan_agent_unavailable",
-          payer: request.payerAddress,
-        });
+        fastify.log.error(err);
+        return reply.status(500).send({ error: "Agent failed", detail: String(err) });
       }
     }
   );
@@ -68,9 +247,7 @@ export async function agentRoutes(fastify: FastifyInstance): Promise<void> {
    */
   fastify.post(
     "/api/v1/swaps/execute",
-    {
-      preHandler: requirePayment({ amount: "0.05", service: "swap_execute" }),
-    },
+    { preHandler: requirePayment({ amount: "0.05", service: "swap_execute" }) },
     async (request, reply) => {
       const body = request.body as { plan_id: string; user_address: string };
 
@@ -78,11 +255,8 @@ export async function agentRoutes(fastify: FastifyInstance): Promise<void> {
         return reply.status(400).send({ error: "plan_id is required" });
       }
 
-      // In production: load plan from DB, trigger SwapExecutor
-      const swapId = `swap_${Date.now()}`;
-
       return reply.status(202).send({
-        swap_id: swapId,
+        swap_id: `swap_${Date.now()}`,
         plan_id: body.plan_id,
         status: "executing",
         message: "Swap initiated. Poll /api/v1/swaps/:id/status for updates.",
