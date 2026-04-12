@@ -78,8 +78,8 @@ export async function callLockOnChain(params: {
 
   // Poll via Horizon (avoids SDK v12 XDR parsing bug in rpc.getTransaction)
   const horizonUrl = `https://horizon-testnet.stellar.org/transactions/${txHash}`;
-  for (let i = 0; i < 15; i++) {
-    await new Promise((r) => setTimeout(r, 2000));
+  for (let i = 0; i < 20; i++) {
+    await new Promise((r) => setTimeout(r, i === 0 ? 1000 : 1500));
     try {
       const res = await fetch(horizonUrl);
       if (res.ok) {
@@ -157,8 +157,8 @@ export async function callReleaseOnChain(params: {
 
   // Poll via Horizon (same pattern as lock)
   const horizonUrl = `https://horizon-testnet.stellar.org/transactions/${txHash}`;
-  for (let i = 0; i < 15; i++) {
-    await new Promise((r) => setTimeout(r, 2000));
+  for (let i = 0; i < 20; i++) {
+    await new Promise((r) => setTimeout(r, i === 0 ? 1000 : 1500));
     try {
       const res = await fetch(horizonUrl);
       if (res.ok) {
@@ -194,8 +194,8 @@ export async function lockAtomicSwap(params: {
 }): Promise<{ txHash: string; swapId: string; explorerUrl: string }> {
   const { amountUsdc, secretHash, timeoutMinutes = 60 } = params;
 
-  // Cap demo lock at 0.5 USDC — platform has ~0.8365 USDC, keeps buffer for fees
-  const lockAmount = Math.min(amountUsdc, 0.5);
+  // Cap demo lock at 0.01 USDC to preserve platform balance for many trial runs
+  const lockAmount = Math.min(amountUsdc, 0.01);
   const amountStroops = BigInt(Math.round(lockAmount * 10_000_000));
 
   try {
@@ -220,9 +220,9 @@ export async function lockAtomicSwap(params: {
       swapId,
       explorerUrl: `https://stellar.expert/explorer/testnet/tx/${txHash}`,
     };
-  } catch (err) {
+  } catch (err: any) {
     // Graceful demo fallback — clearly labelled so judges understand
-    console.warn(`[Bazaar] On-chain lock failed, using demo fallback: ${err}`);
+    console.warn(`[Bazaar] On-chain lock failed (falling back to demo mode): ${err.message || err}`);
     const demoHash = `demo_atomic_${Date.now()}`;
     const { createHash } = await import('crypto');
     const swapId = createHash('sha256').update(secretHash).digest('hex');

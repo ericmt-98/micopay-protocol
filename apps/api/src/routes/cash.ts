@@ -14,9 +14,12 @@ async function lockEscrow(
   secretHash: string,
   timeoutMinutes: number,
 ): Promise<string> {
-  // Demo: agent is the seller (has USDC), platform is the buyer/merchant recipient
-  // In production: the real user wallet signs the lock tx
-  const sellerSecret = process.env.DEMO_AGENT_SECRET_KEY ?? PLATFORM_SECRET;
+  // Demo: platform is both seller and buyer to avoid consuming the demo agent's
+  // sequence number (demo.ts pre-builds all 6 Horizon txs upfront — if lockEscrow
+  // used DEMO_AGENT_SECRET_KEY it would advance the on-chain sequence and invalidate
+  // the pre-built fund_micopay tx).
+  // In production: the real user wallet signs the lock tx.
+  const sellerSecret = PLATFORM_SECRET;
   const sellerKP     = StellarSdk.Keypair.fromSecret(sellerSecret);
   const buyerAddress = StellarSdk.Keypair.fromSecret(PLATFORM_SECRET).publicKey();
 
@@ -55,7 +58,7 @@ async function lockEscrow(
   // Poll via Horizon (avoids SDK v12 XDR parsing bug with rpc.getTransaction)
   const horizonUrl = `https://horizon-testnet.stellar.org/transactions/${result.hash}`;
   for (let i = 0; i < 20; i++) {
-    await new Promise(r => setTimeout(r, 2500));
+    await new Promise(r => setTimeout(r, i === 0 ? 1000 : 1500));
     try {
       const res = await fetch(horizonUrl);
       if (res.ok) {
