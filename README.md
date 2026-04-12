@@ -68,18 +68,18 @@ The mobile app (`micopay/frontend`, port 5181) is the user-facing side of the sa
 
 ### 📊 CETES Tokenizados (via Etherfuse)
 - Invest in Mexican government bonds tokenized on Stellar
-- **11.45% APY** — accessible from the same wallet, no broker, no bank account
-- Buy/sell with XLM, USDC, or MXNe
-- Bank on-ramp card for users without crypto
+- **~10% APY** — accessible from the same wallet, no broker, no bank account
+- Buy/sell with XLM, USDC, or MXNe (uses Stellar `pathPaymentStrictReceive`)
+- Full UI implemented; transactions simulated on testnet — mainnet-ready architecture
 
 ### 🏦 Blend DeFi
 - **Borrow**: Deposit XLM as collateral → get USDC/MXNe instantly (70% LTV, health factor tracked)
-- **Yield**: Supply crypto to earn 4–14% APY
-- TVL badge, Stellar Explorer links for every transaction
+- **Yield**: Supply crypto to earn yield via Blend Protocol
+- Full UI implemented (pool data, health factor, supply/borrow flows); mainnet-ready architecture
 
 ### 🔗 Etherfuse On/Off Ramp
-- Connect a Mexican bank account → transfer MXN ↔ USDC on Stellar
-- Bridge for users who want to enter the network with pesos
+- Architecture supports connecting a Mexican bank account → transfer MXN ↔ USDC on Stellar
+- Entry point is the P2P merchant network (cash in/out); full SPEI bridge planned for mainnet
 
 ### The claim_url — QR for any interface
 
@@ -318,9 +318,9 @@ Contracts reviewed against the Soroban security checklist:
 
 | Timeline | Feature |
 |---|---|
-| **Today** | Stellar testnet — full 6-step agent flow, real on-chain Soroban HTLC |
-| **1–3 months** | Telegram bot integration, production merchant onboarding CDMX |
-| **3–6 months** | AtomicSwapHTLC live: ETH/BTC → MXN cash (no bridges, no custodians) |
+| **Today** | Stellar testnet — full 6-step agent flow, real on-chain Soroban HTLC; CETES/Blend UI with mainnet-ready architecture |
+| **1–3 months** | Telegram bot integration, production merchant onboarding CDMX, live CETES rate from Etherfuse API |
+| **3–6 months** | AtomicSwapHTLC live: ETH/BTC → MXN cash (no bridges, no custodians); Etherfuse SPEI on-ramp |
 | **6–12 months** | WhatsApp integration, mainnet launch, 100+ merchants CDMX |
 | **12+ months** | Multi-city expansion, agent reputation network, DAO governance |
 
