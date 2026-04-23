@@ -1,4 +1,41 @@
 import { config } from '../config.js';
+import db from '../db/schema.js';
+import { ReplayError } from '../utils/errors.js';
+
+/**
+ * Persist a Stellar tx hash as processed.
+ *
+ * Inserts into `processed_tx` using INSERT … ON CONFLICT DO NOTHING so the
+ * operation is atomic even under concurrent requests.  If the row already
+ * exists (= replay) a `ReplayError` is thrown **before** any trade-state
+ * mutation takes place.
+ *
+ * Call this immediately after you have the confirmed txHash, and before you
+ * write any trade state that credits the payment.
+ *
+ * @param txHash    64-char hex Stellar transaction hash
+ * @param route     Short descriptor of the calling code path, e.g. 'trade/lock'
+ * @param userId    Authenticated user who submitted the tx
+ */
+export async function assertNotReplayed(
+  txHash: string,
+  route: string,
+  userId: string,
+): Promise<void> {
+  const inserted = await db.insertUnique(
+    `INSERT INTO processed_tx (tx_hash, source_route, user_id, processed_at)
+     VALUES ($1, $2, $3, NOW())
+     RETURNING tx_hash`,
+    [txHash, route, userId],
+    'tx_hash',
+  );
+
+  if (inserted === null) {
+    // Row already existed — this is a replay attempt
+    throw new ReplayError(txHash, route);
+  }
+}
+
 
 const STROOPS_PER_MXN = 10_000_000n;
 const DEFAULT_TIMEOUT_MINUTES = 120;

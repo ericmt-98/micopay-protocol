@@ -2,7 +2,7 @@ import db from '../db/schema.js';
 import { config } from '../config.js';
 import { generateTradeSecret, encryptSecret, decryptSecret } from './secret.service.js';
 import { createHash } from 'crypto';
-import { callLockOnChain, callReleaseOnChain, verifyLockOnChain } from './stellar.service.js';
+import { callLockOnChain, callReleaseOnChain, verifyLockOnChain, assertNotReplayed } from './stellar.service.js';
 import { NotFoundError, ForbiddenError, ConflictError, BadRequestError } from '../utils/errors.js';
 
 // --- Trade lifecycle ---
@@ -140,6 +140,9 @@ export async function lockTrade(
     stellarTradeId = lockTxHash;
   }
 
+  // ── Replay protection: persist txHash before any state mutation ──────────
+  await assertNotReplayed(lockTxHash, 'trade/lock', userId);
+
   await db.execute(
     `UPDATE trades
      SET status = 'locked',
@@ -227,6 +230,9 @@ export async function completeTrade(tradeId: string, userId: string) {
   } else {
     releaseTxHash = `mock_release_${Date.now()}`;
   }
+
+  // ── Replay protection: persist txHash before any state mutation ──────────
+  await assertNotReplayed(releaseTxHash, 'trade/complete', userId);
 
   // Clear encrypted secret from DB now that release is confirmed on-chain
   await db.execute(
