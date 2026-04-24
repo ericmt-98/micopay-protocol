@@ -11,6 +11,8 @@ CREATE TABLE users (
   stellar_address VARCHAR(56) UNIQUE NOT NULL,
   username        VARCHAR(30) UNIQUE NOT NULL,
   phone_hash      VARCHAR(64) UNIQUE,
+  availability    VARCHAR(20) NOT NULL DEFAULT 'offline'
+                  CHECK (availability IN ('online', 'offline', 'paused')),
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 

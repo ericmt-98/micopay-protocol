@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Logo } from '../components/Logo';
-import { getTradeHistory, getAccountBalance, TradeHistoryItem } from '../services/api';
+import { getTradeHistory, getAccountBalance, setAvailability, Availability, TradeHistoryItem } from '../services/api';
 
 const EXPLORER = 'https://stellar.expert/explorer/testnet/tx';
 
@@ -13,6 +13,14 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   refunded:  { label: 'Reembolsado',color: 'text-outline' },
 };
 
+const AVAILABILITY_CONFIG: Record<Availability, { label: string; dot: string; bg: string; text: string }> = {
+  online:  { label: 'Disponible', dot: 'bg-[#1D9E75]', bg: 'bg-[#E6F7F1]', text: 'text-[#1D9E75]' },
+  paused:  { label: 'Pausado',    dot: 'bg-amber-400',  bg: 'bg-amber-50',   text: 'text-amber-600' },
+  offline: { label: 'No disponible', dot: 'bg-red-400', bg: 'bg-red-50',     text: 'text-red-500'   },
+};
+
+const AVAILABILITY_CYCLE: Availability[] = ['online', 'paused', 'offline'];
+
 interface HomeProps {
   onNavigateCashout: () => void;
   onNavigateDeposit: () => void;
@@ -23,6 +31,22 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, token }: HomeProps) => {
   const [trades, setTrades] = useState<TradeHistoryItem[]>([]);
   const [xlmBalance, setXlmBalance] = useState<string | null>(null);
   const [stellarAddress, setStellarAddress] = useState<string>('');
+  const [availability, setAvailabilityState] = useState<Availability>('offline');
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+
+  const handleToggleAvailability = async () => {
+    if (!token) return;
+    const next = AVAILABILITY_CYCLE[(AVAILABILITY_CYCLE.indexOf(availability) + 1) % AVAILABILITY_CYCLE.length];
+    setAvailabilityLoading(true);
+    try {
+      await setAvailability(next, token);
+      setAvailabilityState(next);
+    } catch {
+      // silently ignore — UI stays consistent
+    } finally {
+      setAvailabilityLoading(false);
+    }
+  };
 
   useEffect(() => {
     getAccountBalance()
@@ -52,7 +76,19 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, token }: HomeProps) => {
       {/* TopAppBar */}
       <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 py-4 backdrop-blur-md bg-white/90">
         <Logo />
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          {/* Availability Toggle (Merchant Control) */}
+          {token && (
+            <button
+              onClick={handleToggleAvailability}
+              disabled={availabilityLoading}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all active:scale-95 ${AVAILABILITY_CONFIG[availability].bg} ${AVAILABILITY_CONFIG[availability].text} ${availabilityLoading ? 'opacity-50' : ''}`}
+              title="Cambiar disponibilidad"
+            >
+              <span className={`w-2 h-2 rounded-full ${AVAILABILITY_CONFIG[availability].dot} ${availability === 'online' ? 'animate-pulse' : ''}`}></span>
+              {AVAILABILITY_CONFIG[availability].label}
+            </button>
+          )}
           <span className="material-symbols-outlined text-primary p-2 rounded-full hover:bg-surface-container-low transition-colors cursor-pointer">
             notifications
           </span>

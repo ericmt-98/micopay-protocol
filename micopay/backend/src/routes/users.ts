@@ -81,4 +81,44 @@ export async function userRoutes(app: FastifyInstance) {
 
     return { user };
   });
+
+  /**
+   * PATCH /users/me/availability
+   * Merchant sets their own availability status.
+   * Auth-gated: only the merchant can update their own record.
+   */
+  app.patch('/users/me/availability', {
+    preHandler: [authMiddleware],
+    schema: {
+      body: {
+        type: 'object',
+        required: ['availability'],
+        properties: {
+          availability: { type: 'string', enum: ['online', 'offline', 'paused'] },
+        },
+        additionalProperties: false,
+      },
+    },
+  }, async (request, reply) => {
+    const userId = request.user.id;
+    const { availability } = request.body as { availability: 'online' | 'offline' | 'paused' };
+
+    // Ensure column exists (migration for existing DBs)
+    await db.execute(
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS availability VARCHAR(20) NOT NULL DEFAULT 'offline'
+       CHECK (availability IN ('online', 'offline', 'paused'))`,
+    ).catch(() => {}); // ignore if constraint already exists
+
+    await db.execute(
+      `UPDATE users SET availability = $1 WHERE id = $2`,
+      [availability, userId],
+    );
+
+    const user = await db.getOne(
+      `SELECT id, stellar_address, username, availability, created_at FROM users WHERE id = $1`,
+      [userId],
+    );
+
+    return { user };
+  });
 }

@@ -24,10 +24,21 @@ export async function createTrade(input: CreateTradeInput) {
     throw new BadRequestError('amount_mxn must be between 100 and 50,000');
   }
 
-  // Verify seller exists
-  const seller = await db.getOne('SELECT id, stellar_address FROM users WHERE id = $1', [sellerId]);
+  // Verify seller exists and is available
+  const seller = await db.getOne(
+    `SELECT id, stellar_address, availability FROM users WHERE id = $1`,
+    [sellerId],
+  );
   if (!seller) throw new NotFoundError('Seller not found');
 
+  // Block matching if seller is explicitly offline or paused
+  // null/undefined means legacy record — treat as online for backward compat
+  const sellerAvailability = seller.availability ?? 'online';
+  if (sellerAvailability !== 'online') {
+    throw new ConflictError(
+      `Merchant is currently ${sellerAvailability} and cannot accept new trades`,
+    );
+  }
   // Verify buyer exists
   const buyer = await db.getOne('SELECT id, stellar_address FROM users WHERE id = $1', [buyerId]);
   if (!buyer) throw new NotFoundError('Buyer not found');

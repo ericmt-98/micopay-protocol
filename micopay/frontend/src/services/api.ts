@@ -96,6 +96,12 @@ export async function getAccountBalance(): Promise<{ xlm: string; address: strin
   return res.data;
 }
 
+export type Availability = 'online' | 'offline' | 'paused';
+
+export async function setAvailability(availability: Availability, token: string): Promise<void> {
+  await http.patch('/users/me/availability', { availability }, authHeaders(token));
+}
+
 // ─── DeFi: CETES ──────────────────────────────────────────────────────────
 
 export interface CETESRate {
