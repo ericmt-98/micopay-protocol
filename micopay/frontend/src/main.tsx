@@ -7,9 +7,15 @@ import './index.css'
 // External claim links: /claim/:requestId
 // Any AI agent (Claude, GPT, WhatsApp bot...) sends users here to show the QR
 const claimMatch = window.location.pathname.match(/^\/claim\/([a-zA-Z0-9_-]+)$/)
+// Deep link to an in-progress trade (issue #31)
+const tradeDetailMatch = window.location.pathname.match(/^\/trade\/([a-f0-9-]{36})$/i)
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {claimMatch ? <ClaimQR requestId={claimMatch[1]} /> : <App />}
+    {claimMatch ? (
+      <ClaimQR requestId={claimMatch[1]} />
+    ) : (
+      <App initialTradeId={tradeDetailMatch?.[1] ?? null} />
+    )}
   </React.StrictMode>,
 )

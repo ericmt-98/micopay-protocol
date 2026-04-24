@@ -7,6 +7,23 @@ import { NotFoundError, ForbiddenError, ConflictError, BadRequestError } from '.
 
 // --- Trade lifecycle ---
 
+/** Trade states where the buyer still depends on the merchant before cash handoff / release */
+const MERCHANT_DEPENDENT_STATUSES = ['pending', 'locked', 'revealing'] as const;
+
+async function getSellerMerchantRow(sellerId: string) {
+  return db.getOne<{ username: string; merchant_available: boolean | null }>(
+    'SELECT username, merchant_available FROM users WHERE id = $1',
+    [sellerId],
+  );
+}
+
+function isMerchantUnavailableForTrade(trade: { status: string }, sellerRow: { merchant_available: boolean | null } | null) {
+  if (!MERCHANT_DEPENDENT_STATUSES.includes(trade.status as (typeof MERCHANT_DEPENDENT_STATUSES)[number])) {
+    return false;
+  }
+  return sellerRow?.merchant_available === false;
+}
+
 const STROOPS_PER_MXN = 10_000_000; // 7 decimals
 const PLATFORM_FEE_PERCENT = 0.8; // 0.8% platform fee
 const DEFAULT_TIMEOUT_MINUTES = 120; // 2 hours
@@ -78,6 +95,19 @@ export async function getTradeById(tradeId: string, userId: string) {
   }
 
   return trade;
+}
+
+/** Trade row for API plus flags for merchant-unavailable UX (issue #31). */
+export async function getTradeDetailForParticipant(tradeId: string, userId: string) {
+  const trade = await getTradeById(tradeId, userId);
+  const seller = await getSellerMerchantRow(trade.seller_id);
+  const merchant_unavailable = isMerchantUnavailableForTrade(trade, seller);
+
+  return {
+    trade,
+    merchant_unavailable,
+    seller_username: seller?.username ?? null,
+  };
 }
 
 export async function getActiveTrades(userId: string) {
@@ -251,18 +281,36 @@ export async function cancelTrade(tradeId: string, userId: string) {
     throw new ForbiddenError('Not a participant of this trade');
   }
 
-  if (trade.status !== 'pending') {
-    throw new ConflictError(`Cannot cancel trade in status ${trade.status}. Only pending trades can be cancelled.`);
+  if (trade.status === 'pending') {
+    // Either party can cancel before funds are locked on-chain
+    await db.execute(
+      `UPDATE trades
+       SET status = 'cancelled',
+           secret_enc = NULL,
+           secret_nonce = NULL
+       WHERE id = $1`,
+      [tradeId],
+    );
+    return { status: 'cancelled' };
   }
 
-  await db.execute(
-    `UPDATE trades
-     SET status = 'cancelled',
-         secret_enc = NULL,
-         secret_nonce = NULL
-     WHERE id = $1`,
-    [tradeId],
-  );
+  if (trade.status === 'locked' || trade.status === 'revealing') {
+    const seller = await getSellerMerchantRow(trade.seller_id);
+    if (!isMerchantUnavailableForTrade(trade, seller)) {
+      throw new ConflictError(
+        `Cannot cancel trade in status ${trade.status} unless the merchant is temporarily unavailable.`,
+      );
+    }
+    await db.execute(
+      `UPDATE trades
+       SET status = 'cancelled',
+           secret_enc = NULL,
+           secret_nonce = NULL
+       WHERE id = $1`,
+      [tradeId],
+    );
+    return { status: 'cancelled' };
+  }
 
-  return { status: 'cancelled' };
+  throw new ConflictError(`Cannot cancel trade in status ${trade.status}.`);
 }

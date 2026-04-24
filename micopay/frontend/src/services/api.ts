@@ -28,6 +28,36 @@ export interface TradeData {
   status: string;
   secret_hash: string;
   amount_mxn: number;
+  lock_tx_hash?: string | null;
+}
+
+export interface TradeDetailResponse {
+  trade: TradeData & {
+    lock_tx_hash?: string | null;
+    seller_id?: string;
+    buyer_id?: string;
+    created_at?: string;
+    expires_at?: string;
+  };
+  merchant_unavailable: boolean;
+  seller_username: string | null;
+}
+
+export async function fetchTradeDetail(tradeId: string, buyerToken: string): Promise<TradeDetailResponse> {
+  const res = await http.get(`/trades/${tradeId}`, authHeaders(buyerToken));
+  return res.data;
+}
+
+export async function cancelTradeRequest(tradeId: string, buyerToken: string): Promise<void> {
+  await http.post(`/trades/${tradeId}/cancel`, {}, authHeaders(buyerToken));
+}
+
+export async function patchMerchantAvailability(
+  token: string,
+  merchant_available: boolean,
+): Promise<{ merchant_available: boolean }> {
+  const res = await http.patch('/users/me', { merchant_available }, authHeaders(token));
+  return res.data.user;
 }
 
 export async function registerUser(username: string): Promise<UserData> {

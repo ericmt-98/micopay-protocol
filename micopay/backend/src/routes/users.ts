@@ -81,4 +81,40 @@ export async function userRoutes(app: FastifyInstance) {
 
     return { user };
   });
+
+  /**
+   * PATCH /users/me
+   * Update profile fields for the authenticated user (e.g. merchant availability).
+   */
+  app.patch('/users/me', {
+    preHandler: [authMiddleware],
+    schema: {
+      body: {
+        type: 'object',
+        required: ['merchant_available'],
+        properties: {
+          merchant_available: { type: 'boolean' },
+        },
+        additionalProperties: false,
+      },
+    },
+  }, async (request) => {
+    const userId = request.user.id;
+    const body = request.body as { merchant_available: boolean };
+
+    await db.execute(
+      'UPDATE users SET merchant_available = $1 WHERE id = $2',
+      [body.merchant_available, userId],
+    );
+
+    const user = await db.getOne(
+      `SELECT u.id, u.stellar_address, u.username, u.merchant_available, u.created_at, w.wallet_type
+       FROM users u
+       LEFT JOIN wallets w ON w.user_id = u.id
+       WHERE u.id = $1`,
+      [userId],
+    );
+
+    return { user };
+  });
 }

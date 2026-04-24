@@ -64,10 +64,11 @@ export async function tradeRoutes(app: FastifyInstance) {
    */
   app.get('/trades/:id', async (request) => {
     const { id } = request.params as { id: string };
-    const trade = await tradeService.getTradeById(id, request.user.id);
+    const { trade, merchant_unavailable, seller_username } =
+      await tradeService.getTradeDetailForParticipant(id, request.user.id);
 
     const { secret_enc, secret_nonce, ...safeTrade } = trade;
-    return { trade: safeTrade };
+    return { trade: safeTrade, merchant_unavailable, seller_username };
   });
 
   /**
@@ -114,7 +115,7 @@ export async function tradeRoutes(app: FastifyInstance) {
 
   /**
    * POST /trades/:id/cancel
-   * Either party cancels (only before lock).
+   * Pending: either party. Locked/revealing: either party only while the merchant is unavailable (refund-style unwind).
    */
   app.post('/trades/:id/cancel', async (request) => {
     const { id } = request.params as { id: string };
