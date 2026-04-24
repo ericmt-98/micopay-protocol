@@ -38,12 +38,11 @@ export async function userRoutes(app: FastifyInstance) {
       throw new ConflictError('User with this address or username already exists');
     }
 
-    // Create user
     const user = await db.getOne(
-      `INSERT INTO users (stellar_address, username, phone_hash)
-       VALUES ($1, $2, $3)
-       RETURNING id, stellar_address, username, created_at`,
-      [stellar_address, username, phone_hash || null],
+      `INSERT INTO users (stellar_address, username, phone_hash, merchant_available)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, stellar_address, username, merchant_available, created_at`,
+      [stellar_address, username, phone_hash || null, true],
     );
 
     // Create wallet record
@@ -73,6 +72,41 @@ export async function userRoutes(app: FastifyInstance) {
 
     const user = await db.getOne(
       `SELECT u.*, w.wallet_type
+       FROM users u
+       LEFT JOIN wallets w ON w.user_id = u.id
+       WHERE u.id = $1`,
+      [userId],
+    );
+
+    return { user };
+  });
+
+  /**
+   * PATCH /users/me — toggle `merchant_available` for issue #31 (merchant pause / availability signal).
+   */
+  app.patch('/users/me', {
+    preHandler: [authMiddleware],
+    schema: {
+      body: {
+        type: 'object',
+        required: ['merchant_available'],
+        properties: {
+          merchant_available: { type: 'boolean' },
+        },
+        additionalProperties: false,
+      },
+    },
+  }, async (request) => {
+    const userId = request.user.id;
+    const body = request.body as { merchant_available: boolean };
+
+    await db.execute(
+      'UPDATE users SET merchant_available = $1 WHERE id = $2',
+      [body.merchant_available, userId],
+    );
+
+    const user = await db.getOne(
+      `SELECT u.id, u.stellar_address, u.username, u.merchant_available, u.created_at, w.wallet_type
        FROM users u
        LEFT JOIN wallets w ON w.user_id = u.id
        WHERE u.id = $1`,

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { extractApiErrorPayload } from '../utils/apiError';
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
@@ -28,6 +29,49 @@ export interface TradeData {
   status: string;
   secret_hash: string;
   amount_mxn: number;
+  lock_tx_hash?: string | null;
+}
+
+export interface TradeDetailResponse {
+  trade: TradeData & {
+    lock_tx_hash?: string | null;
+    seller_id?: string;
+    buyer_id?: string;
+    created_at?: string;
+    expires_at?: string;
+  };
+  merchant_unavailable: boolean;
+  seller_username: string | null;
+}
+
+export async function fetchTradeDetail(tradeId: string, buyerToken: string): Promise<TradeDetailResponse> {
+  const res = await http.get(`/trades/${tradeId}`, authHeaders(buyerToken));
+  return res.data;
+}
+
+/** Mirrors backend `CancelTradeResult` after POST /trades/:id/cancel (#20). */
+export interface CancelTradeResponse {
+  status: 'cancelled';
+  refund_expected: boolean;
+  lock_tx_hash: string | null;
+}
+
+export async function cancelTradeRequest(tradeId: string, buyerToken: string): Promise<CancelTradeResponse> {
+  try {
+    const res = await http.post(`/trades/${tradeId}/cancel`, {}, authHeaders(buyerToken));
+    return res.data as CancelTradeResponse;
+  } catch (e: unknown) {
+    const { message } = extractApiErrorPayload(e);
+    throw new Error(message);
+  }
+}
+
+export async function patchMerchantAvailability(
+  token: string,
+  merchant_available: boolean,
+): Promise<{ merchant_available: boolean }> {
+  const res = await http.patch('/users/me', { merchant_available }, authHeaders(token));
+  return res.data.user;
 }
 
 export async function registerUser(username: string): Promise<UserData> {
@@ -41,12 +85,17 @@ export async function createTrade(
   amountMxn: number,
   buyerToken: string,
 ): Promise<TradeData> {
-  const res = await http.post(
-    '/trades',
-    { seller_id: sellerId, amount_mxn: amountMxn },
-    authHeaders(buyerToken),
-  );
-  return res.data.trade;
+  try {
+    const res = await http.post(
+      '/trades',
+      { seller_id: sellerId, amount_mxn: amountMxn },
+      authHeaders(buyerToken),
+    );
+    return res.data.trade;
+  } catch (e: unknown) {
+    const { message } = extractApiErrorPayload(e);
+    throw new Error(message);
+  }
 }
 
 export async function lockTrade(tradeId: string, sellerToken: string): Promise<{ lock_tx_hash: string }> {

@@ -4,9 +4,19 @@ interface DepositMapProps {
     onBack: () => void;
     onSelectOffer: (offerId: string) => void;
     loading?: boolean;
+    amount?: number;
+    creationError?: string | null;
+    onDismissCreationError?: () => void;
 }
 
-const DepositMap = ({ onBack, onSelectOffer, loading }: DepositMapProps) => {
+const DepositMap = ({
+    onBack,
+    onSelectOffer,
+    loading,
+    amount = 500,
+    creationError,
+    onDismissCreationError,
+}: DepositMapProps) => {
     return (
         <div className="bg-surface text-on-surface min-h-screen pb-24">
             {/* TopAppBar */}
@@ -25,11 +35,31 @@ const DepositMap = ({ onBack, onSelectOffer, loading }: DepositMapProps) => {
             </header>
 
             <main className="max-w-xl mx-auto px-6 pt-8 space-y-8">
+                {creationError ? (
+                    <div
+                        className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 flex flex-col gap-2"
+                        role="alert"
+                    >
+                        <p>{creationError}</p>
+                        <div className="flex flex-wrap gap-2 justify-end">
+                            <button
+                                type="button"
+                                className="text-xs font-semibold text-primary underline"
+                                onClick={() => onDismissCreationError?.()}
+                            >
+                                Ocultar
+                            </button>
+                            <a href="mailto:soporte@micopay.app" className="text-xs font-semibold text-primary underline">
+                                Contactar soporte
+                            </a>
+                        </div>
+                    </div>
+                ) : null}
                 {/* Summary Context */}
                 <section className="space-y-2">
                     <span className="text-on-surface-variant font-label text-sm uppercase tracking-widest">Solicitud de depósito</span>
                     <div className="flex items-baseline gap-2">
-                        <h2 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">$500</h2>
+                        <h2 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">${amount}</h2>
                         <span className="text-xl font-headline font-bold text-on-surface-variant">MXN</span>
                     </div>
                     <p className="text-on-surface-variant text-sm font-body">Buscando agentes y usuarios verificados cerca de ti.</p>

@@ -5,9 +5,19 @@ interface ExploreMapProps {
     onSelectOffer: (offerId: string) => void;
     amount?: number;
     loading?: boolean;
+    /** Issue #17 — surfaced when POST /trades (or lock/reveal) fails; user can retry without re-entering amount. */
+    creationError?: string | null;
+    onDismissCreationError?: () => void;
 }
 
-const ExploreMap = ({ onBack, onSelectOffer, amount = 500, loading = false }: ExploreMapProps) => {
+const ExploreMap = ({
+    onBack,
+    onSelectOffer,
+    amount = 500,
+    loading = false,
+    creationError,
+    onDismissCreationError,
+}: ExploreMapProps) => {
     return (
         <div className="bg-surface-container-lowest text-on-surface font-body min-h-screen pb-24">
             {/* Top Navigation */}
@@ -22,6 +32,26 @@ const ExploreMap = ({ onBack, onSelectOffer, amount = 500, loading = false }: Ex
             </header>
 
             <main className="pt-24 px-6 max-w-2xl mx-auto">
+                {creationError ? (
+                    <div
+                        className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 flex flex-col gap-2"
+                        role="alert"
+                    >
+                        <p>{creationError}</p>
+                        <div className="flex flex-wrap gap-2 justify-end">
+                            <button
+                                type="button"
+                                className="text-xs font-semibold text-primary underline"
+                                onClick={() => onDismissCreationError?.()}
+                            >
+                                Ocultar
+                            </button>
+                            <a href="mailto:soporte@micopay.app" className="text-xs font-semibold text-primary underline">
+                                Contactar soporte
+                            </a>
+                        </div>
+                    </div>
+                ) : null}
                 {/* Map Section */}
                 <section className="mb-10">
                     <MapSim />
@@ -29,7 +59,7 @@ const ExploreMap = ({ onBack, onSelectOffer, amount = 500, loading = false }: Ex
 
                 {/* Results Header */}
                 <div className="mb-6">
-                    <h2 className="font-headline font-bold text-2xl text-on-surface">3 ofertas para ${amount} MXN</h2>
+                    <h2 className="font-headline font-bold text-2xl text-on-surface">{`3 ofertas para $${amount} MXN`}</h2>
                     <div className="flex items-center gap-1 mt-1">
                         <span className="material-symbols-outlined text-primary text-sm">location_on</span>
                         <p className="text-sm text-outline font-medium">Zona Centro</p>
