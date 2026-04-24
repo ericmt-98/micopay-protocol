@@ -180,3 +180,37 @@ export async function blendBorrow(amount: string, asset: string): Promise<BlendT
   const res = await http.post('/defi/blend/borrow', { amount, asset });
   return res.data;
 }
+
+// ─── Trade Detail ───────────────────────────────────────────────────────────
+
+export interface TradeDetailData {
+  id: string;
+  status: string; // pending | locked | revealing | revealed | completed | cancelled | expired
+  secret_hash: string;
+  amount_mxn: number;
+  platform_fee_mxn: number;
+  lock_tx_hash: string | null;
+  release_tx_hash: string | null;
+  created_at: string;
+  completed_at: string | null;
+  expires_at: string;
+  seller_id: string;
+  buyer_id: string;
+}
+
+export async function getTrade(tradeId: string, token: string): Promise<TradeDetailData> {
+  const res = await http.get(`/trades/${tradeId}`, authHeaders(token));
+  return res.data.trade;
+}
+
+export async function cancelTrade(tradeId: string, token: string): Promise<void> {
+  await http.post(`/trades/${tradeId}/cancel`, {}, authHeaders(token));
+}
+
+export function getToken(): string | null {
+  return localStorage.getItem('micopay_token');
+}
+
+export function setToken(token: string): void {
+  localStorage.setItem('micopay_token', token);
+}

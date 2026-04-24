@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Home from './pages/Home'
 import CashoutRequest from './pages/CashoutRequest'
 import DepositRequest from './pages/DepositRequest'
@@ -12,6 +13,7 @@ import SuccessScreen from './pages/SuccessScreen'
 import Explore from './pages/Explore'
 import CETESScreen from './pages/CETESScreen'
 import BlendScreen from './pages/BlendScreen'
+import TradeDetail from './pages/TradeDetail'
 import BottomNav from './components/BottomNav'
 import { registerUser, createTrade, lockTrade, revealTrade, UserData, TradeData } from './services/api'
 
@@ -116,7 +118,14 @@ function App() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F4FAFF]">
+    <BrowserRouter>
+      <Routes>
+        {/* Trade detail route - deep-linkable */}
+        <Route path="/trade/:id" element={<TradeDetail />} />
+
+        {/* Main app - existing state-based navigation */}
+        <Route path="/*" element={
+          <div className="flex flex-col min-h-screen bg-[#F4FAFF]">
       {currentPage === 'home' && (
         <Home onNavigateCashout={startCashout} onNavigateDeposit={startDeposit} token={buyerUser?.token ?? null} />
       )}
@@ -245,10 +254,13 @@ function App() {
         />
       )}
 
-      {!['chat', 'chat_deposit', 'qr_reveal', 'qr_deposit', 'success', 'cetes', 'blend'].includes(currentPage) && (
-        <BottomNav currentPage={currentPage} onNavigate={handleNavigate} />
-      )}
-    </div>
+            {!['chat', 'chat_deposit', 'qr_reveal', 'qr_deposit', 'success', 'cetes', 'blend'].includes(currentPage) && (
+              <BottomNav currentPage={currentPage} onNavigate={handleNavigate} />
+            )}
+          </div>
+        } />
+      </Routes>
+    </BrowserRouter>
   )
 }
 
