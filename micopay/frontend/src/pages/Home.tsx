@@ -41,7 +41,6 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token }
       .catch(() => {});
   }, [token]);
 
-  // Convert XLM to approx MXN (1 XLM ≈ 20 MXN, demo rate)
   const mxnBalance = xlmBalance
     ? (parseFloat(xlmBalance.replace(/,/g, '')) * 20).toLocaleString('es-MX', { maximumFractionDigits: 2 })
     : '—';
