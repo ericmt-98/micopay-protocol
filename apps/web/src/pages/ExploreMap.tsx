@@ -1,12 +1,76 @@
 import { useState, useEffect } from "react";
 import MapSim from "../components/MapSim";
 import Skeleton from "../components/Skeleton";
+import MerchantCard, {
+  type MerchantCardData,
+} from "../components/MerchantCard";
 
 interface ExploreMapProps {
   onBack: () => void;
   onSelectOffer: (offerId: string) => void;
   amount?: number;
   loading?: boolean;
+}
+
+// ─── fixtures ────────────────────────────────────────────────────────────────
+// Three representative merchants covering the full badge spectrum.
+// In production these come from GET /api/v1/cash/agents.
+
+function buildMerchants(amount: number): MerchantCardData[] {
+  const fee1 = 0.01;
+  const fee2 = 0.02;
+  const fee3 = 0.015;
+
+  return [
+    {
+      id: "offer_1",
+      name: "Farmacia Guadalupe",
+      type: "farmacia",
+      address: "Orizaba 45, Col. Roma Norte, CDMX",
+      distance_km: 0.18,
+      payout_mxn: parseFloat((amount * (1 - fee1)).toFixed(2)),
+      fee_pct: fee1 * 100,
+      hours: "8:00 – 22:00",
+      completion_rate: 0.98,
+      trades_completed: 312,
+      avg_time_minutes: 4,
+      tier: "maestro",
+      online: true,
+      verification: "verified",
+    },
+    {
+      id: "offer_2",
+      name: "Tienda Don Pepe",
+      type: "tienda",
+      address: "Av. Álvaro Obregón 120, Col. Roma Norte",
+      distance_km: 0.54,
+      payout_mxn: parseFloat((amount * (1 - fee2)).toFixed(2)),
+      fee_pct: fee2 * 100,
+      hours: "9:00 – 20:00",
+      completion_rate: 0.93,
+      trades_completed: 8,
+      avg_time_minutes: 7,
+      tier: "espora",
+      online: true,
+      verification: "new",
+    },
+    {
+      id: "offer_3",
+      name: "Papelería La Central",
+      type: "papeleria",
+      address: "Col. Condesa, CDMX",
+      distance_km: 1.1,
+      payout_mxn: parseFloat((amount * (1 - fee3)).toFixed(2)),
+      fee_pct: fee3 * 100,
+      hours: "10:00 – 18:00",
+      completion_rate: 0.88,
+      trades_completed: 45,
+      avg_time_minutes: 5,
+      tier: "activo",
+      online: false,
+      verification: "paused",
+    },
+  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -167,6 +231,8 @@ const ExploreMap = ({
   if (isLoading) return <ExploreMapSkeleton />;
   if (hasError) return <ExploreMapError onBack={onBack} />;
 
+  const merchants = buildMerchants(amount);
+
   return (
     <div className="bg-surface-container-lowest text-on-surface font-body min-h-screen pb-24">
       {/* Top Navigation */}
@@ -174,6 +240,7 @@ const ExploreMap = ({
         <button
           onClick={onBack}
           className="flex items-center justify-center p-2 rounded-full hover:bg-surface-container-low transition-colors duration-200"
+          aria-label="Volver"
         >
           <span className="material-symbols-outlined text-primary">
             arrow_back
@@ -193,7 +260,8 @@ const ExploreMap = ({
         {/* Results Header */}
         <div className="mb-6">
           <h2 className="font-headline font-bold text-2xl text-on-surface">
-            3 ofertas para ${amount} MXN
+            {merchants.filter((m) => m.online).length} ofertas para ${amount}{" "}
+            MXN
           </h2>
           <div className="flex items-center gap-1 mt-1">
             <span className="material-symbols-outlined text-primary text-sm">
@@ -203,146 +271,17 @@ const ExploreMap = ({
           </div>
         </div>
 
-        {/* Offers List */}
+        {/* Merchant Cards */}
         <div className="space-y-4">
-          {/* CARD 1 (Premium/Best Offer) */}
-          <article className="relative bg-surface p-6 rounded-[24px] border border-primary-container/10 shadow-[0_4px_24px_rgba(0,133,96,0.06)] overflow-hidden">
-            <div className="absolute top-0 right-0 p-4">
-              <div className="w-16 h-16 rounded-full bg-surface-container-high overflow-hidden opacity-40 blur-[1px]">
-                <img
-                  alt="Local map thumbnail"
-                  className="w-full h-full object-cover"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVnejJTZl4k6kbUtgVVveHEcpYnCcyuNpmxvKgdOURTA-nwegtddt1zJHZ6qtCtQJyP7qax7fb32fip8RaXJ40zAqH_-Al3wUUnZxbZIY3FdANeTu6RQGU1wkVM_HvJKhAbNzq40nOyHwaawE5jPvMc6e3WH039BsBdcc2zRlCmk8z0_9VgZOZsEf_vN4oVdfKpZM0DQhxCaae4mCbGb1fLcjf9M-dmMhU-q0zjhJ5GlsbUd5oEQ2NgBZRJxJBMMGkcGpl_gLbSRdn"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2 mb-4">
-              <span className="px-3 py-1 bg-primary text-white text-[11px] font-bold rounded-full uppercase tracking-wider">
-                Mejor oferta
-              </span>
-              <span className="px-3 py-1 bg-surface-container-high text-primary text-[11px] font-bold rounded-full uppercase tracking-wider">
-                Negocio verificado
-              </span>
-            </div>
-            <div className="flex items-start justify-between mb-6">
-              <div className="flex gap-4">
-                <div className="w-14 h-14 bg-primary-container/10 rounded-2xl flex items-center justify-center">
-                  <span className="material-symbols-outlined text-primary text-3xl">
-                    storefront
-                  </span>
-                </div>
-                <div>
-                  <h3 className="font-headline font-bold text-lg text-on-surface">
-                    Farmacia Guadalupe
-                  </h3>
-                  <p className="text-sm text-outline font-medium flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">
-                      directions_walk
-                    </span>{" "}
-                    180 m · 3 min
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center justify-between mb-6 p-4 bg-white/50 rounded-2xl">
-              <div>
-                <p className="text-[11px] font-bold text-outline uppercase tracking-wider mb-1">
-                  Recibes
-                </p>
-                <p className="text-2xl font-headline font-extrabold text-[#5DCAA5]">
-                  $495.00 MXN
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-[11px] font-bold text-outline uppercase tracking-wider mb-1">
-                  Comisión
-                </p>
-                <p className="text-sm font-bold text-on-surface">$5.00 (1%)</p>
-              </div>
-            </div>
-            <button
-              onClick={() => onSelectOffer("offer_1")}
-              disabled={loading}
-              className="w-full h-[52px] bg-gradient-to-r from-primary to-primary-container text-white font-headline font-bold rounded-xl shadow-lg shadow-primary/20 active:scale-95 transition-all disabled:opacity-70 flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Preparando escrow...
-                </>
-              ) : (
-                "Ir con este agente"
-              )}
-            </button>
-          </article>
-
-          {/* CARD 2 */}
-          <article className="bg-surface-container-low/30 p-5 rounded-[24px] border border-transparent hover:border-surface-container-high transition-all">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center border border-surface-container-high">
-                  <span className="material-symbols-outlined text-outline">
-                    person
-                  </span>
-                </div>
-                <div>
-                  <h3 className="font-headline font-bold text-on-surface">
-                    Usuario @carlos_g
-                  </h3>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
-                      ⭐ 4.9 · 87 intercambios
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-bold text-outline uppercase tracking-wider">
-                  Oferta
-                </p>
-                <p className="text-lg font-headline font-bold text-on-surface">
-                  $490.00 MXN
-                </p>
-              </div>
-            </div>
-            <button className="w-full py-3 border border-primary text-primary font-bold rounded-xl active:scale-95 transition-all">
-              Ver oferta
-            </button>
-          </article>
-
-          {/* CARD 3 */}
-          <article className="bg-surface-container-low/30 p-5 rounded-[24px] border border-transparent hover:border-surface-container-high transition-all">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center border border-surface-container-high">
-                  <span className="material-symbols-outlined text-outline">
-                    laundry
-                  </span>
-                </div>
-                <div>
-                  <h3 className="font-headline font-bold text-on-surface">
-                    Lavandería El Sol
-                  </h3>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
-                      Verificado
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-[10px] font-bold text-outline uppercase tracking-wider">
-                  Oferta
-                </p>
-                <p className="text-lg font-headline font-bold text-on-surface">
-                  $485.00 MXN
-                </p>
-              </div>
-            </div>
-            <button className="w-full py-3 border border-primary text-primary font-bold rounded-xl active:scale-95 transition-all">
-              Ver oferta
-            </button>
-          </article>
+          {merchants.map((merchant, index) => (
+            <MerchantCard
+              key={merchant.id}
+              merchant={merchant}
+              isBestOffer={index === 0}
+              onSelect={onSelectOffer}
+              loading={loading}
+            />
+          ))}
         </div>
 
         {/* Footer Note */}
