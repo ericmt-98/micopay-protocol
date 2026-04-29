@@ -124,18 +124,22 @@ export async function createTrade(input: CreateTradeInput) {
   request.log.info({ seller_id: sellerId, buyer_id: buyerId, amount_mxn: amountMxn, category: 'trade.lifecycle' }, '[trade] Creating trade');
 
   if (amountMxn < 100 || amountMxn > 50000) {
-    throw new BadRequestError('amount_mxn must be between 100 and 50,000');
+    throw new ValidationError(
+      'INVALID_AMOUNT',
+      'El monto debe ser entre 100 y 50,000 MXN',
+      'amount_mxn must be between 100 and 50,000'
+    );
   }
 
   // Verify seller exists
   const seller = await db.getOne('SELECT id, stellar_address FROM users WHERE id = $1', [sellerId]);
-  if (!seller) throw new NotFoundError('Seller not found');
+  if (!seller) throw new NotFoundError('USER_NOT_FOUND', 'El usuario vendedor no existe', 'Seller not found');
 
   // Verify buyer exists
   const buyer = await db.getOne('SELECT id, stellar_address FROM users WHERE id = $1', [buyerId]);
-  if (!buyer) throw new NotFoundError('Buyer not found');
+  if (!buyer) throw new NotFoundError('USER_NOT_FOUND', 'El usuario comprador no existe', 'Buyer not found');
 
-  if (sellerId === buyerId) throw new BadRequestError('Cannot trade with yourself');
+  if (sellerId === buyerId) throw new ValidationError('INVALID_PARTICIPANTS', 'No puedes crear un intercambio contigo mismo', 'Cannot trade with yourself');
 
   await validateAgainstMerchantLimits(sellerId, amountMxn);
 
@@ -188,11 +192,11 @@ export async function createTrade(input: CreateTradeInput) {
 
 export async function getTradeById(tradeId: string, userId: string) {
   const trade = await db.getOne('SELECT * FROM trades WHERE id = $1', [tradeId]);
-  if (!trade) throw new NotFoundError('Trade not found');
+  if (!trade) throw new NotFoundError('TRADE_NOT_FOUND', 'El intercambio no existe', 'Trade not found');
 
   // Only seller or buyer can view
   if (trade.seller_id !== userId && trade.buyer_id !== userId) {
-    throw new ForbiddenError('Not a participant of this trade');
+    throw new AuthError('UNAUTHORIZED_ACCESS', 'No tienes permiso para ver este intercambio', 'Not a participant of this trade', 403);
   }
 
   return trade;
@@ -375,21 +379,21 @@ export async function revealTrade(request: FastifyRequest, tradeId: string, user
 export async function getTradeSecret(request: FastifyRequest, tradeId: string, userId: string, ip: string, userAgent: string) {
   request.log.info({ trade_id: tradeId, user_id: userId, category: 'trade.lifecycle' }, '[trade] Secret accessed');
   const trade = await db.getOne('SELECT * FROM trades WHERE id = $1', [tradeId]);
-  if (!trade) throw new NotFoundError('Trade not found');
+  if (!trade) throw new NotFoundError('TRADE_NOT_FOUND', 'El intercambio no existe', 'Trade not found');
 
   // Only seller can see the secret
   if (trade.seller_id !== userId) {
-    throw new ForbiddenError('Only the seller can access the secret');
+    throw new AuthError('UNAUTHORIZED_ACTION', 'Solo el vendedor puede ver el secreto', 'Only the seller can access the secret', 403);
   }
 
   // Only in revealing state
   if (trade.status !== 'revealing') {
-    throw new ConflictError(`Trade is ${trade.status}, must be revealing`);
+    throw new TradeStateError('INVALID_STATE', `El intercambio no está en estado de revelación (actual: ${trade.status})`, `Trade is ${trade.status}, must be revealing`);
   }
 
   // Check not expired
   if (new Date(trade.expires_at) < new Date()) {
-    throw new ConflictError('Trade has expired');
+    throw new TradeStateError('TRADE_EXPIRED', 'El intercambio ha expirado', 'Trade has expired');
   }
 
   // Decrypt secret

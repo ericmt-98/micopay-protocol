@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../middleware/auth.middleware.js';
+import { UpstreamError } from '../utils/errors.js';
 
 export async function stellarRoutes(app: FastifyInstance) {
   /**
