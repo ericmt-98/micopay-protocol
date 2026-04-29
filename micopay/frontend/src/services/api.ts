@@ -177,6 +177,22 @@ export interface TradeHistoryItem {
   buyer_id: string;
 }
 
+export interface MerchantTrade {
+  id: string;
+  buyer_handle: string;
+  amount_mxn: number;
+  status: string;
+  created_at: string;
+}
+
+export async function getMerchantTrades(
+  token: string,
+  state: string = 'all',
+): Promise<MerchantTrade[]> {
+  const res = await http.get(`/merchants/me/trades?state=${state}`, authHeaders(token));
+  return res.data.trades;
+}
+
 export async function getTradeHistory(
   token: string,
 ): Promise<TradeHistoryItem[]> {

@@ -653,3 +653,28 @@ export async function getTradeAuditTrail(tradeId: string, userId: string) {
     timestamp: event.occurred_at,
   }));
 }
+
+export async function getMerchantTrades(merchantId: string, state: string = 'all') {
+  const statusValues = state === 'all'
+    ? ['pending', 'locked', 'revealing', 'completed', 'cancelled', 'refunded']
+    : [state];
+
+  const trades = await db.getMany(
+    `SELECT
+       t.id,
+       t.seller_id,
+       t.buyer_id,
+       t.amount_mxn,
+       t.status,
+       t.created_at,
+       u.username as buyer_handle
+     FROM trades t
+     JOIN users u ON t.buyer_id = u.id
+     WHERE t.seller_id = $1
+       AND t.status = ANY($2)
+     ORDER BY t.created_at DESC`,
+    [merchantId, statusValues],
+  );
+
+  return trades;
+}

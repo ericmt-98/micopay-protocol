@@ -1,9 +1,10 @@
 interface BottomNavProps {
   currentPage: string;
   onNavigate: (page: string) => void;
+  isMerchant?: boolean;
 }
 
-const BottomNav = ({ currentPage, onNavigate }: BottomNavProps) => {
+const BottomNav = ({ currentPage, onNavigate, isMerchant = false }: BottomNavProps) => {
   return (
     <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-8 pt-3 bg-[#F4FAFF]/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-[0_-8px_32px_rgba(11,30,38,0.04)] rounded-t-[32px]">
       {/* Inicio */}
@@ -35,6 +36,23 @@ const BottomNav = ({ currentPage, onNavigate }: BottomNavProps) => {
         <span aria-hidden="true" className="material-symbols-outlined" style={{ fontVariationSettings: currentPage === 'cashout' ? '"FILL" 1' : '"FILL" 0' }}>payments</span>
         <span className="font-['Manrope'] font-medium text-[10px] tracking-wide">Pagar</span>
       </button>
+
+      {/* Bandeja (solo para merchants) */}
+      {isMerchant && (
+        <button
+          onClick={() => onNavigate('inbox')}
+          aria-label="Bandeja"
+          aria-current={currentPage === 'inbox' ? 'page' : undefined}
+          className={`flex flex-col items-center justify-center rounded-full px-5 py-2 transition-all active:scale-90 duration-150 focus:outline-none focus:ring-2 focus:ring-primary ${
+            currentPage === 'inbox'
+              ? 'bg-[#E1F5EE] dark:bg-[#00694C]/30 text-[#00694C] dark:text-[#5DCAA5]'
+              : 'text-[#0B1E26] dark:text-slate-400 opacity-70 hover:opacity-100'
+          }`}
+        >
+          <span aria-hidden="true" className="material-symbols-outlined" style={{ fontVariationSettings: currentPage === 'inbox' ? '"FILL" 1' : '"FILL" 0' }}>inbox</span>
+          <span className="font-['Manrope'] font-medium text-[10px] tracking-wide">Bandeja</span>
+        </button>
+      )}
 
       {/* Explorar */}
       <button
