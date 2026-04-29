@@ -32,6 +32,7 @@ app.register(fundRoutes);
 app.register(serviceRoutes);
 app.register(demoRoutes);
 app.register(cetesRoutes);
+app.register(merchantRoutes);
 
 async function start() {
   await initAuthChallengesTable();
