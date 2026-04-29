@@ -3,7 +3,7 @@ import { config } from '../config.js';
 import { generateTradeSecret, encryptSecret, decryptSecret } from './secret.service.js';
 import { createHash } from 'crypto';
 import type { FastifyRequest } from 'fastify';
-import { callLockOnChain, callReleaseOnChain, verifyLockOnChain } from './stellar.service.js';
+import { callLockOnChain, callReleaseOnChain, verifyLockOnChain, assertNotReplayed } from './stellar.service.js';
 import { NotFoundError, ForbiddenError, ConflictError, BadRequestError } from '../utils/errors.js';
 import {
   getTradeAuditTrail as getTradeAuditTrailRows,
@@ -210,6 +210,8 @@ export async function lockTrade(
       stellarTradeId = lockTxHash;
     }
 
+    await assertNotReplayed(lockTxHash, 'trade/lock', userId);
+
     await db.execute(
       `UPDATE trades
        SET status = 'locked',
@@ -348,6 +350,8 @@ export async function completeTrade(request: FastifyRequest, tradeId: string, us
     } else {
       releaseTxHash = `mock_release_${Date.now()}`;
     }
+
+    await assertNotReplayed(releaseTxHash, 'trade/complete', userId);
 
     // Clear encrypted secret from DB now that release is confirmed on-chain
     await db.execute(

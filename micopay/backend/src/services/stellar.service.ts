@@ -1,5 +1,26 @@
 import { config } from '../config.js';
 import type { FastifyRequest } from 'fastify';
+import db from '../db/schema.js';
+import { ReplayError } from '../utils/errors.js';
+
+export async function assertNotReplayed(
+  txHash: string,
+  route: string,
+  userId: string,
+): Promise<void> {
+  const inserted = await db.insertUnique(
+    `INSERT INTO processed_tx (tx_hash, source_route, user_id, processed_at)
+     VALUES ($1, $2, $3, NOW())
+     RETURNING tx_hash`,
+    [txHash, route, userId],
+    'tx_hash',
+  );
+
+  if (inserted === null) {
+    throw new ReplayError(txHash, route);
+  }
+}
+
 
 const STROOPS_PER_MXN = 10_000_000n;
 const DEFAULT_TIMEOUT_MINUTES = 120;
