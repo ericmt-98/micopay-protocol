@@ -151,4 +151,28 @@ export async function tradeRoutes(app: FastifyInstance) {
     const audit = await tradeService.getTradeAuditTrail(id, request.user.id);
     return { audit };
   });
+
+  /**
+   * GET /merchants/me/trades
+   * List incoming trades for the authenticated merchant, filtered by state.
+   * Returns trades where merchant is the seller, newest first.
+   */
+  app.get('/merchants/me/trades', {
+    schema: {
+      querystring: {
+        type: 'object',
+        properties: {
+          state: {
+            type: 'string',
+            enum: ['all', 'pending', 'locked', 'revealing', 'completed', 'cancelled', 'expired', 'refunded'],
+            default: 'all'
+          },
+        },
+      },
+    },
+  }, async (request) => {
+    const { state } = request.query as { state?: string };
+    const trades = await tradeService.getMerchantTrades(request.user.id, state || 'all');
+    return { trades };
+  });
 }

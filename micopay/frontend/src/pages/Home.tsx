@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Logo } from '../components/Logo';
-import { getTradeHistory, getAccountBalance, setAvailability, Availability, TradeHistoryItem } from '../services/api';
+import { getTradeHistory, getAccountBalance, TradeHistoryItem } from '../services/api';
 
 const EXPLORER = 'https://stellar.expert/explorer/testnet/tx';
 
@@ -13,41 +13,19 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   refunded:  { label: 'Reembolsado',color: 'text-outline' },
 };
 
-const AVAILABILITY_CONFIG: Record<Availability, { label: string; dot: string; bg: string; text: string }> = {
-  online:  { label: 'Disponible', dot: 'bg-[#1D9E75]', bg: 'bg-[#E6F7F1]', text: 'text-[#1D9E75]' },
-  paused:  { label: 'Pausado',    dot: 'bg-amber-400',  bg: 'bg-amber-50',   text: 'text-amber-600' },
-  offline: { label: 'No disponible', dot: 'bg-red-400', bg: 'bg-red-50',     text: 'text-red-500'   },
-};
-
-const AVAILABILITY_CYCLE: Availability[] = ['online', 'paused', 'offline'];
-
 interface HomeProps {
   onNavigateCashout: () => void;
   onNavigateDeposit: () => void;
-  onNavigateHistory: () => void;
   token: string | null;
+  merchantToken: string | null;
+  onNavigateInbox: () => void;
 }
 
-const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token }: HomeProps) => {
+const Home = ({ onNavigateCashout, onNavigateDeposit, token, merchantToken, onNavigateInbox }: HomeProps) => {
   const [trades, setTrades] = useState<TradeHistoryItem[]>([]);
   const [xlmBalance, setXlmBalance] = useState<string | null>(null);
   const [stellarAddress, setStellarAddress] = useState<string>('');
-  const [availability, setAvailabilityState] = useState<Availability>('offline');
-  const [availabilityLoading, setAvailabilityLoading] = useState(false);
-
-  const handleToggleAvailability = async () => {
-    if (!token) return;
-    const next = AVAILABILITY_CYCLE[(AVAILABILITY_CYCLE.indexOf(availability) + 1) % AVAILABILITY_CYCLE.length];
-    setAvailabilityLoading(true);
-    try {
-      await setAvailability(next, token);
-      setAvailabilityState(next);
-    } catch {
-      // silently ignore — UI stays consistent
-    } finally {
-      setAvailabilityLoading(false);
-    }
-  };
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     getAccountBalance()
@@ -65,6 +43,17 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token }
       .catch(() => {});
   }, [token]);
 
+  useEffect(() => {
+    if (!merchantToken) return;
+    fetch(`/api/merchants/me/trades?state=pending`, {
+      headers: { Authorization: `Bearer ${merchantToken}` },
+    })
+      .then(res => res.json())
+      .then(data => setPendingCount(data.trades?.length || 0))
+      .catch(() => {});
+  }, [merchantToken]);
+
+  // Convert XLM to approx MXN (1 XLM ≈ 20 MXN, demo rate)
   const mxnBalance = xlmBalance
     ? (parseFloat(xlmBalance.replace(/,/g, '')) * 20).toLocaleString('es-MX', { maximumFractionDigits: 2 })
     : '—';
@@ -77,9 +66,16 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token }
       <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 py-4 backdrop-blur-md bg-white/90">
         <Logo />
         <div className="flex items-center gap-4">
-          <span aria-hidden="true" className="material-symbols-outlined text-primary p-2 rounded-full hover:bg-surface-container-low transition-colors cursor-pointer">
-            notifications
-          </span>
+          <button onClick={onNavigateInbox} className="relative p-2 rounded-full hover:bg-surface-container-low transition-colors">
+            <span aria-hidden="true" className="material-symbols-outlined text-primary">
+              notifications
+            </span>
+            {pendingCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-error text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                {pendingCount}
+              </span>
+            )}
+          </button>
           <div className="w-10 h-10 rounded-full border-2 border-primary-container bg-surface-container-low flex items-center justify-center">
             <svg fill="none" height="20" viewBox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
               <circle cx="7" cy="7" r="3" stroke="#1A2830" strokeWidth="2"/>
@@ -167,15 +163,7 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token }
 
         {/* Actividad */}
         <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[11px] font-bold text-outline-variant uppercase tracking-[0.15em]">Actividad reciente</h2>
-            <button
-              onClick={onNavigateHistory}
-              className="text-[11px] font-black text-primary uppercase tracking-[0.1em] hover:underline transition-all"
-            >
-              Ver todo
-            </button>
-          </div>
+          <h2 className="text-[11px] font-bold text-outline-variant uppercase tracking-[0.15em] mb-4">Actividad reciente</h2>
 
           {trades.length === 0 ? (
             <div className="bg-white rounded-[20px] border border-outline-variant/10 shadow-sm p-6 text-center">
