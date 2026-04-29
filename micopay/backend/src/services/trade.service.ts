@@ -12,6 +12,26 @@ import {
 
 // --- Trade lifecycle ---
 
+/** Trade states where the buyer still depends on the merchant before cash handoff / release (#31). */
+const MERCHANT_DEPENDENT_STATUSES = ['pending', 'locked', 'revealing'] as const;
+
+async function getSellerMerchantRow(sellerId: string) {
+  return db.getOne<{ username: string; merchant_available: boolean | null }>(
+    'SELECT username, merchant_available FROM users WHERE id = $1',
+    [sellerId],
+  );
+}
+
+function isMerchantUnavailableForTrade(
+  trade: { status: string },
+  sellerRow: { merchant_available: boolean | null } | null,
+) {
+  if (!MERCHANT_DEPENDENT_STATUSES.includes(trade.status as (typeof MERCHANT_DEPENDENT_STATUSES)[number])) {
+    return false;
+  }
+  return sellerRow?.merchant_available === false;
+}
+
 const STROOPS_PER_MXN = 10_000_000; // 7 decimals
 const PLATFORM_FEE_PERCENT = 0.8; // 0.8% platform fee
 const DEFAULT_TIMEOUT_MINUTES = 120; // 2 hours
@@ -208,6 +228,19 @@ export async function getTradeById(tradeId: string, userId: string) {
   }
 
   return trade;
+}
+
+/** Trade row for API plus flags for merchant-unavailable UX (issue #31). */
+export async function getTradeDetailForParticipant(tradeId: string, userId: string) {
+  const trade = await getTradeById(tradeId, userId);
+  const seller = await getSellerMerchantRow(trade.seller_id);
+  const merchant_unavailable = isMerchantUnavailableForTrade(trade, seller);
+
+  return {
+    trade,
+    merchant_unavailable,
+    seller_username: seller?.username ?? null,
+  };
 }
 
 export async function getActiveTrades(userId: string) {
@@ -487,6 +520,81 @@ export async function completeTrade(request: FastifyRequest, tradeId: string, us
   }
 }
 
+/** Response shape for POST /trades/:id/cancel — drives refund copy on the client (#20). */
+export interface CancelTradeResult {
+  status: 'cancelled';
+  refund_expected: boolean;
+  lock_tx_hash: string | null;
+}
+
+async function finalizeTradeCancellation(tradeId: string) {
+  await db.execute(
+    `UPDATE trades
+     SET status = 'cancelled',
+         secret_enc = NULL,
+         secret_nonce = NULL
+     WHERE id = $1`,
+    [tradeId],
+  );
+}
+
+export async function cancelTrade(tradeId: string, userId: string): Promise<CancelTradeResult> {
+  const trade = await db.getOne('SELECT * FROM trades WHERE id = $1', [tradeId]);
+  if (!trade) throw new NotFoundError('Trade not found');
+
+  if (trade.seller_id !== userId && trade.buyer_id !== userId) {
+    throw new ForbiddenError('Not a participant of this trade');
+  }
+
+  const lockTx: string | null = trade.lock_tx_hash ?? null;
+
+  if (trade.status === 'pending') {
+    await finalizeTradeCancellation(tradeId);
+    return { status: 'cancelled', refund_expected: false, lock_tx_hash: lockTx };
+  }
+
+  if (trade.status === 'locked') {
+    if (trade.buyer_id === userId) {
+      await finalizeTradeCancellation(tradeId);
+      return {
+        status: 'cancelled',
+        refund_expected: Boolean(lockTx),
+        lock_tx_hash: lockTx,
+      };
+    }
+    if (trade.seller_id === userId) {
+      const seller = await getSellerMerchantRow(trade.seller_id);
+      if (!isMerchantUnavailableForTrade(trade, seller)) {
+        throw new ForbiddenError(
+          'Only the buyer may cancel a locked trade before reveal. Pause merchant availability if you need to unwind as the agent.',
+        );
+      }
+      await finalizeTradeCancellation(tradeId);
+      return {
+        status: 'cancelled',
+        refund_expected: Boolean(lockTx),
+        lock_tx_hash: lockTx,
+      };
+    }
+    throw new ForbiddenError('Not a participant of this trade');
+  }
+
+  if (trade.status === 'revealing') {
+    const seller = await getSellerMerchantRow(trade.seller_id);
+    if (!isMerchantUnavailableForTrade(trade, seller)) {
+      throw new ConflictError(
+        'Cannot cancel while the trade is in handoff. Wait for completion, or cancel only if the merchant is temporarily unavailable.',
+      );
+    }
+    await finalizeTradeCancellation(tradeId);
+    return {
+      status: 'cancelled',
+      refund_expected: Boolean(lockTx),
+      lock_tx_hash: lockTx,
+    };
+  }
+
+  throw new ConflictError(`Cannot cancel trade in status ${trade.status}.`);
 export async function cancelTrade(tradeId: string, userId: string, reason?: string) {
   let fromState = UNKNOWN_STATE;
 

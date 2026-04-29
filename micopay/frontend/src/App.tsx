@@ -1,3 +1,48 @@
+/**
+ * Root shell for Micopay MVP flows. Owns cross-page state so issue #17 (confirmation + drafts) and #20/#31
+ * (trade detail, cancel, deep links) can share `activeAmount`, `tradeDetailId`, and history `pushState`.
+ */
+import { useState, useEffect, useCallback } from 'react'
+import Home from './pages/Home'
+import CashoutRequest from './pages/CashoutRequest'
+import DepositRequest from './pages/DepositRequest'
+import ExploreMap from './pages/ExploreMap'
+import DepositMap from './pages/DepositMap'
+import ChatRoom from './pages/ChatRoom'
+import DepositChat from './pages/DepositChat'
+import QRReveal from './pages/QRReveal'
+import DepositQR from './pages/DepositQR'
+import SuccessScreen from './pages/SuccessScreen'
+import Explore from './pages/Explore'
+import CETESScreen from './pages/CETESScreen'
+import BlendScreen from './pages/BlendScreen'
+import BottomNav from './components/BottomNav'
+import TradeConfirmation from './components/TradeConfirmation'
+import TradeDetail, { type GeneralCancelOutcome, type TradeDetailLoadedTrade } from './pages/TradeDetail'
+import TradeCancelled from './pages/TradeCancelled'
+import { extractApiErrorPayload } from './utils/apiError'
+import { registerUser, createTrade, lockTrade, revealTrade, UserData, TradeData } from './services/api'
+
+interface AppProps {
+  /** Cold `/trade/:id` entry (issue #31) — optional deep link bootstrap. */
+  initialTradeId?: string | null
+}
+
+function App({ initialTradeId = null }: AppProps) {
+  const [currentPage, setCurrentPage] = useState('home')
+  const [flow, setFlow] = useState<'cashout' | 'deposit' | null>(null)
+
+  const [buyerUser, setBuyerUser] = useState<UserData | null>(null)
+  const [sellerUser, setSellerUser] = useState<UserData | null>(null)
+  const [activeTrade, setActiveTrade] = useState<TradeData | null>(null)
+  const [lockTxHash, setLockTxHash] = useState<string | null>(null)
+  const [activeAmount, setActiveAmount] = useState(500)
+  const [tradeLoading, setTradeLoading] = useState(false)
+  const [tradeDetailId, setTradeDetailId] = useState<string | null>(null)
+  const [tradeCreationError, setTradeCreationError] = useState<string | null>(null)
+  const [cancelledScreen, setCancelledScreen] = useState<GeneralCancelOutcome | null>(null)
+  const [cashoutDraft, setCashoutDraft] = useState('500')
+  const [depositDraft, setDepositDraft] = useState('500')
 import { useState, useEffect } from "react";
 import Home from "./pages/Home";
 import CashoutRequest from "./pages/CashoutRequest";
@@ -122,6 +167,23 @@ function App() {
       setCurrentPage("chat_deposit");
       return;
     }
+    setTradeLoading(true)
+    setTradeCreationError(null)
+    try {
+      const trade = await createTrade(sellerUser.id, activeAmount, buyerUser.token)
+      const { lock_tx_hash } = await lockTrade(trade.id, sellerUser.token)
+      await revealTrade(trade.id, sellerUser.token)
+      setActiveTrade(trade)
+      setLockTxHash(lock_tx_hash)
+      setTradeDetailId(trade.id)
+      window.history.pushState({}, '', `/trade/${trade.id}`)
+      console.log('✅ Deposit trade ready:', trade.id, 'lock_tx_hash:', lock_tx_hash)
+      setCurrentPage('trade_detail')
+    } catch (e: unknown) {
+      console.error('Deposit trade flow failed', e)
+      setTradeCreationError(extractApiErrorPayload(e).message)
+    } finally {
+      setTradeLoading(false)
     setTradeLoading(true);
     try {
       const trade = await createTrade(sellerUser.id, activeAmount, buyerUser.token);

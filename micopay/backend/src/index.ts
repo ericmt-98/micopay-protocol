@@ -31,7 +31,7 @@ const app = Fastify({
 // CORS — Allow all origins for the hackathon deployment
 app.register(fastifyCors, { 
   origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
 });
 
 // JWT

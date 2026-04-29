@@ -1,15 +1,25 @@
+/**
+ * Deposit amount capture (issue #17) — mirrors cash-out bounds and confirmation-first routing.
+ */
 import { useState } from 'react';
 import TradeStateBadge, { getTradeStateDebugOverride, TradeState } from '../components/TradeStateBadge';
 
-interface DepositRequestProps {
-    onBack: () => void;
-    onSearch: (amount: string) => void;
+export interface DepositRequestProps {
+  onBack: () => void;
+  amountStr: string;
+  onAmountStrChange: (next: string) => void;
+  onContinueToConfirmation: (amountMxn: number) => void;
 }
 
 const DepositRequest = ({ onBack, onSearch }: DepositRequestProps) => {
     const [amount, setAmount] = useState('500');
     const state: TradeState = getTradeStateDebugOverride('pending_cash');
 
+          {inlineError ? (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900" role="alert">
+              {inlineError}
+            </div>
+          ) : null}
     return (
         <div className="bg-[#f4faff] min-h-screen text-on-surface font-body">
             {/* TopAppBar */}
@@ -95,11 +105,33 @@ const DepositRequest = ({ onBack, onSearch }: DepositRequestProps) => {
                     </div>
                 </div>
 
-                {/* Decorative Organic Element */}
-                <div className="fixed -bottom-12 -right-12 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none"></div>
-            </main>
-        </div>
-    );
-};
+          <div className="bg-surface-container-lowest p-6 rounded-xl shadow-[0_8px_24px_rgba(11,30,38,0.02)] space-y-4">
+            <div className="flex items-start space-x-4">
+              <div className="p-3 bg-primary/10 rounded-lg">
+                <span className="material-symbols-outlined text-primary">travel_explore</span>
+              </div>
+              <div className="flex-1">
+                <p className="text-on-surface font-medium leading-relaxed">
+                  Verás un resumen con comisión 0.8% y tiempo máximo antes de abrir el mapa.
+                </p>
+              </div>
+            </div>
+          </div>
 
-export default DepositRequest;
+          <div className="pt-8">
+            <button
+              type="button"
+              onClick={handleContinue}
+              className="w-full bg-[linear-gradient(135deg,#00694c_0%,#008560_100%)] text-white h-[56px] rounded-xl font-headline font-bold text-lg shadow-lg shadow-primary/20 active:scale-95 transition-all duration-200 flex items-center justify-center space-x-2"
+            >
+              <span>Continuar</span>
+              <span className="material-symbols-outlined text-xl">chevron_right</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="fixed -bottom-12 -right-12 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+      </main>
+    </div>
+  );
+}

@@ -61,6 +61,12 @@ export async function userRoutes(app: FastifyInstance) {
         );
       }
 
+    const user = await db.getOne(
+      `INSERT INTO users (stellar_address, username, phone_hash, merchant_available)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, stellar_address, username, merchant_available, created_at`,
+      [stellar_address, username, phone_hash || null, true],
+    );
       // Create user
       const user = await db.getOne(
         `INSERT INTO users (stellar_address, username, phone_hash)

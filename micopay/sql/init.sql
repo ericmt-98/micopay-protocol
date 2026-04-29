@@ -7,6 +7,12 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- USERS
 -- ================================================
 CREATE TABLE users (
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  stellar_address      VARCHAR(56) UNIQUE NOT NULL,
+  username             VARCHAR(30) UNIQUE NOT NULL,
+  phone_hash           VARCHAR(64) UNIQUE,
+  merchant_available   BOOLEAN NOT NULL DEFAULT true,
+  created_at           TIMESTAMPTZ DEFAULT NOW()
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   stellar_address VARCHAR(56) UNIQUE,
   username        VARCHAR(30) UNIQUE,
