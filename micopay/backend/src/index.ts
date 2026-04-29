@@ -11,14 +11,18 @@ import { AppError } from './utils/errors.js';
 import { Keypair } from '@stellar/stellar-sdk';
 
 const app = Fastify({
-  // Use pino-pretty only in development, otherwise use default JSON logger
   logger: process.env.NODE_ENV === 'development' ? {
     level: 'info',
     transport: {
       target: 'pino-pretty',
-      options: { colorize: true },
+      options: { colorize: true, translateTime: 'HH:MM:ss Z' },
     },
-  } : true,
+  } : {
+    level: 'info',
+    formatters: {
+      bindings: (o) => ({ ...o, service: 'micopay-backend' }),
+    },
+  },
 });
 
 // --- Plugins ---
@@ -38,9 +42,9 @@ app.register(fastifyJwt, {
 try {
   const rateLimit = await import('@fastify/rate-limit');
   app.register(rateLimit.default, { global: false });
-} catch {
-  console.warn('⚠️  @fastify/rate-limit not installed, skipping rate limiting');
-}
+  } catch {
+    app.log.warn({ category: 'http' }, '⚠️  @fastify/rate-limit not installed, skipping rate limiting');
+  }
 
 // --- Global error handler ---
 app.setErrorHandler((error, request, reply) => {
@@ -84,7 +88,7 @@ app.get('/health', async () => ({
 }));
 
 // Platform account balance from Horizon (public, no auth needed)
-app.get('/account/balance', async () => {
+app.get('/account/balance', async (request) => {
   try {
     if (!config.platformSecretKey) {
       return { xlm: '0', address: 'Billetera no configurada', status: 'setup_required' };
@@ -97,7 +101,7 @@ app.get('/account/balance', async () => {
     const xlm = data.balances.find((b) => b.asset_type === 'native')?.balance ?? '0';
     return { xlm, address, status: 'ok' };
   } catch (err: any) {
-    app.log.error(`[Stellar] Balance error: ${err.message}`);
+    request.log.error({ err: err.message, category: 'stellar.balance' }, '[Stellar] Balance error');
     return { xlm: '0', address: 'Error', error: err.message };
   }
 });
@@ -113,9 +117,9 @@ app.register(defiRoutes, { prefix: '' });
 async function start() {
   try {
     await app.listen({ port: config.port, host: '0.0.0.0' });
-    console.log(`\n🍄 Micopay MVP Backend running on http://localhost:${config.port}`);
-    console.log(`   Mock Stellar: ${config.mockStellar ? 'ON (no on-chain verification)' : 'OFF (real Soroban RPC)'}`);
-    console.log(`   Database: ${config.databaseUrl.replace(/\/\/.*@/, '//***@')}\n`);
+    app.log.info({ category: 'http', port: config.port }, '🍄 Micopay MVP Backend running');
+    app.log.info({ category: 'http', mockStellar: config.mockStellar }, `Mock Stellar: ${config.mockStellar ? 'ON (no on-chain verification)' : 'OFF (real Soroban RPC)'}`);
+    app.log.info({ category: 'http', database: config.databaseUrl.replace(/\/\/.*@/, '//***@') }, 'Database connected');
   } catch (err) {
     app.log.error(err);
     process.exit(1);
