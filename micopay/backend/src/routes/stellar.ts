@@ -48,11 +48,8 @@ export async function stellarRoutes(app: FastifyInstance) {
 
       return { hash: result.hash, status: result.status };
     } catch (err: any) {
-      throw new UpstreamError(
-        'STELLAR_SUBMIT_FAILED',
-        'Error al enviar la transacción a Stellar.',
-        err.message || 'Failed to submit transaction'
-      );
+      request.log.error({ err: err.message, category: 'stellar.tx' }, '[stellar] Submit failed');
+      return reply.status(500).send({ error: err.message || 'Failed to submit transaction' });
     }
   });
 }

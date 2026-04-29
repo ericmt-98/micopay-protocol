@@ -41,7 +41,6 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token }
       .catch(() => {});
   }, [token]);
 
-  // Convert XLM to approx MXN (1 XLM ≈ 20 MXN, demo rate)
   const mxnBalance = xlmBalance
     ? (parseFloat(xlmBalance.replace(/,/g, '')) * 20).toLocaleString('es-MX', { maximumFractionDigits: 2 })
     : '—';
@@ -54,7 +53,7 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token }
       <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 py-4 backdrop-blur-md bg-white/90">
         <Logo />
         <div className="flex items-center gap-4">
-          <span className="material-symbols-outlined text-primary p-2 rounded-full hover:bg-surface-container-low transition-colors cursor-pointer">
+          <span aria-hidden="true" className="material-symbols-outlined text-primary p-2 rounded-full hover:bg-surface-container-low transition-colors cursor-pointer">
             notifications
           </span>
           <div className="w-10 h-10 rounded-full border-2 border-primary-container bg-surface-container-low flex items-center justify-center">
@@ -90,7 +89,7 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token }
               SALDO MXN · STELLAR TESTNET
             </p>
             <div className="flex items-center justify-center bg-white/10 rounded-full p-1">
-              <span className="material-symbols-outlined text-white text-sm">rocket_launch</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-white text-sm">rocket_launch</span>
             </div>
           </div>
           <div className="relative z-10 mb-4">
@@ -156,7 +155,7 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token }
 
           {trades.length === 0 ? (
             <div className="bg-white rounded-[20px] border border-outline-variant/10 shadow-sm p-6 text-center">
-              <span className="material-symbols-outlined text-outline-variant text-3xl mb-2 block">receipt_long</span>
+              <span aria-hidden="true" className="material-symbols-outlined text-outline-variant text-3xl mb-2 block">receipt_long</span>
               <p className="text-sm text-outline font-medium">Sin transacciones aún</p>
             </div>
           ) : (
@@ -171,7 +170,7 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token }
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <span className="material-symbols-outlined text-primary text-base">swap_horiz</span>
+                          <span aria-hidden="true" className="material-symbols-outlined text-primary text-base">swap_horiz</span>
                         </div>
                         <div>
                           <p className="font-bold text-on-surface text-sm">
@@ -192,7 +191,7 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token }
                           rel="noopener noreferrer"
                           className="text-[11px] text-primary font-mono flex items-center gap-1 hover:underline"
                         >
-                          <span className="material-symbols-outlined text-[12px]">lock</span>
+                          <span aria-hidden="true" className="material-symbols-outlined text-[12px]">lock</span>
                           lock · {trade.lock_tx_hash.substring(0, 14)}…
                         </a>
                       )}
@@ -203,7 +202,7 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token }
                           rel="noopener noreferrer"
                           className="text-[11px] text-[#1D9E75] font-mono flex items-center gap-1 hover:underline"
                         >
-                          <span className="material-symbols-outlined text-[12px]">lock_open</span>
+                          <span aria-hidden="true" className="material-symbols-outlined text-[12px]">lock_open</span>
                           release · {trade.release_tx_hash.substring(0, 14)}…
                         </a>
                       )}
@@ -219,16 +218,18 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token }
         <div className="flex flex-col items-center gap-4">
           <button
             onClick={onNavigateCashout}
-            className="w-full h-[56px] bg-gradient-to-r from-primary to-primary-container text-white font-bold rounded-xl shadow-md active:scale-95 transition-all duration-200 flex items-center justify-center gap-2"
+            aria-label="Convertir a efectivo"
+            className="w-full h-[56px] bg-gradient-to-r from-primary to-primary-container text-white font-bold rounded-xl shadow-md active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            <span className="material-symbols-outlined">payments</span>
+            <span aria-hidden="true" className="material-symbols-outlined">payments</span>
             Convertir a efectivo
           </button>
           <button
             onClick={onNavigateDeposit}
-            className="w-full h-[56px] bg-gradient-to-r from-[#1D9E75] to-[#14815F] text-white font-bold rounded-xl shadow-md active:scale-95 transition-all duration-200 flex items-center justify-center gap-2"
+            aria-label="Depositar efectivo"
+            className="w-full h-[56px] bg-gradient-to-r from-[#1D9E75] to-[#14815F] text-white font-bold rounded-xl shadow-md active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            <span className="material-symbols-outlined">add_circle</span>
+            <span aria-hidden="true" className="material-symbols-outlined">add_circle</span>
             Depositar efectivo
           </button>
           <p className="text-sm text-on-surface-variant font-medium opacity-60">
