@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import SupportLink from '../components/SupportLink';
 
 const PROTOCOL_API = (import.meta as any).env?.VITE_PROTOCOL_API_URL ?? 'http://localhost:3000';
 
@@ -100,6 +101,9 @@ export default function ClaimQR({ requestId }: ClaimQRProps) {
           <div style={{ fontSize: 48, marginBottom: 12 }}>❌</div>
           <p style={{ color: '#b91c1c', fontWeight: 'bold', fontSize: 16 }}>{error}</p>
           <p style={{ color: '#999', fontSize: 13, marginTop: 8 }}>ID: {requestId}</p>
+          <div style={{ marginTop: 16 }}>
+            <SupportLink state="ERROR" tradeId={requestId} />
+          </div>
         </div>
       </div>
     );
@@ -190,6 +194,13 @@ export default function ClaimQR({ requestId }: ClaimQRProps) {
           🔒 <strong>Tus fondos están seguros.</strong> El USDC solo se libera cuando el comercio escanea este QR. Si no cobras, tu dinero regresa automáticamente al expirar.
         </p>
       </div>
+
+      {/* Support link for risky states */}
+      {data!.status === 'expired' && (
+        <div style={{ marginTop: 16, textAlign: 'center' }}>
+          <SupportLink state="TRADE_EXPIRED" tradeId={requestId} />
+        </div>
+      )}
     </div>
   );
 }

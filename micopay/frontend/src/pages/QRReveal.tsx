@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { getSecret, completeTrade, TradeData } from '../services/api';
+<<<<<<< HEAD
 import TradeStateBadge, { getTradeStateDebugOverride, normalizeTradeState, TradeState } from '../components/TradeStateBadge';
+=======
+import SupportLink from '../components/SupportLink';
+>>>>>>> 2b349f8 (feat: #15 Support contact entry points from trade detail and error states)
 
 interface QRRevealProps {
     activeTrade: TradeData | null;
@@ -170,10 +174,11 @@ const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat
                     )}
                 </section>
 
-                <footer className="mt-12 text-center pb-10">
+                <footer className="mt-12 text-center pb-10 space-y-3">
                     <p className="text-[12px] text-outline leading-relaxed px-6 font-medium">
                         Si no se confirma en 30 min, la operación se cancelará automáticamente y tus fondos serán liberados.
                     </p>
+                    <SupportLink tradeId={activeTrade?.id} state="QR_REVEAL" />
                 </footer>
             </main>
         </div>
