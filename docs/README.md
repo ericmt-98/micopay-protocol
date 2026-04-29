@@ -16,6 +16,7 @@ If the team needs one place to start, read these in order:
 2. `RETAIL_ROADMAP.md`
 3. `UX_MANIFESTO.md`
 4. `DRIPS_TEAM_GUIDE.md`
+5. `STORE_COMPLIANCE.md`
 
 Document purpose:
 
@@ -23,6 +24,7 @@ Document purpose:
 - `RETAIL_ROADMAP.md`: turns the product direction into a phased execution plan.
 - `UX_MANIFESTO.md`: gives product, design, and engineering a shared UX and psychology framework.
 - `DRIPS_TEAM_GUIDE.md`: explains how the team should prepare the repo, create issues, review PRs, and operate during a Drips Wave.
+- `STORE_COMPLIANCE.md`: tracks Apple and Google store requirements for crypto-adjacent financial apps.
 
 Why these docs exist:
 

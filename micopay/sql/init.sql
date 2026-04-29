@@ -127,3 +127,21 @@ CREATE TABLE secret_access_log (
 );
 
 CREATE INDEX idx_secret_access_trade ON secret_access_log (trade_id);
+
+-- ================================================
+-- PROCESSED TX (replay protection)
+-- ================================================
+-- Every confirmed Stellar tx hash that has been acted on is recorded here.
+-- The PRIMARY KEY constraint makes INSERT … ON CONFLICT DO NOTHING atomic
+-- so duplicate submissions are rejected even under concurrent load.
+-- Rows are never deleted — this is an append-only audit log.
+CREATE TABLE processed_tx (
+  tx_hash       VARCHAR(64) PRIMARY KEY,
+  source_route  VARCHAR(64) NOT NULL,
+  user_id       UUID        NOT NULL,
+  processed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_processed_tx_user
+  ON processed_tx (user_id, processed_at DESC);
+

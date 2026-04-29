@@ -1,44 +1,73 @@
 export class AppError extends Error {
   constructor(
-    public statusCode: number,
-    message: string,
+    public code: string,
+    public userMessage: string,
+    public devMessage: string,
+    public httpStatus: number,
   ) {
-    super(message);
-    this.name = 'AppError';
+    super(devMessage);
+    this.name = this.constructor.name;
+    // Capture stack trace
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+export class AuthError extends AppError {
+  constructor(code: string, userMessage: string, devMessage: string, httpStatus = 401) {
+    super(code, userMessage, devMessage, httpStatus);
+  }
+}
+
+export class ValidationError extends AppError {
+  constructor(code: string, userMessage: string, devMessage: string, httpStatus = 400) {
+    super(code, userMessage, devMessage, httpStatus);
+  }
+}
+
+export class TradeStateError extends AppError {
+  constructor(code: string, userMessage: string, devMessage: string, httpStatus = 409) {
+    super(code, userMessage, devMessage, httpStatus);
   }
 }
 
 export class NotFoundError extends AppError {
-  constructor(message = 'Resource not found') {
-    super(404, message);
-    this.name = 'NotFoundError';
+  constructor(code: string, userMessage: string, devMessage: string, httpStatus = 404) {
+    super(code, userMessage, devMessage, httpStatus);
   }
 }
 
-export class ForbiddenError extends AppError {
-  constructor(message = 'Forbidden') {
-    super(403, message);
-    this.name = 'ForbiddenError';
+export class RateLimitError extends AppError {
+  constructor(code: string, userMessage: string, devMessage: string, httpStatus = 429) {
+    super(code, userMessage, devMessage, httpStatus);
   }
 }
 
-export class ConflictError extends AppError {
-  constructor(message = 'Conflict') {
-    super(409, message);
-    this.name = 'ConflictError';
+export class UpstreamError extends AppError {
+  constructor(code: string, userMessage: string, devMessage: string, httpStatus = 502) {
+    super(code, userMessage, devMessage, httpStatus);
   }
 }
 
-export class BadRequestError extends AppError {
-  constructor(message = 'Bad request') {
-    super(400, message);
-    this.name = 'BadRequestError';
+export class RateLimitError extends AppError {
+  constructor(message = 'Too many requests', public retryAfter?: number) {
+    super(429, message);
+    this.name = 'RateLimitError';
   }
 }
 
-export class UnauthorizedError extends AppError {
-  constructor(message = 'Unauthorized') {
-    super(401, message);
-    this.name = 'UnauthorizedError';
+/**
+ * Thrown when a Stellar tx hash has already been processed.
+ * HTTP 409 — the outcome of a replayed tx is deterministic, so this is
+ * a conflict rather than a validation failure.
+ */
+export class ReplayError extends AppError {
+  public readonly txHash: string;
+  public readonly originalRoute: string;
+
+  constructor(txHash: string, originalRoute: string) {
+    super(409, `Stellar tx ${txHash} has already been processed via ${originalRoute}`);
+    this.name = 'ReplayError';
+    this.txHash = txHash;
+    this.originalRoute = originalRoute;
   }
 }

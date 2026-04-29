@@ -3,7 +3,18 @@ import db from "../db/schema.js";
 import { config } from "../config.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { deleteAccount } from "../services/account.service.js";
+import { createRateLimiter } from '../middleware/rateLimit.middleware.js';
 import { ConflictError } from "../utils/errors.js";
+
+const authRateLimit = createRateLimiter({
+  windowMs: config.authRateLimitWindowMs,
+  max: config.authRateLimitMax,
+});
+
+const authRateLimit = createRateLimiter({
+  windowMs: config.authRateLimitWindowMs,
+  max: config.authRateLimitMax,
+});
 
 export async function userRoutes(app: FastifyInstance) {
   /**
@@ -13,6 +24,7 @@ export async function userRoutes(app: FastifyInstance) {
   app.post(
     "/users/register",
     {
+      preHandler: [authRateLimit],
       schema: {
         body: {
           type: "object",
@@ -75,6 +87,7 @@ export async function userRoutes(app: FastifyInstance) {
         { expiresIn: config.jwtExpiry },
       );
 
+      request.log.info({ user_id: user.id, stellar_address, category: 'auth' }, '[auth] User registered');
       reply.status(201);
       return { user, token };
     },
@@ -100,43 +113,7 @@ export async function userRoutes(app: FastifyInstance) {
         [userId],
       );
 
-    return { user };
-  });
-
-  /**
-   * PATCH /users/me — toggle `merchant_available` for issue #31 (merchant pause / availability signal).
-   */
-  app.patch('/users/me', {
-    preHandler: [authMiddleware],
-    schema: {
-      body: {
-        type: 'object',
-        required: ['merchant_available'],
-        properties: {
-          merchant_available: { type: 'boolean' },
-        },
-        additionalProperties: false,
-      },
-    },
-  }, async (request) => {
-    const userId = request.user.id;
-    const body = request.body as { merchant_available: boolean };
-
-    await db.execute(
-      'UPDATE users SET merchant_available = $1 WHERE id = $2',
-      [body.merchant_available, userId],
-    );
-
-    const user = await db.getOne(
-      `SELECT u.id, u.stellar_address, u.username, u.merchant_available, u.created_at, w.wallet_type
-       FROM users u
-       LEFT JOIN wallets w ON w.user_id = u.id
-       WHERE u.id = $1`,
-      [userId],
-    );
-
-    return { user };
-  });
+      request.log.info({ user_id: userId, category: 'auth' }, '[auth] Profile fetched');
       return { user };
     },
   );

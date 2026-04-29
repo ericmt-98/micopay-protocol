@@ -6,7 +6,7 @@
  *   so the next step can show `TradeConfirmation` before the map / POST /trades.
  */
 import { useState } from 'react';
-import { TRADE_AMOUNT_MAX_MXN, TRADE_AMOUNT_MIN_MXN } from '../constants/trade';
+import TradeStateBadge, { getTradeStateDebugOverride, TradeState } from '../components/TradeStateBadge';
 
 export interface CashoutRequestProps {
   onBack: () => void;
@@ -17,101 +17,9 @@ export interface CashoutRequestProps {
   onContinueToConfirmation: (amountMxn: number) => void;
 }
 
-function parseAmountMx(amountStr: string): number | null {
-  const digits = amountStr.replace(/[^\d]/g, '');
-  if (digits === '') return null;
-  const n = Number.parseInt(digits, 10);
-  return Number.isFinite(n) ? n : null;
-}
-
-export default function CashoutRequest({
-  onBack,
-  amountStr,
-  onAmountStrChange,
-  onContinueToConfirmation,
-}: CashoutRequestProps) {
-  const [inlineError, setInlineError] = useState<string | null>(null);
-
-  const handleContinue = () => {
-    const n = parseAmountMx(amountStr);
-    if (n === null) {
-      setInlineError('Ingresa un monto en pesos mexicanos (solo números).');
-      return;
-    }
-    if (!Number.isInteger(n)) {
-      setInlineError('El monto debe ser un número entero (sin centavos).');
-      return;
-    }
-    if (n < TRADE_AMOUNT_MIN_MXN) {
-      setInlineError(`El monto mínimo es $${TRADE_AMOUNT_MIN_MXN} MXN (mismo límite que el servidor).`);
-      return;
-    }
-    if (n > TRADE_AMOUNT_MAX_MXN) {
-      setInlineError(`El monto máximo es $${TRADE_AMOUNT_MAX_MXN.toLocaleString('es-MX')} MXN.`);
-      return;
-    }
-    setInlineError(null);
-    onContinueToConfirmation(n);
-  };
-
-  return (
-    <div className="text-on-surface antialiased overflow-x-hidden min-h-screen bg-surface-container-low">
-      <header className="fixed top-0 w-full z-50 bg-surface-container-low backdrop-blur-xl shadow-[0_32px_32px_rgba(0,105,76,0.04)]">
-        <div className="flex items-center justify-between px-6 py-4 w-full">
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={onBack}
-              className="text-primary active:scale-95 duration-200 p-2 hover:bg-primary/10 rounded-full"
-            >
-              <span className="material-symbols-outlined font-bold">arrow_back</span>
-            </button>
-            <h1 className="font-headline font-bold text-xl tracking-tight text-primary">
-              Convertir a efectivo
-            </h1>
-          </div>
-          <div className="w-10" />
-        </div>
-        <div className="bg-outline-variant/30 h-[1px] w-full self-end" />
-      </header>
-
-      <main className="pt-24 pb-32 px-6 flex flex-col min-h-screen max-w-md mx-auto">
-        <div className="mt-8 mb-4">
-          <label className="font-label text-xs font-bold tracking-[0.15em] text-on-surface-variant opacity-70">
-            ¿CUÁNTO QUIERES EN EFECTIVO?
-          </label>
-        </div>
-
-        <div className="relative group mb-4 py-10 px-4 bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 flex flex-col items-center">
-          <div className="flex items-center justify-center gap-3 w-full">
-            <span className="text-headline text-4xl font-extrabold text-on-surface">$</span>
-            <input
-              className="w-32 text-headline text-5xl font-extrabold text-on-surface bg-transparent border-none focus:ring-0 p-0 text-center"
-              placeholder="0"
-              type="text"
-              inputMode="numeric"
-              value={amountStr}
-              onChange={(e) => {
-                onAmountStrChange(e.target.value);
-                if (inlineError) setInlineError(null);
-              }}
-            />
-            <span className="text-label text-xl font-bold text-primary px-3 py-1 bg-primary/5 rounded-lg">
-              MXN
-            </span>
-          </div>
-          <div className="mt-8 flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full border border-primary/10">
-            <span
-              className="material-symbols-outlined text-primary text-sm font-bold"
-              style={{ fontVariationSettings: '"FILL" 1' }}
-            >
-              account_balance_wallet
-            </span>
-            <span className="text-label text-[13px] font-bold text-primary">
-              Límites servidor: ${TRADE_AMOUNT_MIN_MXN} – ${TRADE_AMOUNT_MAX_MXN.toLocaleString('es-MX')} MXN
-            </span>
-          </div>
-        </div>
+const CashoutRequest = ({ onBack, onSearch }: CashoutRequestProps) => {
+    const [amount, setAmount] = useState('500');
+    const state: TradeState = getTradeStateDebugOverride('pending_cash');
 
         {inlineError ? (
           <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900" role="alert">
@@ -166,6 +74,12 @@ export default function CashoutRequest({
             {/* Main Content Canvas */}
             <main className="pt-24 pb-32 px-6 flex flex-col min-h-screen max-w-md mx-auto">
                 {/* Section: Input Header */}
+                <TradeStateBadge
+                    state={state}
+                    onRecover={() => onSearch(Number(amount) || 500)}
+                    recoverLabel="Buscar una nueva oferta"
+                    className="mb-6"
+                />
                 <div className="mt-8 mb-4">
                     <label htmlFor="cashout-amount" className="font-label text-xs font-bold tracking-[0.15em] text-on-surface-variant opacity-70">
                         ¿CUÁNTO QUIERES EN EFECTIVO?

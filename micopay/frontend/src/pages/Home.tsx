@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Logo } from '../components/Logo';
-import { getTradeHistory, getAccountBalance, TradeHistoryItem } from '../services/api';
+import { getTradeHistory, getAccountBalance, setAvailability, Availability, TradeHistoryItem } from '../services/api';
 
 const EXPLORER = 'https://stellar.expert/explorer/testnet/tx';
 
@@ -13,16 +13,41 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
   refunded:  { label: 'Reembolsado',color: 'text-outline' },
 };
 
+const AVAILABILITY_CONFIG: Record<Availability, { label: string; dot: string; bg: string; text: string }> = {
+  online:  { label: 'Disponible', dot: 'bg-[#1D9E75]', bg: 'bg-[#E6F7F1]', text: 'text-[#1D9E75]' },
+  paused:  { label: 'Pausado',    dot: 'bg-amber-400',  bg: 'bg-amber-50',   text: 'text-amber-600' },
+  offline: { label: 'No disponible', dot: 'bg-red-400', bg: 'bg-red-50',     text: 'text-red-500'   },
+};
+
+const AVAILABILITY_CYCLE: Availability[] = ['online', 'paused', 'offline'];
+
 interface HomeProps {
   onNavigateCashout: () => void;
   onNavigateDeposit: () => void;
+  onNavigateHistory: () => void;
   token: string | null;
 }
 
-const Home = ({ onNavigateCashout, onNavigateDeposit, token }: HomeProps) => {
+const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token }: HomeProps) => {
   const [trades, setTrades] = useState<TradeHistoryItem[]>([]);
   const [xlmBalance, setXlmBalance] = useState<string | null>(null);
   const [stellarAddress, setStellarAddress] = useState<string>('');
+  const [availability, setAvailabilityState] = useState<Availability>('offline');
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+
+  const handleToggleAvailability = async () => {
+    if (!token) return;
+    const next = AVAILABILITY_CYCLE[(AVAILABILITY_CYCLE.indexOf(availability) + 1) % AVAILABILITY_CYCLE.length];
+    setAvailabilityLoading(true);
+    try {
+      await setAvailability(next, token);
+      setAvailabilityState(next);
+    } catch {
+      // silently ignore — UI stays consistent
+    } finally {
+      setAvailabilityLoading(false);
+    }
+  };
 
   useEffect(() => {
     getAccountBalance()
@@ -40,7 +65,6 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, token }: HomeProps) => {
       .catch(() => {});
   }, [token]);
 
-  // Convert XLM to approx MXN (1 XLM ≈ 20 MXN, demo rate)
   const mxnBalance = xlmBalance
     ? (parseFloat(xlmBalance.replace(/,/g, '')) * 20).toLocaleString('es-MX', { maximumFractionDigits: 2 })
     : '—';
@@ -143,7 +167,15 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, token }: HomeProps) => {
 
         {/* Actividad */}
         <section className="mb-8">
-          <h2 className="text-[11px] font-bold text-outline-variant uppercase tracking-[0.15em] mb-4">Actividad reciente</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[11px] font-bold text-outline-variant uppercase tracking-[0.15em]">Actividad reciente</h2>
+            <button
+              onClick={onNavigateHistory}
+              className="text-[11px] font-black text-primary uppercase tracking-[0.1em] hover:underline transition-all"
+            >
+              Ver todo
+            </button>
+          </div>
 
           {trades.length === 0 ? (
             <div className="bg-white rounded-[20px] border border-outline-variant/10 shadow-sm p-6 text-center">

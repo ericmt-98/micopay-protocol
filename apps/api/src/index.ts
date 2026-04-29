@@ -1,6 +1,8 @@
 import "./config.js";
 import Fastify from "fastify";
+import { seedDemoData } from "./scripts/seed.js";
 import fastifyCors from "@fastify/cors";
+import fastifyJwt from "@fastify/jwt";
 import { registerRateLimit } from "./plugins/rate-limit.js";
 import { healthRoutes } from "./routes/health.js";
 import { authRoutes } from "./routes/auth.js";
@@ -22,6 +24,8 @@ const app = Fastify({
 
 app.register(fastifyCors, { origin: "*" });
 
+app.register(fastifyJwt, { secret: config.jwtSecret });
+
 registerRateLimit(app);
 
 app.register(healthRoutes);
@@ -32,6 +36,7 @@ app.register(fundRoutes);
 app.register(serviceRoutes);
 app.register(demoRoutes);
 app.register(cetesRoutes);
+app.register(merchantRoutes);
 
 async function start() {
   await initAuthChallengesTable();

@@ -2,6 +2,12 @@ import type { FastifyInstance } from 'fastify';
 import { randomBytes } from 'crypto';
 import db from '../db/schema.js';
 import { config } from '../config.js';
+import { createRateLimiter } from '../middleware/rateLimit.middleware.js';
+
+const authRateLimit = createRateLimiter({
+  windowMs: config.authRateLimitWindowMs,
+  max: config.authRateLimitMax,
+});
 
 // In-memory challenge store (for MVP; use Redis in production)
 const challenges = new Map<string, { challenge: string; expiresAt: number }>();
@@ -12,6 +18,7 @@ export async function authRoutes(app: FastifyInstance) {
    * Generate a challenge for a Stellar address to sign (simplified SEP-10).
    */
   app.post('/auth/challenge', {
+    preHandler: [authRateLimit],
     schema: {
       body: {
         type: 'object',
@@ -30,6 +37,7 @@ export async function authRoutes(app: FastifyInstance) {
 
     challenges.set(stellar_address, { challenge, expiresAt });
 
+    request.log.info({ stellar_address, category: 'auth' }, '[auth] Challenge issued');
     return { challenge, expires_at: new Date(expiresAt).toISOString() };
   });
 
@@ -41,6 +49,7 @@ export async function authRoutes(app: FastifyInstance) {
    * In production: verify using Stellar SDK's Keypair.verify().
    */
   app.post('/auth/token', {
+    preHandler: [authRateLimit],
     schema: {
       body: {
         type: 'object',
@@ -63,11 +72,19 @@ export async function authRoutes(app: FastifyInstance) {
     // Verify challenge exists and hasn't expired
     const stored = challenges.get(stellar_address);
     if (!stored || stored.challenge !== challenge) {
-      return reply.status(401).send({ error: 'Invalid or expired challenge' });
+      throw new AuthError(
+        'AUTH_INVALID_CHALLENGE',
+        'El código de verificación no es válido o ha expirado. Por favor, intenta de nuevo.',
+        'Invalid or mismatched challenge provided'
+      );
     }
     if (Date.now() > stored.expiresAt) {
       challenges.delete(stellar_address);
-      return reply.status(401).send({ error: 'Challenge expired' });
+      throw new AuthError(
+        'AUTH_CHALLENGE_EXPIRED',
+        'El código de verificación ha expirado. Por favor, solicita uno nuevo.',
+        'Challenge expired'
+      );
     }
 
     // In MVP: skip real signature verification
@@ -81,10 +98,18 @@ export async function authRoutes(app: FastifyInstance) {
           Buffer.from(signature, 'base64'),
         );
         if (!verified) {
-          return reply.status(401).send({ error: 'Invalid signature' });
+          throw new AuthError(
+            'AUTH_INVALID_CREDENTIALS',
+            'La firma no es válida. Por favor, intenta de nuevo.',
+            'Invalid signature'
+          );
         }
-      } catch {
-        return reply.status(401).send({ error: 'Signature verification failed' });
+      } catch (err: any) {
+        throw new AuthError(
+          'AUTH_INVALID_CREDENTIALS',
+          'La firma no es válida. Por favor, intenta de nuevo.',
+          `Signature verification failed: ${err.message}`
+        );
       }
     }
 
@@ -98,9 +123,11 @@ export async function authRoutes(app: FastifyInstance) {
     );
 
     if (!user) {
-      return reply.status(404).send({
-        error: 'User not found. Register first via POST /users/register',
-      });
+      throw new NotFoundError(
+        'USER_NOT_FOUND',
+        'Usuario no encontrado. Por favor, regístrate primero.',
+        'User not found. Register first via POST /users/register'
+      );
     }
 
     // Issue JWT
@@ -109,6 +136,7 @@ export async function authRoutes(app: FastifyInstance) {
       { expiresIn: config.jwtExpiry },
     );
 
+    request.log.info({ stellar_address, user_id: user.id, category: 'auth' }, '[auth] Token issued');
     return { token, user };
   });
 }

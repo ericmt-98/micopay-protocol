@@ -3,6 +3,7 @@ import { getAgentHistory, upsertAgentHistory, AgentHistoryRow } from '../db/baza
 
 export type MerchantStatus = 'pending' | 'active' | 'suspended' | 'verified';
 export type MerchantTier = 'espora' | 'activo' | 'experto' | 'maestro';
+export type MerchantAvailability = 'online' | 'offline' | 'paused';
 
 export interface Merchant {
   id: string;
@@ -24,6 +25,7 @@ export interface Merchant {
   volume_usdc: number;
   avg_time_minutes: number;
   online: boolean;
+  availability: MerchantAvailability;
   created_at: string;
   updated_at: string;
 }
@@ -70,6 +72,7 @@ interface MerchantRow {
   volume_usdc: string;
   avg_time_minutes: string;
   online: boolean;
+  availability: string;
   created_at: string;
   updated_at: string;
 }
@@ -110,10 +113,12 @@ async function initMerchantsTable(): Promise<void> {
       volume_usdc       DECIMAL(20, 2) NOT NULL DEFAULT 0,
       avg_time_minutes  INTEGER NOT NULL DEFAULT 0,
       online            BOOLEAN NOT NULL DEFAULT FALSE,
+      availability      VARCHAR(20) NOT NULL DEFAULT 'offline',
       created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       CONSTRAINT p2p_merchants_tier_check CHECK (tier IN ('espora', 'activo', 'experto', 'maestro')),
-      CONSTRAINT p2p_merchants_status_check CHECK (status IN ('pending', 'active', 'suspended', 'verified'))
+      CONSTRAINT p2p_merchants_status_check CHECK (status IN ('pending', 'active', 'suspended', 'verified')),
+      CONSTRAINT p2p_merchants_availability_check CHECK (availability IN ('online', 'offline', 'paused'))
     );
 
     CREATE INDEX IF NOT EXISTS idx_p2p_merchants_stellar ON p2p_merchants(stellar_address);
@@ -122,6 +127,13 @@ async function initMerchantsTable(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_p2p_merchants_online ON p2p_merchants(online);
     CREATE INDEX IF NOT EXISTS idx_p2p_merchants_location ON p2p_merchants(lat, lng);
   `);
+
+  // Migration: add availability column if it doesn't exist yet
+  await query(`
+    ALTER TABLE p2p_merchants
+    ADD COLUMN IF NOT EXISTS availability VARCHAR(20) NOT NULL DEFAULT 'offline'
+      CONSTRAINT p2p_merchants_availability_check CHECK (availability IN ('online', 'offline', 'paused'))
+  `).catch(() => {}); // ignore if constraint already exists
 }
 
 let tableInitialized = false;
@@ -153,6 +165,7 @@ function rowToMerchant(row: MerchantRow): Merchant {
     volume_usdc: parseFloat(row.volume_usdc),
     avg_time_minutes: parseInt(row.avg_time_minutes, 10),
     online: row.online,
+    availability: (row.availability ?? 'offline') as MerchantAvailability,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -241,6 +254,7 @@ export interface MerchantUpdates {
   max_trade_mxn?: number;
   min_trade_mxn?: number;
   online?: boolean;
+  availability?: MerchantAvailability;
   avg_time_minutes?: number;
 }
 

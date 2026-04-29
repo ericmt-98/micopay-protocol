@@ -1,287 +1,571 @@
-/**
- * Buyer-facing trade hub (issues #18, #20, #31).
- *
- * - Polls `GET /trades/:id` so merchant-unavailable (#31) and status transitions stay fresh.
- * - **General cancel (#20)**: two-step dialog + typed API errors + navigation to `TradeCancelled`.
- * - **Re-match (#31)**: when `merchant_unavailable`, the banner still calls the same cancel endpoint but
- *   routes back to the map with the amount preset (parent `onCancelRematch`), not the terminal screen.
- */
-import { useCallback, useEffect, useState } from 'react';
-import {
-  cancelTradeRequest,
-  fetchTradeDetail,
-  type CancelTradeResponse,
-  type TradeDetailResponse,
-} from '../services/api';
-import MerchantUnavailableBanner from '../components/MerchantUnavailableBanner';
-import CancelTradeDialog, { type CancelConsequenceKind } from '../components/CancelTradeDialog';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { getTrade, completeTrade, cancelTrade, TradeDetailData, getToken } from '../services/api';
 
-const POLL_MS = 3000;
-const STELLAR_EXPLORER = 'https://stellar.expert/explorer/testnet/tx';
+const TRADE_POLL_INTERVAL = 5000;
+const SUPPORT_EMAIL = 'support@micopay.io';
 
-export interface TradeDetailLoadedTrade {
-  id: string;
-  status: string;
-  amount_mxn: number;
-  secret_hash: string;
-  lock_tx_hash?: string | null;
-}
+const ACTIVE_STATES = ['pending', 'locked', 'revealing'];
 
-/** Payload for the terminal TradeCancelled route (#20 happy path). */
-export interface GeneralCancelOutcome {
-  tradeId: string;
-  amountMxn: number;
-  refundExpected: boolean;
-  lockTxHash: string | null;
-}
-
-interface TradeDetailProps {
-  tradeId: string;
-  buyerToken: string | null;
-  flow: 'cashout' | 'deposit';
-  onOpenQR: () => void;
-  onOpenChat: () => void;
-  /** #31 — cancel + return to merchant list with same MXN amount. */
-  onCancelRematch: (amountMxn: number) => void;
-  /** #20 — after successful cancel from the general (non-rematch) flow. */
-  onGeneralCancelComplete: (outcome: GeneralCancelOutcome) => void;
-  onBackToMap: () => void;
-  onTradeLoaded?: (trade: TradeDetailLoadedTrade) => void;
-}
-
-/**
- * Whether the **buyer** may start the cancel-UX flow for the current poll snapshot.
- * Must stay aligned with `cancelTrade` in `trade.service.ts` (buyer rules only — this page uses buyer JWT).
- */
-function buyerMayRequestCancel(d: TradeDetailResponse): boolean {
-  const s = d.trade.status;
-  if (s === 'pending' || s === 'locked') return true;
-  return s === 'revealing' && d.merchant_unavailable;
-}
-
-/**
- * Which copy block to show on step 2 of the cancel dialog (USDC refund vs no lock yet).
- */
-function cancelConsequenceKind(d: TradeDetailResponse): CancelConsequenceKind {
-  const s = d.trade.status;
-  if (s === 'pending') return 'no_lock';
-  if (s === 'locked') return 'refund_usdc';
-  if (s === 'revealing' && d.merchant_unavailable) return 'refund_usdc';
-  return 'no_lock';
-}
-
-export default function TradeDetail({
-  tradeId,
-  buyerToken,
-  flow,
-  onOpenQR,
-  onOpenChat,
-  onCancelRematch,
-  onGeneralCancelComplete,
-  onBackToMap,
-  onTradeLoaded,
-}: TradeDetailProps) {
-  const [detail, setDetail] = useState<TradeDetailResponse | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [cancelLoading, setCancelLoading] = useState(false);
-  const [rematchError, setRematchError] = useState<string | null>(null);
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-
-  const poll = useCallback(async () => {
-    if (!buyerToken) {
-      setLoadError('No session. Open the app from the home screen to continue.');
-      return;
-    }
-    try {
-      const data = await fetchTradeDetail(tradeId, buyerToken);
-      setDetail(data);
-      setLoadError(null);
-      const t = data.trade;
-      onTradeLoaded?.({
-        id: t.id,
-        status: t.status,
-        amount_mxn: t.amount_mxn,
-        secret_hash: t.secret_hash,
-        lock_tx_hash: t.lock_tx_hash ?? null,
-      });
-    } catch (e: unknown) {
-      const msg =
-        e && typeof e === 'object' && 'response' in e
-          && (e as { response?: { data?: { message?: string } } }).response?.data?.message;
-      setLoadError(typeof msg === 'string' ? msg : 'Could not load this trade.');
-    }
-  }, [buyerToken, tradeId, onTradeLoaded]);
+function useCountdown(expiresAt: string | null) {
+  const [remaining, setRemaining] = useState('');
 
   useEffect(() => {
-    void poll();
-    const timer = window.setInterval(() => void poll(), POLL_MS);
-    return () => window.clearInterval(timer);
-  }, [poll]);
+    if (!expiresAt) return;
 
-  const merchantName = detail?.seller_username ?? (flow === 'deposit' ? 'Tienda Don Pepe' : 'Farmacia Guadalupe');
-  const lockTx = detail?.trade.lock_tx_hash;
+    const tick = () => {
+      const diff = new Date(expiresAt).getTime() - Date.now();
+      if (diff <= 0) {
+        setRemaining('Expirado');
+        return;
+      }
+      const h = Math.floor(diff / 3_600_000);
+      const m = Math.floor((diff % 3_600_000) / 60_000);
+      const s = Math.floor((diff % 60_000) / 1000);
+      setRemaining(h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`);
+    };
 
-  /**
-   * #31 path — same HTTP cancel, but UX contract is "re-enter discovery", not the terminal receipt.
-   */
-  const handleCancelRematch = async () => {
-    if (!buyerToken || !detail) return;
-    setRematchError(null);
-    setCancelLoading(true);
-    try {
-      await cancelTradeRequest(tradeId, buyerToken);
-      onCancelRematch(detail.trade.amount_mxn);
-    } catch (e: unknown) {
-      const err = e instanceof Error ? e.message : 'No se pudo cancelar para volver a buscar.';
-      setRematchError(err);
-    } finally {
-      setCancelLoading(false);
-    }
-  };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [expiresAt]);
 
-  /**
-   * #20 path — invoked only after the two-step modal confirms; surfaces API errors inside the modal.
-   */
-  const executeGeneralCancelFromDialog = async (): Promise<void> => {
-    if (!buyerToken || !detail) throw new Error('Sesión no disponible.');
-    const res: CancelTradeResponse = await cancelTradeRequest(tradeId, buyerToken);
-    onGeneralCancelComplete({
-      tradeId,
-      amountMxn: detail.trade.amount_mxn,
-      refundExpected: res.refund_expected,
-      lockTxHash: res.lock_tx_hash,
-    });
-  };
+  return remaining;
+}
 
-  const showGeneralCancelCta = detail != null && buyerMayRequestCancel(detail);
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
+  pending: { label: 'Pendiente', color: '#f59e0b', icon: 'hourglass_top' },
+  locked: { label: 'Bloqueado', color: '#3b82f6', icon: 'lock' },
+  revealing: { label: 'Revelando', color: '#8b5cf6', icon: 'qr_code' },
+  revealed: { label: 'Revelado', color: '#06b6d4', icon: 'visibility' },
+  completed: { label: 'Completado', color: '#22c55e', icon: 'check_circle' },
+  cancelled: { label: 'Cancelado', color: '#ef4444', icon: 'cancel' },
+  expired: { label: 'Expirado', color: '#6b7280', icon: 'schedule' },
+};
+
+function TradeStateBadge({ status }: { status: string }) {
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
 
   return (
-    <div className="bg-background text-on-surface font-body min-h-screen flex flex-col">
-      <header className="fixed top-0 w-full z-50 flex items-center px-4 py-3 justify-between bg-surface/80 backdrop-blur-md border-b border-surface-container">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            type="button"
-            onClick={onBackToMap}
-            className="p-2 hover:bg-surface-container-low transition-colors rounded-full text-primary shrink-0"
-          >
-            <span className="material-symbols-outlined">arrow_back</span>
-          </button>
-          <div className="min-w-0">
-            <h1 className="font-headline font-bold text-lg tracking-tight truncate">{merchantName}</h1>
-            <p className="text-[11px] text-on-surface/50 truncate">Trade · {tradeId.slice(0, 8)}…</p>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 mt-[72px] mb-28 px-4 max-w-2xl mx-auto w-full flex flex-col gap-4 pb-8">
-        {loadError && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">{loadError}</div>
-        )}
-
-        {detail?.merchant_unavailable && (
-          <MerchantUnavailableBanner
-            onWait={() => undefined}
-            onCancelRematch={() => void handleCancelRematch()}
-            cancelLoading={cancelLoading}
-          />
-        )}
-
-        {rematchError ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
-            <p>{rematchError}</p>
-            <p className="mt-2 text-xs">
-              <a href="mailto:soporte@micopay.app" className="font-semibold text-primary underline">
-                Contactar soporte
-              </a>
-            </p>
-          </div>
-        ) : null}
-
-        <div className="p-4 rounded-xl bg-primary-container/10 border border-primary/10 flex items-start gap-3">
-          <div className="bg-primary text-white rounded-full p-1 flex items-center justify-center shrink-0 mt-0.5">
-            <span className="material-symbols-outlined text-sm">check</span>
-          </div>
-          <div className="flex flex-col gap-1 min-w-0">
-            <p className="text-sm font-semibold text-primary">
-              {detail ? statusLabel(detail.trade.status) : 'Loading trade…'}
-            </p>
-            {lockTx ? (
-              <a
-                href={`${STELLAR_EXPLORER}/${lockTx}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors font-mono truncate"
-              >
-                <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-                Ver en Stellar Testnet
-                <span className="truncate opacity-60">· {lockTx.substring(0, 12)}…</span>
-              </a>
-            ) : (
-              <p className="text-xs text-on-surface/40">
-                {detail ? 'Sin transacción de bloqueo aún' : '…'}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {detail && (
-          <p className="text-center text-sm text-on-surface/70">
-            Monto: <span className="font-semibold text-on-surface">${detail.trade.amount_mxn} MXN</span>
-          </p>
-        )}
-
-        <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={onOpenChat}
-            className="w-full rounded-xl border border-outline-variant/30 bg-surface py-3 text-sm font-semibold text-primary hover:bg-surface-container-low transition-colors"
-          >
-            Abrir chat
-          </button>
-          <button
-            type="button"
-            onClick={onOpenQR}
-            className="w-full rounded-xl bg-primary py-3 text-sm font-semibold text-on-primary hover:opacity-95 transition-opacity"
-          >
-            Ver código QR de pago
-          </button>
-          {showGeneralCancelCta ? (
-            <button
-              type="button"
-              onClick={() => setCancelDialogOpen(true)}
-              className="w-full rounded-xl border border-red-200 bg-red-50 py-3 text-sm font-semibold text-red-900 hover:bg-red-100/80 transition-colors"
-            >
-              Cancelar operación
-            </button>
-          ) : null}
-        </div>
-      </main>
-
-      {detail ? (
-        <CancelTradeDialog
-          open={cancelDialogOpen}
-          consequence={cancelConsequenceKind(detail)}
-          onClose={() => setCancelDialogOpen(false)}
-          onConfirmCancel={executeGeneralCancelFromDialog}
-        />
-      ) : null}
+    <div
+      className="inline-flex items-center gap-2 px-4 py-2 rounded-full"
+      style={{
+        background: `${config.color}20`,
+        border: `1px solid ${config.color}40`,
+      }}
+    >
+      <span className="material-symbols-outlined text-sm" style={{ color: config.color, fontVariationSettings: '"FILL" 1' }}>
+        {config.icon}
+      </span>
+      <span className="text-sm font-semibold" style={{ color: config.color }}>
+        {config.label}
+      </span>
     </div>
   );
 }
 
-function statusLabel(status: string) {
-  switch (status) {
-    case 'pending':
-      return 'Pendiente · esperando bloqueo';
-    case 'locked':
-      return '✓ Oferta aceptada · Saldo bloqueado en escrow';
-    case 'revealing':
-      return '✓ Listo para entrega en efectivo';
-    case 'cancelled':
-      return 'Operación cancelada';
-    case 'completed':
-      return 'Completada';
-    default:
-      return `Estado: ${status}`;
+function SupportLink() {
+  return (
+    <div className="mt-8 text-center">
+      <p className="text-sm text-on-surface-variant">
+        ¿Necesitas ayuda?{' '}
+        <a href={`mailto:${SUPPORT_EMAIL}`} className="text-primary font-semibold hover:underline">
+          Contactar soporte
+        </a>
+      </p>
+    </div>
+  );
+}
+
+// ── State-specific views ────────────────────────────────────────────────────
+
+function PendingView({ trade, onCancel }: { trade: TradeDetailData; onCancel: () => void }) {
+  const countdown = useCountdown(trade.expires_at);
+
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mb-6">
+        <span className="material-symbols-outlined text-amber-600 text-3xl" style={{ fontVariationSettings: '"FILL" 1' }}>
+          hourglass_top
+        </span>
+      </div>
+      <h2 className="text-2xl font-bold text-on-surface mb-2">Esperando al vendedor</h2>
+      <p className="text-on-surface-variant mb-6">
+        El vendedor aún no ha bloqueado los fondos. Tu operación está segura en escrow.
+      </p>
+
+      <div className="bg-surface-container-low rounded-xl p-4 w-full mb-6">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm text-on-surface-variant">Monto</span>
+          <span className="font-bold text-on-surface">${trade.amount_mxn} MXN</span>
+        </div>
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm text-on-surface-variant">Comisión</span>
+          <span className="text-sm text-on-surface">${trade.platform_fee_mxn} MXN</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-on-surface-variant">Expira en</span>
+          <span className="text-sm font-semibold text-primary">{countdown}</span>
+        </div>
+      </div>
+
+      <button
+        onClick={onCancel}
+        className="w-full py-3 rounded-xl border border-error text-error font-semibold hover:bg-error/5 transition-colors"
+      >
+        Cancelar operación
+      </button>
+    </div>
+  );
+}
+
+function LockedView({ trade }: { trade: TradeDetailData }) {
+  const STELLAR_EXPLORER = 'https://stellar.expert/explorer/testnet/tx';
+
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mb-6">
+        <span className="material-symbols-outlined text-blue-600 text-3xl" style={{ fontVariationSettings: '"FILL" 1' }}>
+          lock
+        </span>
+      </div>
+      <h2 className="text-2xl font-bold text-on-surface mb-2">Fondos bloqueados</h2>
+      <p className="text-on-surface-variant mb-6">
+        Los fondos están seguros en el contrato inteligente. Esperando confirmación del vendedor.
+      </p>
+
+      {trade.lock_tx_hash && (
+        <a
+          href={`${STELLAR_EXPLORER}/${trade.lock_tx_hash}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary text-sm font-semibold hover:underline mb-6 flex items-center gap-1"
+        >
+          Ver transacción en Stellar
+          <span className="material-symbols-outlined text-sm">open_in_new</span>
+        </a>
+      )}
+
+      <button className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:opacity-90 transition-opacity">
+        Abrir chat con el vendedor
+      </button>
+    </div>
+  );
+}
+
+function RevealingView({ trade }: { trade: TradeDetailData }) {
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mb-6">
+        <span className="material-symbols-outlined text-purple-600 text-3xl" style={{ fontVariationSettings: '"FILL" 1' }}>
+          qr_code
+        </span>
+      </div>
+      <h2 className="text-2xl font-bold text-on-surface mb-2">Mostrar tu QR</h2>
+      <p className="text-on-surface-variant mb-6">
+        El vendedor confirmó el pago. Muestra tu código QR para completar la operación.
+      </p>
+
+      <button className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:opacity-90 transition-opacity mb-4">
+        Ver mi QR de intercambio
+      </button>
+
+      <button className="w-full py-3 rounded-xl border border-primary text-primary font-semibold hover:bg-primary/5 transition-colors">
+        Abrir chat
+      </button>
+    </div>
+  );
+}
+
+function RevealedView({ trade, onComplete }: { trade: TradeDetailData; onComplete: () => void }) {
+  const [isConfirming, setIsConfirming] = useState(false);
+
+  const handleConfirm = async () => {
+    if (isConfirming) return;
+    setIsConfirming(true);
+    try {
+      const token = getToken();
+      if (token) {
+        await completeTrade(trade.id, token);
+      }
+    } catch (e) {
+      console.warn('Could not complete trade on backend', e);
+    } finally {
+      setTimeout(() => onComplete(), 1500);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div className="w-16 h-16 rounded-full bg-cyan-100 flex items-center justify-center mb-6">
+        <span className="material-symbols-outlined text-cyan-600 text-3xl" style={{ fontVariationSettings: '"FILL" 1' }}>
+          visibility
+        </span>
+      </div>
+      <h2 className="text-2xl font-bold text-on-surface mb-2">Confirmar recepción</h2>
+      <p className="text-on-surface-variant mb-6">
+        ¿Ya recibiste el efectivo? Confirma para liberar los fondos al vendedor.
+      </p>
+
+      {!isConfirming ? (
+        <button
+          onClick={handleConfirm}
+          className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+        >
+          <span className="material-symbols-outlined" style={{ fontVariationSettings: '"FILL" 1' }}>
+            check_circle
+          </span>
+          Ya recibí el efectivo
+        </button>
+      ) : (
+        <div className="flex flex-col items-center gap-3 py-4">
+          <div className="relative w-8 h-8">
+            <div className="absolute inset-0 border-4 border-surface-container-high rounded-full"></div>
+            <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <p className="text-sm font-medium text-outline">Confirmando intercambio…</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CompletedView({ trade }: { trade: TradeDetailData }) {
+  const STELLAR_EXPLORER = 'https://stellar.expert/explorer/testnet/tx';
+
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-6">
+        <span className="material-symbols-outlined text-green-600 text-3xl" style={{ fontVariationSettings: '"FILL" 1' }}>
+          check_circle
+        </span>
+      </div>
+      <h2 className="text-2xl font-bold text-on-surface mb-2">¡Operación completada!</h2>
+      <p className="text-on-surface-variant mb-6">Tu intercambio fue exitoso.</p>
+
+      <div className="bg-surface-container-low rounded-xl p-4 w-full mb-6">
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm text-on-surface-variant">Monto</span>
+          <span className="font-bold text-on-surface">${trade.amount_mxn} MXN</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-on-surface-variant">Fecha</span>
+          <span className="text-sm text-on-surface">
+            {trade.completed_at ? new Date(trade.completed_at).toLocaleString('es-MX') : '-'}
+          </span>
+        </div>
+      </div>
+
+      {trade.release_tx_hash && (
+        <a
+          href={`${STELLAR_EXPLORER}/${trade.release_tx_hash}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary text-sm font-semibold hover:underline mb-6 flex items-center gap-1"
+        >
+          Ver transacción en Stellar
+          <span className="material-symbols-outlined text-sm">open_in_new</span>
+        </a>
+      )}
+
+      <Link
+        to="/"
+        className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:opacity-90 transition-opacity text-center"
+      >
+        Volver al inicio
+      </Link>
+    </div>
+  );
+}
+
+function CancelledView() {
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-6">
+        <span className="material-symbols-outlined text-red-600 text-3xl" style={{ fontVariationSettings: '"FILL" 1' }}>
+          cancel
+        </span>
+      </div>
+      <h2 className="text-2xl font-bold text-on-surface mb-2">Operación cancelada</h2>
+      <p className="text-on-surface-variant mb-6">
+        Esta operación fue cancelada. Tus fondos están seguros.
+      </p>
+
+      <Link
+        to="/"
+        className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:opacity-90 transition-opacity text-center"
+      >
+        Volver al inicio
+      </Link>
+    </div>
+  );
+}
+
+function ExpiredView() {
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-6">
+        <span className="material-symbols-outlined text-gray-600 text-3xl" style={{ fontVariationSettings: '"FILL" 1' }}>
+          schedule
+        </span>
+      </div>
+      <h2 className="text-2xl font-bold text-on-surface mb-2">Operación expirada</h2>
+      <p className="text-on-surface-variant mb-6">
+        El tiempo para completar esta operación ha expirado. Tus fondos fueron devueltos.
+      </p>
+
+      <Link
+        to="/"
+        className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:opacity-90 transition-opacity text-center"
+      >
+        Volver al inicio
+      </Link>
+    </div>
+  );
+}
+
+// ── Error views ─────────────────────────────────────────────────────────────
+
+function NotFoundError() {
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-6">
+        <span className="material-symbols-outlined text-red-600 text-3xl" style={{ fontVariationSettings: '"FILL" 1' }}>
+          search_off
+        </span>
+      </div>
+      <h2 className="text-2xl font-bold text-on-surface mb-2">Trade no encontrado</h2>
+      <p className="text-on-surface-variant mb-6">
+        La operación que buscas no existe o fue eliminada.
+      </p>
+
+      <Link
+        to="/"
+        className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:opacity-90 transition-opacity text-center"
+      >
+        Volver al inicio
+      </Link>
+
+      <SupportLink />
+    </div>
+  );
+}
+
+function ForbiddenError() {
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mb-6">
+        <span className="material-symbols-outlined text-red-600 text-3xl" style={{ fontVariationSettings: '"FILL" 1' }}>
+          lock_person
+        </span>
+      </div>
+      <h2 className="text-2xl font-bold text-on-surface mb-2">Sin acceso</h2>
+      <p className="text-on-surface-variant mb-6">
+        No tienes permiso para ver esta operación. Solo los participantes pueden acceder.
+      </p>
+
+      <Link
+        to="/"
+        className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:opacity-90 transition-opacity text-center"
+      >
+        Volver al inicio
+      </Link>
+
+      <SupportLink />
+    </div>
+  );
+}
+
+function NetworkError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center text-center">
+      <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center mb-6">
+        <span className="material-symbols-outlined text-orange-600 text-3xl" style={{ fontVariationSettings: '"FILL" 1' }}>
+          wifi_off
+        </span>
+      </div>
+      <h2 className="text-2xl font-bold text-on-surface mb-2">Error de conexión</h2>
+      <p className="text-on-surface-variant mb-6">
+        No se pudo conectar al servidor. Verifica tu conexión e intenta de nuevo.
+      </p>
+
+      <button
+        onClick={onRetry}
+        className="w-full py-3 rounded-xl bg-primary text-white font-semibold hover:opacity-90 transition-opacity mb-4"
+      >
+        Reintentar
+      </button>
+
+      <SupportLink />
+    </div>
+  );
+}
+
+// ── Main component ──────────────────────────────────────────────────────────
+
+export default function TradeDetail() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [trade, setTrade] = useState<TradeDetailData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<'not_found' | 'forbidden' | 'network' | null>(null);
+
+  const fetchTrade = useCallback(async () => {
+    if (!id) return;
+
+    const token = getToken();
+    if (!token) {
+      localStorage.setItem('pendingTradeRedirect', `/trade/${id}`);
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const data = await getTrade(id, token);
+      setTrade(data);
+      setError(null);
+    } catch (e: any) {
+      const status = e?.response?.status;
+      if (status === 404) {
+        setError('not_found');
+      } else if (status === 403) {
+        setError('forbidden');
+      } else {
+        setError('network');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [id, navigate]);
+
+  // Fetch on mount
+  useEffect(() => {
+    fetchTrade();
+  }, [fetchTrade]);
+
+  // Poll for active states
+  useEffect(() => {
+    if (!trade || !ACTIVE_STATES.includes(trade.status)) return;
+
+    const interval = setInterval(fetchTrade, TRADE_POLL_INTERVAL);
+    return () => clearInterval(interval);
+  }, [trade?.status, fetchTrade]);
+
+  // Handle cancel
+  const handleCancel = async () => {
+    if (!trade) return;
+
+    const token = getToken();
+    if (!token) return;
+
+    try {
+      await cancelTrade(trade.id, token);
+      fetchTrade(); // Refresh trade state
+    } catch (e) {
+      console.error('Failed to cancel trade', e);
+    }
+  };
+
+  // Handle complete (navigate to success)
+  const handleComplete = () => {
+    fetchTrade(); // Refresh to get completed state
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-surface-container-lowest flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-surface-container-high border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-on-surface-variant text-sm">Cargando operación…</p>
+        </div>
+      </div>
+    );
   }
+
+  // Error states
+  if (error === 'not_found') {
+    return (
+      <div className="min-h-screen bg-surface-container-lowest flex items-center justify-center px-6">
+        <NotFoundError />
+      </div>
+    );
+  }
+
+  if (error === 'forbidden') {
+    return (
+      <div className="min-h-screen bg-surface-container-lowest flex items-center justify-center px-6">
+        <ForbiddenError />
+      </div>
+    );
+  }
+
+  if (error === 'network') {
+    return (
+      <div className="min-h-screen bg-surface-container-lowest flex items-center justify-center px-6">
+        <NetworkError onRetry={fetchTrade} />
+      </div>
+    );
+  }
+
+  if (!trade) {
+    return null;
+  }
+
+  // Render state-specific view
+  const renderStateView = () => {
+    switch (trade.status) {
+      case 'pending':
+        return <PendingView trade={trade} onCancel={handleCancel} />;
+      case 'locked':
+        return <LockedView trade={trade} />;
+      case 'revealing':
+        return <RevealingView trade={trade} />;
+      case 'revealed':
+        return <RevealedView trade={trade} onComplete={handleComplete} />;
+      case 'completed':
+        return <CompletedView trade={trade} />;
+      case 'cancelled':
+        return <CancelledView />;
+      case 'expired':
+        return <ExpiredView />;
+      default:
+        return <PendingView trade={trade} onCancel={handleCancel} />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-surface-container-lowest font-body text-on-surface">
+      {/* TopAppBar */}
+      <header className="sticky top-0 z-50 bg-surface-container-lowest/80 backdrop-blur-md border-b border-surface-container">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/')}
+              className="p-2 hover:bg-surface-container-low rounded-full transition-colors text-primary"
+            >
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+            <div>
+              <h1 className="font-headline font-bold text-lg text-on-surface">Detalle de operación</h1>
+              <p className="text-xs text-on-surface-variant font-mono truncate max-w-[200px]">
+                ID: {trade.id.substring(0, 12)}…
+              </p>
+            </div>
+          </div>
+          <TradeStateBadge status={trade.status} />
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-md mx-auto px-6 py-8">
+        {renderStateView()}
+
+        {/* Support link visible in all states */}
+        {trade.status !== 'completed' && trade.status !== 'cancelled' && trade.status !== 'expired' && (
+          <SupportLink />
+        )}
+      </main>
+    </div>
+  );
 }

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { authMiddleware } from '../middleware/auth.middleware.js';
+import { UpstreamError } from '../utils/errors.js';
 
 export async function stellarRoutes(app: FastifyInstance) {
   /**
@@ -47,6 +48,7 @@ export async function stellarRoutes(app: FastifyInstance) {
 
       return { hash: result.hash, status: result.status };
     } catch (err: any) {
+      request.log.error({ err: err.message, category: 'stellar.tx' }, '[stellar] Submit failed');
       return reply.status(500).send({ error: err.message || 'Failed to submit transaction' });
     }
   });

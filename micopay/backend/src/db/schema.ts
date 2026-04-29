@@ -10,6 +10,7 @@ const mem: Record<string, any[]> = {
   trades: [],
   secret_access_log: [],
   audit_log: [],
+  processed_tx: [],
 };
 
 function memNow() {
@@ -190,7 +191,6 @@ function memQuery(sql: string, params: any[] = []): any[] {
     const whereStr = tableMatch[3];
 
     const updates: Record<string, any> = {};
-    // Split SET by comma, but careful with function calls — split only on ", col ="
     const setPairs = setStr.split(/,\s*(?=\w+\s*=)/);
     for (const pair of setPairs) {
       const m = pair.trim().match(/^(\w+)\s*=\s*(.+)$/i);
@@ -266,4 +266,57 @@ export async function execute(text: string, params?: any[]) {
   return { rows: [] };
 }
 
-export default { pool, query, getOne, getMany, execute };
+/**
+ * INSERT a row only if the PK does not already exist.
+ *
+ * For PostgreSQL: wraps the caller's SQL in ON CONFLICT (pk_col) DO NOTHING
+ * and returns the first RETURNING row, or null if the row already existed.
+ *
+ * For the in-memory fallback: checks the pk_col value in the store first;
+ * if a matching row already exists the insert is skipped and null is returned.
+ *
+ * @param text   INSERT … RETURNING * statement (no ON CONFLICT clause needed)
+ * @param params Positional parameters
+ * @param pkCol  Primary-key column name (used to detect duplicates, default 'tx_hash')
+ */
+export async function insertUnique<T = any>(
+  text: string,
+  params: any[],
+  pkCol = 'tx_hash',
+): Promise<T | null> {
+  if (pgAvailable && pgPool) {
+    // Inject ON CONFLICT … DO NOTHING before the RETURNING clause
+    const conflictSql = text.replace(
+      /(\s+RETURNING)/i,
+      ` ON CONFLICT (${pkCol}) DO NOTHING$1`,
+    );
+    const r = await pgPool.query(conflictSql, params);
+    return (r.rows[0] as T) ?? null;
+  }
+
+  // In-memory path: derive table name and check for existing pk value
+  const tableMatch = text.match(/INSERT INTO\s+(\w+)\s*\(/i);
+  if (!tableMatch) return null;
+  const tableName = tableMatch[1].toLowerCase();
+
+  // Find which positional param corresponds to the pk column
+  const colsMatch = text.match(/INSERT INTO\s+\w+\s*\(([^)]+)\)/i);
+  if (!colsMatch) return null;
+  const cols = colsMatch[1].split(',').map((c) => c.trim());
+  const valsMatch = text.match(/VALUES\s*\(([^)]+)\)/i);
+  if (!valsMatch) return null;
+  const vals = valsMatch[1].split(',').map((v) => v.trim());
+
+  const pkIdx = cols.indexOf(pkCol);
+  if (pkIdx === -1) return null;
+  const pkValue = resolveVal(vals[pkIdx], params);
+
+  // Conflict check
+  if ((mem[tableName] ?? []).some((r) => r[pkCol] === pkValue)) return null;
+
+  // No conflict — perform the normal insert
+  const rows = memQuery(text, params);
+  return (rows[0] as T) ?? null;
+}
+
+export default { pool, query, getOne, getMany, execute, insertUnique };
