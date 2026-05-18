@@ -50,7 +50,7 @@ export default function TradeConfirmation({
 
   return (
     <div className="min-h-screen bg-surface-container-lowest text-on-surface font-body pb-28">
-      <header className="sticky top-0 z-40 border-b border-outline-variant/20 bg-surface/90 backdrop-blur-md px-4 py-3 flex items-center gap-3">
+      <header className="sticky top-0 z-40 border-b border-outline-variant/20 bg-surface/90 backdrop-blur-md px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] flex items-center gap-3">
         <button
           type="button"
           onClick={onBack}

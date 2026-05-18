@@ -30,7 +30,7 @@ const DepositQR = ({ onBack, onChat, onSuccess }: DepositQRProps) => {
     return (
         <div className="bg-surface font-body text-on-surface min-h-screen flex flex-col">
             {/* TopAppBar */}
-            <header className="bg-[#F4FAFF] w-full top-0 sticky flex items-center justify-between px-6 py-4 z-50">
+            <header className="bg-[#F4FAFF] w-full top-0 sticky flex items-center justify-between px-6 py-4 pt-[max(1rem,env(safe-area-inset-top))] z-50">
                 <div className="flex items-center gap-3">
                     <button onClick={onBack} className="text-[#00694C] active:scale-95 duration-200">
                         <span className="material-symbols-outlined">arrow_back</span>

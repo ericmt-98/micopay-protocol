@@ -6,7 +6,7 @@ interface BottomNavProps {
 
 const BottomNav = ({ currentPage, onNavigate, isMerchant = false }: BottomNavProps) => {
   return (
-    <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-8 pt-3 bg-[#F4FAFF]/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-[0_-8px_32px_rgba(11,30,38,0.04)] rounded-t-[32px]">
+    <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-3 bg-[#F4FAFF]/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-[0_-8px_32px_rgba(11,30,38,0.04)] rounded-t-[32px]">
       {/* Inicio */}
       <button
         onClick={() => onNavigate('home')}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getCETESRate, buyCETES, sellCETES, CETESRate, CETESTxResult } from '../services/api';
+import { extractApiErrorPayload } from '../utils/apiError';
 
 interface CETESScreenProps {
   onBack: () => void;
@@ -70,8 +71,8 @@ const CETESScreen = ({ onBack, onBanco }: CETESScreenProps) => {
           : await sellCETES(amount, sourceAsset);
       setTxResult(result);
       setAmount('');
-    } catch (err: any) {
-      setError(err?.response?.data?.error ?? err.message ?? 'Error desconocido');
+    } catch (err: unknown) {
+      setError(extractApiErrorPayload(err).message);
     } finally {
       setTxLoading(false);
     }
@@ -82,7 +83,7 @@ const CETESScreen = ({ onBack, onBanco }: CETESScreenProps) => {
   return (
     <div className="bg-surface text-on-surface font-body min-h-screen flex flex-col pb-10">
       {/* Header */}
-      <header className="fixed top-0 left-0 w-full z-50 flex items-center gap-4 px-4 py-4 backdrop-blur-md bg-white/90 border-b border-outline-variant/10">
+      <header className="fixed top-0 left-0 w-full z-50 flex items-center gap-4 px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-md bg-white/90 border-b border-outline-variant/10">
         <button
           onClick={onBack}
           className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors"
@@ -177,6 +178,7 @@ const CETESScreen = ({ onBack, onBanco }: CETESScreenProps) => {
             </label>
             <input
               type="number"
+              inputMode="decimal"
               min="0"
               step="any"
               placeholder="0.00"

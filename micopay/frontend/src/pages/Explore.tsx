@@ -9,7 +9,7 @@ const Explore = ({ onBack, onNavigate }: ExploreProps) => {
     return (
         <div className="bg-surface text-on-surface font-body min-h-screen flex flex-col pb-32">
             {/* Header */}
-            <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 py-4 backdrop-blur-md bg-white/90 border-b border-outline-variant/10">
+            <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 py-4 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-md bg-white/90 border-b border-outline-variant/10">
                 <Logo />
                 <div className="w-10 h-10 rounded-full border-2 border-primary-container overflow-hidden">
                     <img 
