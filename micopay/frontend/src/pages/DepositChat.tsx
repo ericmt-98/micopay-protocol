@@ -26,7 +26,7 @@ const DepositChat = ({ onBack, onViewQR, lockTxHash }: DepositChatProps) => {
     return (
         <div className="bg-surface font-body text-on-surface min-h-screen flex flex-col">
             {/* TopAppBar */}
-            <header className="flex items-center justify-between px-6 py-4 w-full sticky top-0 z-50 bg-[#F4FAFF] border-b border-[#E7F6FF]">
+            <header className="flex items-center justify-between px-6 py-4 pt-[max(1rem,env(safe-area-inset-top))] w-full sticky top-0 z-50 bg-[#F4FAFF] border-b border-[#E7F6FF]">
                 <div className="flex items-center gap-4">
                     <button 
                         onClick={onBack}
@@ -130,7 +130,7 @@ const DepositChat = ({ onBack, onViewQR, lockTxHash }: DepositChatProps) => {
                 </div>
 
                 {/* Footer / Input */}
-                <footer className="sticky bottom-0 bg-white/80 backdrop-blur-xl px-6 pb-8 pt-4 flex flex-col gap-4 border-t border-[#E7F6FF]">
+                <footer className="sticky bottom-0 bg-white/80 backdrop-blur-xl px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-4 flex flex-col gap-4 border-t border-[#E7F6FF]">
                     <div className="grid grid-cols-2 gap-3">
                         <button className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl border border-primary/20 bg-white text-primary font-bold text-sm hover:bg-surface-container-low transition-all active:scale-95">
                             <span className="material-symbols-outlined !text-[20px]">location_on</span>

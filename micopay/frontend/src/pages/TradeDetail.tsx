@@ -1,6 +1,28 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getTrade, completeTrade, cancelTrade, TradeDetailData, getToken } from '../services/api';
+import {
+  fetchTradeDetail,
+  completeTrade,
+  cancelTradeRequest,
+  TradeDetailResponse,
+} from '../services/api';
+
+type TradeDetailData = TradeDetailResponse['trade'] & {
+  platform_fee_mxn?: number;
+  release_tx_hash?: string | null;
+  completed_at?: string | null;
+};
+
+function getToken(): string | null {
+  try {
+    const raw = localStorage.getItem('micopay_users');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.buyer?.token ?? parsed?.seller?.token ?? null;
+  } catch {
+    return null;
+  }
+}
 
 const TRADE_POLL_INTERVAL = 5000;
 const SUPPORT_EMAIL = 'support@micopay.io';
@@ -80,7 +102,7 @@ function SupportLink() {
 // ── State-specific views ────────────────────────────────────────────────────
 
 function PendingView({ trade, onCancel }: { trade: TradeDetailData; onCancel: () => void }) {
-  const countdown = useCountdown(trade.expires_at);
+  const countdown = useCountdown(trade.expires_at ?? null);
 
   return (
     <div className="flex flex-col items-center text-center">
@@ -421,8 +443,8 @@ export default function TradeDetail() {
     }
 
     try {
-      const data = await getTrade(id, token);
-      setTrade(data);
+      const data = await fetchTradeDetail(id, token);
+      setTrade(data.trade as TradeDetailData);
       setError(null);
     } catch (e: any) {
       const status = e?.response?.status;
@@ -459,7 +481,7 @@ export default function TradeDetail() {
     if (!token) return;
 
     try {
-      await cancelTrade(trade.id, token);
+      await cancelTradeRequest(trade.id, token);
       fetchTrade(); // Refresh trade state
     } catch (e) {
       console.error('Failed to cancel trade', e);
@@ -537,7 +559,7 @@ export default function TradeDetail() {
   return (
     <div className="min-h-screen bg-surface-container-lowest font-body text-on-surface">
       {/* TopAppBar */}
-      <header className="sticky top-0 z-50 bg-surface-container-lowest/80 backdrop-blur-md border-b border-surface-container">
+      <header className="sticky top-0 z-50 bg-surface-container-lowest/80 backdrop-blur-md border-b border-surface-container pt-[max(0px,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <button

@@ -1,11 +1,8 @@
 import { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { getSecret, completeTrade, TradeData } from '../services/api';
-<<<<<<< HEAD
-import TradeStateBadge, { getTradeStateDebugOverride, normalizeTradeState, TradeState } from '../components/TradeStateBadge';
-=======
+import { getTradeStateDebugOverride, normalizeTradeState, TradeState } from '../components/TradeStateBadge';
 import SupportLink from '../components/SupportLink';
->>>>>>> 2b349f8 (feat: #15 Support contact entry points from trade detail and error states)
 
 interface QRRevealProps {
     activeTrade: TradeData | null;
@@ -31,7 +28,6 @@ const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat
             .then(({ qr_payload }) => {
                 setQrPayload(qr_payload);
                 setSecretLoaded(true);
-                console.log('✅ Secret fetched for trade', activeTrade.id);
             })
             .catch((e) => {
                 console.warn('Could not fetch secret, using demo QR', e);
@@ -51,7 +47,6 @@ const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat
         try {
             if (activeTrade && buyerToken) {
                 await completeTrade(activeTrade.id, buyerToken);
-                console.log('✅ Trade completed on-chain');
             }
             setTradeState('completed');
         } catch (e) {
@@ -64,7 +59,7 @@ const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat
     return (
         <div className="bg-surface font-body text-on-surface min-h-screen">
             {/* Top Navigation */}
-            <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 py-4 backdrop-blur-md bg-white/90 border-b border-outline-variant/20">
+            <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 py-4 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-md bg-white/90 border-b border-outline-variant/20">
                 <div className="flex items-center gap-3">
                     <button onClick={onBack} aria-label="Volver" className="p-2 hover:bg-surface-container-low rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary">
                         <span aria-hidden="true" className="material-symbols-outlined text-primary">arrow_back</span>

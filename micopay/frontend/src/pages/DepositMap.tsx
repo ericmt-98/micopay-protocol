@@ -1,4 +1,5 @@
 import MapSim from '../components/MapSim';
+import { useGeolocation } from '../hooks/useGeolocation';
 
 interface DepositMapProps {
     onBack: () => void;
@@ -17,10 +18,11 @@ const DepositMap = ({
     creationError,
     onDismissCreationError,
 }: DepositMapProps) => {
+    const geo = useGeolocation();
     return (
         <div className="bg-surface text-on-surface min-h-screen pb-24">
             {/* TopAppBar */}
-            <header className="w-full top-0 sticky bg-[#E7F6FF] transition-colors duration-300 shadow-[0px_32px_32px_rgba(11,30,38,0.04)] z-50">
+            <header className="w-full top-0 sticky bg-[#E7F6FF] transition-colors duration-300 shadow-[0px_32px_32px_rgba(11,30,38,0.04)] z-50 pt-[max(0px,env(safe-area-inset-top))]">
                 <div className="flex items-center justify-between px-6 py-4 w-full">
                     <div className="flex items-center gap-4">
                         <button 
@@ -62,7 +64,13 @@ const DepositMap = ({
                         <h2 className="text-4xl font-headline font-extrabold text-on-surface tracking-tight">${amount}</h2>
                         <span className="text-xl font-headline font-bold text-on-surface-variant">MXN</span>
                     </div>
-                    <p className="text-on-surface-variant text-sm font-body">Buscando agentes y usuarios verificados cerca de ti.</p>
+                    <p className="text-on-surface-variant text-sm font-body">
+                        {geo.loading
+                            ? 'Localizando agentes cerca de ti...'
+                            : geo.lat && geo.lng
+                                ? `Buscando cerca de ${geo.lat.toFixed(3)}, ${geo.lng.toFixed(3)}.`
+                                : 'Buscando agentes y usuarios verificados cerca de ti.'}
+                    </p>
                 </section>
 
                 {/* Map View Section */}

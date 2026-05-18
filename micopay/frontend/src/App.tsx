@@ -1,4 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, createContext, useContext } from "react";
+import {
+  HashRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
 import ErrorBoundary from './components/ErrorBoundary';
 
 import Home from "./pages/Home";
@@ -29,37 +37,355 @@ import {
   UserData,
   TradeData,
 } from "./services/api";
+import { readJSON, writeJSON, removeKey } from "./services/secureStorage";
+
+const USERS_STORAGE_KEY = "micopay_users";
+
+interface StoredUsers { buyer: UserData; seller: UserData }
 
 interface AppProps {
   initialTradeId?: string | null;
 }
 
-function App({ initialTradeId = null }: AppProps) {
-  const [currentPage, setCurrentPage] = useState<'home' | string>('home');
-  const [flow, setFlow] = useState<'cashout' | 'deposit' | null>(null);
+type Flow = 'cashout' | 'deposit' | null;
 
+interface AppCtx {
+  buyerUser: UserData | null;
+  sellerUser: UserData | null;
+  activeTrade: TradeData | null;
+  lockTxHash: string | null;
+  activeAmount: number;
+  tradeLoading: boolean;
+  flow: Flow;
+  setActiveAmount: (n: number) => void;
+  setFlow: (f: Flow) => void;
+  handleOfferSelected: (offerId: string) => Promise<void>;
+  handleDepositOfferSelected: (offerId: string) => Promise<void>;
+  handleAccountDeleted: () => void;
+  resetTradeFlow: () => void;
+}
+
+const AppContext = createContext<AppCtx | null>(null);
+
+function useAppCtx(): AppCtx {
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error("AppContext missing");
+  return ctx;
+}
+
+// ── Route wrappers (map page callbacks → useNavigate) ───────────────────────
+
+function HomeRoute() {
+  const navigate = useNavigate();
+  const { buyerUser, sellerUser, setFlow } = useAppCtx();
+  return (
+    <Home
+      onNavigateCashout={() => { setFlow('cashout'); navigate('/cashout'); }}
+      onNavigateDeposit={() => { setFlow('deposit'); navigate('/deposit'); }}
+      onNavigateHistory={() => navigate('/history')}
+      token={buyerUser?.token ?? null}
+      merchantToken={sellerUser?.token ?? null}
+      onNavigateInbox={() => navigate('/inbox')}
+    />
+  );
+}
+
+function HistoryRoute() {
+  const navigate = useNavigate();
+  const { buyerUser } = useAppCtx();
+  return (
+    <History
+      onBack={() => navigate('/')}
+      onSelectTrade={() => { /* deep-link a /trade/:id pendiente */ }}
+      token={buyerUser?.token ?? null}
+    />
+  );
+}
+
+function InboxRoute() {
+  const navigate = useNavigate();
+  const { sellerUser } = useAppCtx();
+  return (
+    <MerchantInbox
+      token={sellerUser?.token ?? null}
+      onBack={() => navigate('/')}
+    />
+  );
+}
+
+function CashoutRoute() {
+  const navigate = useNavigate();
+  const { setActiveAmount } = useAppCtx();
+  return (
+    <CashoutRequest
+      onBack={() => navigate('/')}
+      onSearch={(amount) => {
+        setActiveAmount(amount);
+        navigate('/map');
+      }}
+    />
+  );
+}
+
+function DepositRoute() {
+  const navigate = useNavigate();
+  const { setActiveAmount } = useAppCtx();
+  return (
+    <DepositRequest
+      onBack={() => navigate('/')}
+      onSearch={(amount) => {
+        setActiveAmount(Number(amount) || 500);
+        navigate('/map-deposit');
+      }}
+    />
+  );
+}
+
+function MapDepositRoute() {
+  const navigate = useNavigate();
+  const { handleDepositOfferSelected, tradeLoading } = useAppCtx();
+  return (
+    <DepositMap
+      onBack={() => navigate('/deposit')}
+      onSelectOffer={async (offerId) => {
+        await handleDepositOfferSelected(offerId);
+        navigate('/chat-deposit');
+      }}
+      loading={tradeLoading}
+    />
+  );
+}
+
+function MapRoute() {
+  const navigate = useNavigate();
+  const { activeAmount, handleOfferSelected, tradeLoading } = useAppCtx();
+  return (
+    <ExploreMap
+      amount={activeAmount}
+      loading={tradeLoading}
+      onBack={() => navigate('/cashout')}
+      onSelectOffer={async (offerId) => {
+        await handleOfferSelected(offerId);
+        navigate('/chat');
+      }}
+    />
+  );
+}
+
+function ChatRoute() {
+  const navigate = useNavigate();
+  const { lockTxHash } = useAppCtx();
+  return (
+    <ChatRoom
+      lockTxHash={lockTxHash}
+      onBack={() => navigate('/map')}
+      onViewQR={() => navigate('/qr-reveal')}
+    />
+  );
+}
+
+function ChatDepositRoute() {
+  const navigate = useNavigate();
+  const { lockTxHash } = useAppCtx();
+  return (
+    <DepositChat
+      lockTxHash={lockTxHash}
+      onBack={() => navigate('/map-deposit')}
+      onViewQR={() => navigate('/qr-deposit')}
+    />
+  );
+}
+
+function QRRevealRoute() {
+  const navigate = useNavigate();
+  const { activeTrade, sellerUser, buyerUser, activeAmount } = useAppCtx();
+  return (
+    <QRReveal
+      activeTrade={activeTrade}
+      sellerToken={sellerUser?.token ?? null}
+      buyerToken={buyerUser?.token ?? null}
+      amount={activeAmount}
+      onBack={() => navigate('/chat')}
+      onChat={() => navigate('/chat')}
+      onSuccess={() => navigate('/success')}
+    />
+  );
+}
+
+function QRDepositRoute() {
+  const navigate = useNavigate();
+  return (
+    <DepositQR
+      onBack={() => navigate('/chat-deposit')}
+      onChat={() => navigate('/chat-deposit')}
+      onSuccess={() => navigate('/success')}
+    />
+  );
+}
+
+function SuccessRoute() {
+  const navigate = useNavigate();
+  const { flow, activeAmount, activeTrade, lockTxHash, sellerUser, buyerUser, resetTradeFlow } = useAppCtx();
+  return (
+    <SuccessScreen
+      type={flow === 'cashout' ? 'cashout' : 'deposit'}
+      trade={{
+        id: activeTrade?.id ?? 'demo',
+        status: activeTrade?.status ?? 'completed',
+        amount_mxn: activeAmount,
+        platform_fee_mxn: flow === 'cashout' ? activeAmount * 0.01 : activeAmount * 0.008,
+        lock_tx_hash: lockTxHash,
+        release_tx_hash: null,
+        created_at: new Date().toISOString(),
+        completed_at: new Date().toISOString(),
+        seller_id: sellerUser?.id ?? '',
+        buyer_id: buyerUser?.id ?? '',
+      }}
+      agentName={flow === 'cashout' ? 'Farmacia Guadalupe' : 'Tienda Don Pepe'}
+      onHome={() => {
+        resetTradeFlow();
+        navigate('/');
+      }}
+    />
+  );
+}
+
+function ExploreRoute() {
+  const navigate = useNavigate();
+  const navMap: Record<string, string> = {
+    home: '/',
+    cashout: '/cashout',
+    deposit: '/deposit',
+    cetes: '/cetes',
+    blend: '/blend',
+    explore: '/explore',
+    profile: '/profile',
+    inbox: '/inbox',
+    history: '/history',
+  };
+  return (
+    <Explore
+      onBack={() => navigate('/')}
+      onNavigate={(page) => navigate(navMap[page] ?? '/')}
+    />
+  );
+}
+
+function CetesRoute() {
+  const navigate = useNavigate();
+  const { buyerUser } = useAppCtx();
+  return (
+    <CETESScreen
+      onBack={() => navigate('/explore')}
+      onBanco={() => navigate('/deposit')}
+      userToken={buyerUser?.token}
+    />
+  );
+}
+
+function BlendRoute() {
+  const navigate = useNavigate();
+  const { buyerUser } = useAppCtx();
+  return (
+    <BlendScreen
+      onBack={() => navigate('/explore')}
+      userToken={buyerUser?.token}
+    />
+  );
+}
+
+function ProfileRoute() {
+  const navigate = useNavigate();
+  const { buyerUser, handleAccountDeleted } = useAppCtx();
+  return (
+    <Profile
+      token={buyerUser?.token ?? null}
+      onBack={() => navigate('/')}
+      onDeleted={() => {
+        handleAccountDeleted();
+        navigate('/');
+      }}
+      onNavigatePrivacy={() => navigate('/privacy')}
+      onNavigateTerms={() => navigate('/terms')}
+    />
+  );
+}
+
+function PrivacyRoute() {
+  const navigate = useNavigate();
+  return <Privacy onBack={() => navigate('/profile')} />;
+}
+
+function TermsRoute() {
+  const navigate = useNavigate();
+  return <Terms onBack={() => navigate('/profile')} />;
+}
+
+// ── BottomNav route adapter ─────────────────────────────────────────────────
+
+const ROUTE_TO_PAGE: Record<string, string> = {
+  '/': 'home',
+  '/cashout': 'cashout',
+  '/inbox': 'inbox',
+  '/explore': 'explore',
+  '/profile': 'profile',
+};
+
+const HIDE_BOTTOMNAV_ROUTES = new Set([
+  '/chat',
+  '/chat-deposit',
+  '/qr-reveal',
+  '/qr-deposit',
+  '/success',
+  '/cetes',
+  '/blend',
+  '/privacy',
+  '/terms',
+]);
+
+function BottomNavAdapter() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { sellerUser } = useAppCtx();
+
+  if (HIDE_BOTTOMNAV_ROUTES.has(location.pathname)) return null;
+
+  const navMap: Record<string, string> = {
+    home: '/',
+    cashout: '/cashout',
+    inbox: '/inbox',
+    explore: '/explore',
+    profile: '/profile',
+  };
+
+  return (
+    <BottomNav
+      currentPage={ROUTE_TO_PAGE[location.pathname] ?? location.pathname.slice(1)}
+      onNavigate={(page) => navigate(navMap[page] ?? '/')}
+      isMerchant={!!sellerUser}
+    />
+  );
+}
+
+// ── Root App ────────────────────────────────────────────────────────────────
+
+function App({ initialTradeId: _initialTradeId = null }: AppProps) {
+  const [flow, setFlow] = useState<Flow>(null);
   const [buyerUser, setBuyerUser] = useState<UserData | null>(null);
   const [sellerUser, setSellerUser] = useState<UserData | null>(null);
   const [activeTrade, setActiveTrade] = useState<TradeData | null>(null);
   const [lockTxHash, setLockTxHash] = useState<string | null>(null);
   const [activeAmount, setActiveAmount] = useState(500);
   const [tradeLoading, setTradeLoading] = useState(false);
-
-  const [tradeDetailId, setTradeDetailId] = useState<string | null>(null);
-  const [tradeCreationError, setTradeCreationError] = useState<string | null>(null);
-  const [cancelledScreen, setCancelledScreen] = useState<any>(null);
-  const [cashoutDraft, setCashoutDraft] = useState('500');
-  const [depositDraft, setDepositDraft] = useState('500');
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
     const initUsers = async () => {
       try {
-        const stored = localStorage.getItem("micopay_users");
-        if (stored) {
-          const { buyer, seller } = JSON.parse(stored);
-          setBuyerUser(buyer);
-          setSellerUser(seller);
-          console.log("✅ Users restored:", buyer.username, seller.username);
+        const stored = await readJSON<StoredUsers>(USERS_STORAGE_KEY);
+        if (stored?.buyer && stored?.seller) {
+          setBuyerUser(stored.buyer);
+          setSellerUser(stored.seller);
           return;
         }
 
@@ -69,21 +395,18 @@ function App({ initialTradeId = null }: AppProps) {
           registerUser(`farmacia_${ts}`),
         ]);
 
-        localStorage.setItem("micopay_users", JSON.stringify({ buyer, seller }));
+        await writeJSON(USERS_STORAGE_KEY, { buyer, seller });
         setBuyerUser(buyer);
         setSellerUser(seller);
-        console.log("✅ Users registered:", buyer.username, seller.username);
       } catch (e) {
-        console.warn("⚠️ Backend not available, running in UI-only mode", e);
+        console.warn("Backend not available, running in UI-only mode", e);
+      } finally {
+        setAuthReady(true);
       }
     };
 
     initUsers();
   }, []);
-
-  const handleNavigate = (page: string) => {
-    setCurrentPage(page);
-  };
 
   const handleAccountDeleted = () => {
     setBuyerUser(null);
@@ -91,264 +414,93 @@ function App({ initialTradeId = null }: AppProps) {
     setActiveTrade(null);
     setLockTxHash(null);
     setFlow(null);
-    localStorage.removeItem("micopay_users");
-    setCurrentPage("home");
+    void removeKey(USERS_STORAGE_KEY);
   };
 
-  const startCashout = () => {
-    setFlow("cashout");
-    setCurrentPage("cashout");
+  const resetTradeFlow = () => {
+    setFlow(null);
+    setActiveTrade(null);
+    setLockTxHash(null);
   };
 
-  const startDeposit = () => {
-    setFlow("deposit");
-    setCurrentPage("deposit");
-  };
-
-  const handleOfferSelected = async (offerId: string) => {
-    if (!buyerUser || !sellerUser) {
-      setCurrentPage("chat");
-      return;
-    }
-
+  const runTradeFlow = async () => {
+    if (!buyerUser || !sellerUser) return;
     setTradeLoading(true);
     try {
       const trade = await createTrade(sellerUser.id, activeAmount, buyerUser.token);
       const { lock_tx_hash } = await lockTrade(trade.id, sellerUser.token);
       await revealTrade(trade.id, sellerUser.token);
-
       setActiveTrade(trade);
       setLockTxHash(lock_tx_hash);
     } catch (e) {
       console.error("Trade flow failed, continuing as demo", e);
     } finally {
       setTradeLoading(false);
-      setCurrentPage("chat");
     }
   };
 
-  const handleDepositOfferSelected = async (offerId: string) => {
-    if (!buyerUser || !sellerUser) {
-      setCurrentPage("chat_deposit");
-      return;
-    }
-
-    setTradeLoading(true);
-    try {
-      const trade = await createTrade(sellerUser.id, activeAmount, buyerUser.token);
-      const { lock_tx_hash } = await lockTrade(trade.id, sellerUser.token);
-      await revealTrade(trade.id, sellerUser.token);
-
-      setActiveTrade(trade);
-      setLockTxHash(lock_tx_hash);
-    } catch (e) {
-      console.error("Deposit trade flow failed, continuing as demo", e);
-    } finally {
-      setTradeLoading(false);
-      setCurrentPage("chat_deposit");
-    }
+  const handleOfferSelected = async (_offerId: string) => {
+    await runTradeFlow();
   };
+
+  const handleDepositOfferSelected = async (_offerId: string) => {
+    await runTradeFlow();
+  };
+
+  const ctx: AppCtx = {
+    buyerUser,
+    sellerUser,
+    activeTrade,
+    lockTxHash,
+    activeAmount,
+    tradeLoading,
+    flow,
+    setActiveAmount,
+    setFlow,
+    handleOfferSelected,
+    handleDepositOfferSelected,
+    handleAccountDeleted,
+    resetTradeFlow,
+  };
+
+  if (!authReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F4FAFF]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary>
-      <div className="flex flex-col min-h-screen bg-[#F4FAFF]">
-        {currentPage === "home" && (
-          <Home
-            onNavigateCashout={startCashout}
-            onNavigateDeposit={startDeposit}
-            onNavigateHistory={() => setCurrentPage("history")}
-            token={buyerUser?.token ?? null}
-            merchantToken={sellerUser?.token ?? null}
-            onNavigateInbox={() => setCurrentPage("inbox")}
-          />
-        )}
-
-        {currentPage === "history" && (
-          <History
-            onBack={() => setCurrentPage("home")}
-            onSelectTrade={(trade) => {
-              if (trade.status === "revealing") {
-                console.log("Open trade:", trade.id);
-              }
-            }}
-            token={buyerUser?.token ?? null}
-          />
-        )}
-
-        {currentPage === "inbox" && (
-          <MerchantInbox
-            token={sellerUser?.token ?? null}
-            onBack={() => setCurrentPage("home")}
-          />
-        )}
-
-        {currentPage === "cashout" && (
-          <CashoutRequest
-            onBack={() => setCurrentPage("home")}
-            onSearch={(amount) => {
-              setActiveAmount(amount);
-              setCurrentPage("map");
-            }}
-          />
-        )}
-
-        {currentPage === "deposit" && (
-          <DepositRequest
-            onBack={() => setCurrentPage("home")}
-            onSearch={(amount) => {
-              setActiveAmount(Number(amount) || 500);
-              setCurrentPage("map_deposit");
-            }}
-          />
-        )}
-
-        {currentPage === "map_deposit" && (
-          <DepositMap
-            onBack={() => setCurrentPage("deposit")}
-            onSelectOffer={handleDepositOfferSelected}
-            loading={tradeLoading}
-          />
-        )}
-
-        {currentPage === "map" && (
-          <ExploreMap
-            amount={activeAmount}
-            loading={tradeLoading}
-            onBack={() => setCurrentPage("cashout")}
-            onSelectOffer={handleOfferSelected}
-          />
-        )}
-
-        {currentPage === "chat" && (
-          <ChatRoom
-            lockTxHash={lockTxHash}
-            onBack={() => setCurrentPage("map")}
-            onViewQR={() => {
-              setCurrentPage("qr_reveal");
-            }}
-          />
-        )}
-
-        {currentPage === "chat_deposit" && (
-          <DepositChat
-            lockTxHash={lockTxHash}
-            onBack={() => setCurrentPage("map_deposit")}
-            onViewQR={() => {
-              setCurrentPage("qr_deposit");
-            }}
-          />
-        )}
-
-        {currentPage === "qr_reveal" && (
-          <QRReveal
-            activeTrade={activeTrade}
-            sellerToken={sellerUser?.token ?? null}
-            buyerToken={buyerUser?.token ?? null}
-            amount={activeAmount}
-            onBack={() => setCurrentPage("chat")}
-            onChat={() => setCurrentPage("chat")}
-            onSuccess={() => {
-              setCurrentPage("success");
-            }}
-          />
-        )}
-
-        {currentPage === "qr_deposit" && (
-          <DepositQR
-            onBack={() => setCurrentPage("chat_deposit")}
-            onChat={() => setCurrentPage("chat_deposit")}
-            onSuccess={() => {
-              setCurrentPage("success");
-            }}
-          />
-        )}
-
-        {currentPage === "success" && (
-          <SuccessScreen
-            type={flow === "cashout" ? "cashout" : "deposit"}
-            amount={activeAmount.toFixed(2)}
-            commission={
-              flow === "cashout"
-                ? (activeAmount * 0.01).toFixed(2)
-                : (activeAmount * 0.008).toFixed(2)
-            }
-            received={
-              flow === "cashout"
-                ? `$${(activeAmount * 0.99).toFixed(2)} MXN`
-                : `${(activeAmount * 0.992).toFixed(0)} MXN`
-            }
-            agentName={
-              flow === "cashout" ? "Farmacia Guadalupe" : "Tienda Don Pepe"
-            }
-            tradeId={activeTrade?.id}
-            lockTxHash={lockTxHash}
-            onHome={() => {
-              setFlow(null);
-              setActiveTrade(null);
-              setLockTxHash(null);
-              setCurrentPage("home");
-            }}
-          />
-        )}
-
-        {currentPage === "explore" && (
-          <Explore
-            onBack={() => setCurrentPage("home")}
-            onNavigate={handleNavigate}
-          />
-        )}
-
-        {currentPage === "cetes" && (
-          <CETESScreen
-            onBack={() => setCurrentPage("explore")}
-            onBanco={() => setCurrentPage("deposit")}
-            userToken={buyerUser?.token}
-          />
-        )}
-
-        {currentPage === "blend" && (
-          <BlendScreen
-            onBack={() => setCurrentPage("explore")}
-            userToken={buyerUser?.token}
-          />
-        )}
-
-        {currentPage === "profile" && (
-          <Profile
-            token={buyerUser?.token ?? null}
-            onBack={() => setCurrentPage("home")}
-            onDeleted={handleAccountDeleted}
-            onNavigatePrivacy={() => setCurrentPage("privacy")}
-            onNavigateTerms={() => setCurrentPage("terms")}
-          />
-        )}
-
-        {currentPage === "privacy" && (
-          <Privacy onBack={() => setCurrentPage("profile")} />
-        )}
-
-        {currentPage === "terms" && (
-          <Terms onBack={() => setCurrentPage("profile")} />
-        )}
-
-        {![
-          "chat",
-          "chat_deposit",
-          "qr_reveal",
-          "qr_deposit",
-          "success",
-          "cetes",
-          "blend",
-          "privacy",
-          "terms",
-        ].includes(currentPage) && (
-          <BottomNav
-            currentPage={currentPage}
-            onNavigate={handleNavigate}
-            isMerchant={!!sellerUser}
-          />
-        )}
-      </div>
+      <AppContext.Provider value={ctx}>
+        <HashRouter>
+          <div className="flex flex-col min-h-screen bg-[#F4FAFF]">
+            <Routes>
+              <Route path="/" element={<HomeRoute />} />
+              <Route path="/history" element={<HistoryRoute />} />
+              <Route path="/inbox" element={<InboxRoute />} />
+              <Route path="/cashout" element={<CashoutRoute />} />
+              <Route path="/deposit" element={<DepositRoute />} />
+              <Route path="/map" element={<MapRoute />} />
+              <Route path="/map-deposit" element={<MapDepositRoute />} />
+              <Route path="/chat" element={<ChatRoute />} />
+              <Route path="/chat-deposit" element={<ChatDepositRoute />} />
+              <Route path="/qr-reveal" element={<QRRevealRoute />} />
+              <Route path="/qr-deposit" element={<QRDepositRoute />} />
+              <Route path="/success" element={<SuccessRoute />} />
+              <Route path="/explore" element={<ExploreRoute />} />
+              <Route path="/cetes" element={<CetesRoute />} />
+              <Route path="/blend" element={<BlendRoute />} />
+              <Route path="/profile" element={<ProfileRoute />} />
+              <Route path="/privacy" element={<PrivacyRoute />} />
+              <Route path="/terms" element={<TermsRoute />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+            <BottomNavAdapter />
+          </div>
+        </HashRouter>
+      </AppContext.Provider>
     </ErrorBoundary>
   );
 }

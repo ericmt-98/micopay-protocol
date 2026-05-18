@@ -50,7 +50,7 @@ export function useTradePolling(
       failCountRef.current = 0;
       
       return data;
-    } catch (err: any) {
+    } catch (err: unknown) {
       failCountRef.current += 1;
       if (failCountRef.current >= 3) {
         setIsDegraded(true);

@@ -1,8 +1,29 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
+import { App as CapApp } from '@capacitor/app'
+import { Capacitor } from '@capacitor/core'
 import App from './App'
 import ClaimQR from './pages/ClaimQR'
 import './index.css'
+
+// Android hardware back button → browser history. Plays well with HashRouter.
+// On native iOS/web this listener simply doesn't fire (no-op).
+if (Capacitor.isNativePlatform()) {
+  CapApp.addListener('backButton', ({ canGoBack }) => {
+    if (canGoBack) {
+      window.history.back()
+    } else {
+      CapApp.exitApp()
+    }
+  })
+
+  // Status bar branding — match the white header backdrop with dark icons.
+  // Lazy-imported so the plugin only ships in native bundles.
+  import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
+    StatusBar.setStyle({ style: Style.Light }).catch(() => {})
+    StatusBar.setBackgroundColor({ color: '#FFFFFF' }).catch(() => {})
+  }).catch(() => {})
+}
 
 // External claim links: /claim/:requestId
 // Any AI agent (Claude, GPT, WhatsApp bot...) sends users here to show the QR

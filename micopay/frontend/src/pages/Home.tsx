@@ -16,12 +16,13 @@ const STATUS_LABEL: Record<string, { label: string; color: string }> = {
 interface HomeProps {
   onNavigateCashout: () => void;
   onNavigateDeposit: () => void;
+  onNavigateHistory?: () => void;
   token: string | null;
   merchantToken: string | null;
   onNavigateInbox: () => void;
 }
 
-const Home = ({ onNavigateCashout, onNavigateDeposit, token, merchantToken, onNavigateInbox }: HomeProps) => {
+const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token, merchantToken, onNavigateInbox }: HomeProps) => {
   const [trades, setTrades] = useState<TradeHistoryItem[]>([]);
   const [xlmBalance, setXlmBalance] = useState<string | null>(null);
   const [stellarAddress, setStellarAddress] = useState<string>('');
@@ -63,7 +64,7 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, token, merchantToken, onNa
   return (
     <div className="bg-surface text-on-surface font-body min-h-screen flex flex-col">
       {/* TopAppBar */}
-      <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 py-4 backdrop-blur-md bg-white/90">
+      <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 py-4 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-md bg-white/90">
         <Logo />
         <div className="flex items-center gap-4">
           <button onClick={onNavigateInbox} className="relative p-2 rounded-full hover:bg-surface-container-low transition-colors">

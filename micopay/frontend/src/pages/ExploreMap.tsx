@@ -1,4 +1,5 @@
 import MapSim from '../components/MapSim';
+import { useGeolocation } from '../hooks/useGeolocation';
 
 interface Offer {
   id: string;
@@ -66,10 +67,11 @@ const ExploreMap = ({
   loading = false,
   offers = DEFAULT_OFFERS,
 }: ExploreMapProps) => {
+  const geo = useGeolocation();
   return (
     <div className="bg-surface-container-lowest text-on-surface font-body min-h-screen pb-24">
       {/* Top Navigation */}
-      <header className="fixed top-0 left-0 w-full z-50 flex items-center px-6 py-4 bg-white/80 backdrop-blur-md shadow-sm">
+      <header className="fixed top-0 left-0 w-full z-50 flex items-center px-6 py-4 pt-[max(1rem,env(safe-area-inset-top))] bg-white/80 backdrop-blur-md shadow-sm">
         <button
           onClick={onBack}
           className="flex items-center justify-center p-2 rounded-full hover:bg-surface-container-low transition-colors duration-200"
@@ -114,7 +116,13 @@ const ExploreMap = ({
               </h2>
               <div className="flex items-center gap-1 mt-1">
                 <span className="material-symbols-outlined text-primary text-sm">location_on</span>
-                <p className="text-sm text-outline font-medium">Zona Centro</p>
+                <p className="text-sm text-outline font-medium">
+                  {geo.loading
+                    ? 'Localizando...'
+                    : geo.lat && geo.lng
+                      ? `${geo.lat.toFixed(3)}, ${geo.lng.toFixed(3)}`
+                      : 'Zona Centro'}
+                </p>
               </div>
             </div>
 
