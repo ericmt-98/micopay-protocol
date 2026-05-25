@@ -25,7 +25,7 @@ const ChatRoom = ({ onBack, onViewQR, lockTxHash }: ChatRoomProps) => {
     return (
         <div className="bg-background text-on-surface font-body min-h-screen flex flex-col">
             {/* TopAppBar */}
-            <header className="fixed top-0 w-full z-50 flex items-center px-4 py-3 justify-between bg-surface/80 backdrop-blur-md border-b border-surface-container">
+            <header className="fixed top-0 w-full z-50 flex items-center px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] justify-between bg-surface/80 backdrop-blur-md border-b border-surface-container">
                 <div className="flex items-center gap-3">
                     <button 
                         onClick={onBack}
@@ -129,7 +129,7 @@ const ChatRoom = ({ onBack, onViewQR, lockTxHash }: ChatRoomProps) => {
             </main>
 
             {/* Bottom Chat Input */}
-            <div className="fixed bottom-0 w-full bg-surface/80 backdrop-blur-xl px-4 pt-3 pb-8 border-t border-surface-container">
+            <div className="fixed bottom-0 w-full bg-surface/80 backdrop-blur-xl px-4 pt-3 pb-[max(2rem,env(safe-area-inset-bottom))] border-t border-surface-container">
                 <div className="max-w-2xl mx-auto flex items-end gap-3">
                     <button className="p-3 text-primary hover:bg-surface-container-low rounded-full transition-colors mb-0.5">
                         <span className="material-symbols-outlined">add_circle</span>

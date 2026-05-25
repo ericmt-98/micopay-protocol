@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQRScanner } from '../hooks/useQRScanner';
 
 interface Trade {
   id: string;
@@ -35,6 +36,20 @@ const MerchantInbox = ({ token, onBack }: MerchantInboxProps) => {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [scannedPayload, setScannedPayload] = useState<string | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const { scan } = useQRScanner();
+
+  const handleScan = async () => {
+    setScanError(null);
+    setScannedPayload(null);
+    const { value, error } = await scan();
+    if (error) {
+      setScanError(error);
+      return;
+    }
+    if (value) setScannedPayload(value);
+  };
 
   const fetchTrades = async (state: string = 'all') => {
     if (!token) return;
@@ -66,12 +81,47 @@ const MerchantInbox = ({ token, onBack }: MerchantInboxProps) => {
 
   return (
     <div className="min-h-screen bg-[#F4FAFF]">
-      <header className="fixed top-0 left-0 w-full z-50 bg-white/90 backdrop-blur-md px-6 py-4 flex items-center gap-4">
+      <header className="fixed top-0 left-0 w-full z-50 bg-white/90 backdrop-blur-md px-6 py-4 pt-[max(1rem,env(safe-area-inset-top))] flex items-center gap-4">
         <button onClick={onBack} className="material-symbols-outlined text-primary">arrow_back</button>
-        <h1 className="font-headline font-bold text-lg">Bandeja de entrada</h1>
+        <h1 className="font-headline font-bold text-lg flex-1">Bandeja de entrada</h1>
+        <button
+          onClick={handleScan}
+          aria-label="Escanear QR del cliente"
+          className="flex items-center gap-1 bg-primary text-white px-3 py-2 rounded-full text-xs font-bold shadow active:scale-95"
+        >
+          <span aria-hidden="true" className="material-symbols-outlined text-sm">qr_code_scanner</span>
+          Escanear
+        </button>
       </header>
 
-      <main className="pt-20 px-6 pb-32">
+      <main className="pt-24 px-6 pb-32">
+        {(scannedPayload || scanError) && (
+          <div className={`mb-4 rounded-2xl p-4 ${scanError ? 'bg-red-50 border border-red-200' : 'bg-emerald-50 border border-emerald-200'}`}>
+            <div className="flex items-start gap-3">
+              <span className={`material-symbols-outlined ${scanError ? 'text-red-600' : 'text-emerald-600'}`}>
+                {scanError ? 'error' : 'qr_code_2'}
+              </span>
+              <div className="flex-1 min-w-0">
+                {scanError ? (
+                  <p className="text-sm text-red-800 font-medium">{scanError}</p>
+                ) : (
+                  <>
+                    <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">QR escaneado</p>
+                    <p className="text-xs text-emerald-900 font-mono break-all">{scannedPayload}</p>
+                  </>
+                )}
+              </div>
+              <button
+                onClick={() => { setScannedPayload(null); setScanError(null); }}
+                aria-label="Cerrar"
+                className="material-symbols-outlined text-on-surface-variant text-base"
+              >
+                close
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Filtros */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
           {filters.map(f => (

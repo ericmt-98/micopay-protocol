@@ -5,7 +5,7 @@ interface PrivacyProps {
 const Privacy = ({ onBack }: PrivacyProps) => {
   return (
     <div className="bg-[#F4FAFF] text-[#0B1E26] min-h-screen flex flex-col pb-10">
-      <header className="fixed top-0 left-0 w-full z-50 flex items-center gap-4 px-4 py-4 backdrop-blur-md bg-white/90 border-b border-[#D7E3EA]/60">
+      <header className="fixed top-0 left-0 w-full z-50 flex items-center gap-4 px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur-md bg-white/90 border-b border-[#D7E3EA]/60">
         <button
           onClick={onBack}
           className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-[#EFF6FA] transition-colors"

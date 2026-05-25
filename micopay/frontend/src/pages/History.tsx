@@ -32,8 +32,11 @@ const History = ({ onBack, onSelectTrade, token }: HistoryProps) => {
   useEffect(() => {
     if (!token) return;
     setLoading(true);
-    getTradeHistory(token, status, page, 10)
-      .then(setTrades)
+    getTradeHistory(token)
+      .then((items) => {
+        const filtered = status === 'all' ? items : items.filter((t) => t.status === status);
+        setTrades(filtered);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [token, status, page]);
@@ -45,7 +48,7 @@ const History = ({ onBack, onSelectTrade, token }: HistoryProps) => {
 
   return (
     <div className="bg-surface text-on-surface font-body min-h-screen flex flex-col">
-      <header className="fixed top-0 left-0 w-full z-50 flex items-center px-4 py-4 bg-white/90 backdrop-blur-md border-b border-outline-variant/10">
+      <header className="fixed top-0 left-0 w-full z-50 flex items-center px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))] bg-white/90 backdrop-blur-md border-b border-outline-variant/10">
         <button onClick={onBack} className="p-2 hover:bg-surface-container-low rounded-full transition-colors">
           <span className="material-symbols-outlined text-on-surface">arrow_back</span>
         </button>
@@ -90,7 +93,7 @@ const History = ({ onBack, onSelectTrade, token }: HistoryProps) => {
           <div className="flex flex-col gap-3">
             {trades.map((trade) => {
               const s = STATUS_LABEL[trade.status] || STATUS_LABEL.pending;
-              const isCashIn = trade.direction === 'cash-in';
+              const isCashIn = false;
               const date = new Date(trade.created_at).toLocaleDateString('es-MX', {
                 day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
               });
@@ -111,7 +114,7 @@ const History = ({ onBack, onSelectTrade, token }: HistoryProps) => {
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start mb-1">
                         <p className="font-bold text-on-surface text-sm truncate">
-                          {trade.merchant_username}
+                          {trade.seller_id.slice(0, 8)}…
                         </p>
                         <p className="font-black text-on-surface text-sm">
                           ${trade.amount_mxn.toLocaleString('es-MX')} MXN
