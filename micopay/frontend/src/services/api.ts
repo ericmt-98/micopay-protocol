@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { extractApiErrorPayload } from '../utils/apiError';
+import { removeKey } from './secureStorage';
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
@@ -367,3 +368,14 @@ export async function updateMerchantConfig(token: string, config: MerchantConfig
   const res = await http.put('/merchants/me/config', config, authHeaders(token));
   return res.data.config;
 }
+
+http.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      removeKey('micopay_users');
+      window.location.href = '/#/login';
+    }
+    return Promise.reject(error);
+  }
+);

@@ -6,31 +6,44 @@ import * as api from '../services/api';
 
 // Mock the API module
 vi.mock('../services/api', () => ({
-  getTrade: vi.fn(),
   completeTrade: vi.fn(),
-  cancelTrade: vi.fn(),
-  getToken: vi.fn(),
+  cancelTradeRequest: vi.fn(),
+  fetchTradeDetail: vi.fn(),
 }));
 
-const mockGetTrade = vi.mocked(api.getTrade);
-const mockGetToken = vi.mocked(api.getToken);
+const mockFetchTradeDetail = vi.mocked(api.fetchTradeDetail);
 
 const createMockTrade = (status: string) => ({
-  id: 'trade-123',
-  status,
-  secret_hash: 'abc123',
-  amount_mxn: 500,
-  platform_fee_mxn: 4,
-  lock_tx_hash: status !== 'pending' ? 'mock_lock_hash' : null,
-  release_tx_hash: status === 'completed' ? 'mock_release_hash' : null,
-  created_at: '2024-01-01T10:00:00Z',
-  completed_at: status === 'completed' ? '2024-01-01T10:30:00Z' : null,
-  expires_at: '2024-01-01T12:00:00Z',
-  seller_id: 'seller-1',
-  buyer_id: 'buyer-1',
+  trade: {
+    id: 'trade-123',
+    status,
+    secret_hash: 'abc123',
+    amount_mxn: 500,
+    lock_tx_hash: status !== 'pending' ? 'mock_lock_hash' : null,
+    release_tx_hash: status === 'completed' ? 'mock_release_hash' : null,
+    created_at: '2024-01-01T10:00:00Z',
+    completed_at: status === 'completed' ? '2024-01-01T10:30:00Z' : null,
+    expires_at: '2024-01-01T12:00:00Z',
+    seller_id: 'seller-1',
+    buyer_id: 'buyer-1',
+  },
+  merchant_unavailable: false,
+  seller_username: 'seller',
 });
 
-const renderWithRouter = (route: string = '/trade/trade-123') => {
+const renderWithRouter = (route: string = '/trade/trade-123', isAuthenticated = true) => {
+  if (isAuthenticated) {
+    localStorage.setItem(
+      'micopay_users',
+      JSON.stringify({
+        buyer: { id: 'buyer-1', token: 'mock-token', username: 'test' },
+        seller: { id: 'seller-1', token: 'mock-token', username: 'test' },
+      }),
+    );
+  } else {
+    localStorage.removeItem('micopay_users');
+  }
+
   return render(
     <MemoryRouter initialEntries={[route]}>
       <Routes>
@@ -38,7 +51,7 @@ const renderWithRouter = (route: string = '/trade/trade-123') => {
         <Route path="/login" element={<div>Login Page</div>} />
         <Route path="/" element={<div>Home Page</div>} />
       </Routes>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 };
 
@@ -50,8 +63,7 @@ describe('TradeDetail', () => {
 
   describe('Route registration', () => {
     it('should render TradeDetail when navigating to /trade/:id', async () => {
-      mockGetToken.mockReturnValue('mock-token');
-      mockGetTrade.mockResolvedValue(createMockTrade('pending'));
+      mockFetchTradeDetail.mockResolvedValue(createMockTrade('pending'));
 
       renderWithRouter('/trade/test-trade-id');
 
@@ -65,24 +77,19 @@ describe('TradeDetail', () => {
     });
 
     it('should correctly read trade ID from URL params', async () => {
-      mockGetToken.mockReturnValue('mock-token');
-      mockGetTrade.mockResolvedValue(createMockTrade('pending'));
+      mockFetchTradeDetail.mockResolvedValue(createMockTrade('pending'));
 
       renderWithRouter('/trade/unique-trade-456');
 
       await waitFor(() => {
-        expect(mockGetTrade).toHaveBeenCalledWith('unique-trade-456', 'mock-token');
+        expect(mockFetchTradeDetail).toHaveBeenCalledWith('unique-trade-456', 'mock-token');
       });
     });
   });
 
   describe('State rendering', () => {
-    beforeEach(() => {
-      mockGetToken.mockReturnValue('mock-token');
-    });
-
     it('should render pending state with cancel button', async () => {
-      mockGetTrade.mockResolvedValue(createMockTrade('pending'));
+      mockFetchTradeDetail.mockResolvedValue(createMockTrade('pending'));
 
       renderWithRouter();
 
@@ -94,7 +101,7 @@ describe('TradeDetail', () => {
     });
 
     it('should render locked state with chat button', async () => {
-      mockGetTrade.mockResolvedValue(createMockTrade('locked'));
+      mockFetchTradeDetail.mockResolvedValue(createMockTrade('locked'));
 
       renderWithRouter();
 
@@ -106,7 +113,7 @@ describe('TradeDetail', () => {
     });
 
     it('should render revealing state with QR button', async () => {
-      mockGetTrade.mockResolvedValue(createMockTrade('revealing'));
+      mockFetchTradeDetail.mockResolvedValue(createMockTrade('revealing'));
 
       renderWithRouter();
 
@@ -118,7 +125,7 @@ describe('TradeDetail', () => {
     });
 
     it('should render revealed state with confirm button', async () => {
-      mockGetTrade.mockResolvedValue(createMockTrade('revealed'));
+      mockFetchTradeDetail.mockResolvedValue(createMockTrade('revealed'));
 
       renderWithRouter();
 
@@ -130,7 +137,7 @@ describe('TradeDetail', () => {
     });
 
     it('should render completed state with summary', async () => {
-      mockGetTrade.mockResolvedValue(createMockTrade('completed'));
+      mockFetchTradeDetail.mockResolvedValue(createMockTrade('completed'));
 
       renderWithRouter();
 
@@ -142,7 +149,7 @@ describe('TradeDetail', () => {
     });
 
     it('should render cancelled state', async () => {
-      mockGetTrade.mockResolvedValue(createMockTrade('cancelled'));
+      mockFetchTradeDetail.mockResolvedValue(createMockTrade('cancelled'));
 
       renderWithRouter();
 
@@ -154,7 +161,7 @@ describe('TradeDetail', () => {
     });
 
     it('should render expired state', async () => {
-      mockGetTrade.mockResolvedValue(createMockTrade('expired'));
+      mockFetchTradeDetail.mockResolvedValue(createMockTrade('expired'));
 
       renderWithRouter();
 
@@ -167,14 +174,10 @@ describe('TradeDetail', () => {
   });
 
   describe('Error handling', () => {
-    beforeEach(() => {
-      mockGetToken.mockReturnValue('mock-token');
-    });
-
     it('should show 404 screen when trade is not found', async () => {
       const error = new Error('Not found');
       (error as any).response = { status: 404 };
-      mockGetTrade.mockRejectedValue(error);
+      mockFetchTradeDetail.mockRejectedValue(error);
 
       renderWithRouter();
 
@@ -187,7 +190,7 @@ describe('TradeDetail', () => {
     it('should show 403 screen when user is not a participant', async () => {
       const error = new Error('Forbidden');
       (error as any).response = { status: 403 };
-      mockGetTrade.mockRejectedValue(error);
+      mockFetchTradeDetail.mockRejectedValue(error);
 
       renderWithRouter();
 
@@ -201,7 +204,7 @@ describe('TradeDetail', () => {
     it('should show network error with retry button on connection failure', async () => {
       const error = new Error('Network error');
       (error as any).response = { status: 500 };
-      mockGetTrade.mockRejectedValue(error);
+      mockFetchTradeDetail.mockRejectedValue(error);
 
       renderWithRouter();
 
@@ -214,9 +217,7 @@ describe('TradeDetail', () => {
 
   describe('Auth recovery', () => {
     it('should redirect to login when not authenticated and save redirect path', async () => {
-      mockGetToken.mockReturnValue(null);
-
-      renderWithRouter('/trade/trade-123');
+      renderWithRouter('/trade/trade-123', false);
 
       await waitFor(() => {
         expect(screen.getByText('Login Page')).toBeInTheDocument();
@@ -225,10 +226,9 @@ describe('TradeDetail', () => {
     });
 
     it('should not redirect when user is authenticated', async () => {
-      mockGetToken.mockReturnValue('mock-token');
-      mockGetTrade.mockResolvedValue(createMockTrade('pending'));
+      mockFetchTradeDetail.mockResolvedValue(createMockTrade('pending'));
 
-      renderWithRouter('/trade/trade-123');
+      renderWithRouter('/trade/trade-123', true);
 
       await waitFor(() => {
         expect(screen.getByText(/detalle de operación/i)).toBeInTheDocument();
@@ -238,15 +238,11 @@ describe('TradeDetail', () => {
   });
 
   describe('Support link visibility', () => {
-    beforeEach(() => {
-      mockGetToken.mockReturnValue('mock-token');
-    });
-
     const states = ['pending', 'locked', 'revealing', 'revealed'];
 
     states.forEach((state) => {
       it(`should show support link in ${state} state`, async () => {
-        mockGetTrade.mockResolvedValue(createMockTrade(state));
+        mockFetchTradeDetail.mockResolvedValue(createMockTrade(state));
 
         renderWithRouter();
 
@@ -258,7 +254,7 @@ describe('TradeDetail', () => {
     });
 
     it('should not show support link in completed state', async () => {
-      mockGetTrade.mockResolvedValue(createMockTrade('completed'));
+      mockFetchTradeDetail.mockResolvedValue(createMockTrade('completed'));
 
       renderWithRouter();
 
@@ -271,7 +267,7 @@ describe('TradeDetail', () => {
     it('should show support link in 404 error state', async () => {
       const error = new Error('Not found');
       (error as any).response = { status: 404 };
-      mockGetTrade.mockRejectedValue(error);
+      mockFetchTradeDetail.mockRejectedValue(error);
 
       renderWithRouter();
 
@@ -283,7 +279,7 @@ describe('TradeDetail', () => {
     it('should show support link in 403 error state', async () => {
       const error = new Error('Forbidden');
       (error as any).response = { status: 403 };
-      mockGetTrade.mockRejectedValue(error);
+      mockFetchTradeDetail.mockRejectedValue(error);
 
       renderWithRouter();
 
