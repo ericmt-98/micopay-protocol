@@ -10,11 +10,12 @@ interface ProfileProps {
   token: string | null;
   onBack: () => void;
   onDeleted: () => void;
+  onLogout: () => void;
   onNavigatePrivacy?: () => void;
   onNavigateTerms?: () => void;
 }
 
-const Profile = ({ token, onBack, onDeleted, onNavigatePrivacy, onNavigateTerms }: ProfileProps) => {
+const Profile = ({ token, onBack, onDeleted, onLogout, onNavigatePrivacy, onNavigateTerms }: ProfileProps) => {
   const [profile, setProfile] = useState<CurrentUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirmation, setConfirmation] = useState("");
@@ -233,6 +234,20 @@ const Profile = ({ token, onBack, onDeleted, onNavigatePrivacy, onNavigateTerms 
                   delete_forever
                 </span>
                 Eliminar mi cuenta
+              </button>
+            </section>
+
+            <section className="bg-white rounded-[24px] p-5 border border-[#D7E3EA]/60 shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#67808C] mb-3">Sesión</p>
+              <button
+                type="button"
+                onClick={onLogout}
+                className="w-full bg-gray-200 text-gray-800 font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+              >
+                <span className="material-symbols-outlined text-lg">
+                  logout
+                </span>
+                Cerrar sesión
               </button>
             </section>
           </>
