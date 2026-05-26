@@ -12,9 +12,10 @@ interface ProfileProps {
   onDeleted: () => void;
   onNavigatePrivacy?: () => void;
   onNavigateTerms?: () => void;
+  onToggleDebug?: () => void;
 }
 
-const Profile = ({ token, onBack, onDeleted, onNavigatePrivacy, onNavigateTerms }: ProfileProps) => {
+const Profile = ({ token, onBack, onDeleted, onNavigatePrivacy, onNavigateTerms, onToggleDebug }: ProfileProps) => {
   const [profile, setProfile] = useState<CurrentUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirmation, setConfirmation] = useState("");
@@ -201,7 +202,21 @@ const Profile = ({ token, onBack, onDeleted, onNavigatePrivacy, onNavigateTerms 
                   <span className="material-symbols-outlined text-base text-[#67808C]">chevron_right</span>
                 </button>
               </div>
-            </section>
+            {onToggleDebug && (
+              <section className="bg-white rounded-[24px] p-5 border border-[#D7E3EA]/60 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#67808C] mb-3">Herramientas</p>
+                <button
+                  onClick={onToggleDebug}
+                  className="w-full flex items-center justify-between py-2.5 text-sm text-[#0B1E26] hover:text-[#00694C] transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base">bug_report</span>
+                    <span>Depuración y Redes</span>
+                  </span>
+                  <span className="material-symbols-outlined text-base text-[#67808C]">chevron_right</span>
+                </button>
+              </section>
+            )}
 
             <section className="bg-white rounded-[24px] p-5 border border-[#F5B6C0] shadow-sm space-y-4">
               <div>

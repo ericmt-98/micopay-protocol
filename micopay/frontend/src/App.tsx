@@ -28,6 +28,7 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Profile from "./pages/Profile";
 import BottomNav from "./components/BottomNav";
+import DebugOverlay from "./components/DebugOverlay";
 
 import {
   registerUser,
@@ -63,6 +64,13 @@ interface AppCtx {
   handleDepositOfferSelected: (offerId: string) => Promise<void>;
   handleAccountDeleted: () => void;
   resetTradeFlow: () => void;
+  envName: string;
+  backendUrl: string;
+  isDemoMode: boolean;
+  isMockStellar: boolean;
+  backendConnected: boolean;
+  backendHealth: any;
+  setDebugOpen: (b: boolean) => void;
 }
 
 const AppContext = createContext<AppCtx | null>(null);
@@ -296,7 +304,7 @@ function BlendRoute() {
 
 function ProfileRoute() {
   const navigate = useNavigate();
-  const { buyerUser, handleAccountDeleted } = useAppCtx();
+  const { buyerUser, handleAccountDeleted, setDebugOpen } = useAppCtx();
   return (
     <Profile
       token={buyerUser?.token ?? null}
@@ -307,6 +315,7 @@ function ProfileRoute() {
       }}
       onNavigatePrivacy={() => navigate('/privacy')}
       onNavigateTerms={() => navigate('/terms')}
+      onToggleDebug={() => setDebugOpen(true)}
     />
   );
 }
@@ -379,8 +388,84 @@ function App({ initialTradeId: _initialTradeId = null }: AppProps) {
   const [tradeLoading, setTradeLoading] = useState(false);
   const [authReady, setAuthReady] = useState(false);
 
+  const [startupError, setStartupError] = useState<{ title: string; message: string; details?: string } | null>(null);
+  const [backendConnected, setBackendConnected] = useState(false);
+  const [backendHealth, setBackendHealth] = useState<any>(null);
+  const [isDemoMode, setIsDemoMode] = useState(true);
+  const [isMockStellar, setIsMockStellar] = useState(true);
+  const [backendUrl, setBackendUrl] = useState("");
+  const [debugOpen, setDebugOpen] = useState(false);
+  const envName = import.meta.env.MODE;
+
   useEffect(() => {
     const initUsers = async () => {
+      // 1. Validate VITE_API_URL existence
+      const apiUrl = import.meta.env.VITE_API_URL;
+      if (!apiUrl) {
+        setStartupError({
+          title: "Configuración de API Faltante",
+          message: "La variable de entorno VITE_API_URL no está configurada.",
+          details: "El APK requiere VITE_API_URL para ubicar el backend. Asegúrate de configurar un archivo .env válido (ej. .env.testnet)."
+        });
+        setAuthReady(true);
+        return;
+      }
+
+      setBackendUrl(apiUrl);
+
+      // 2. Fetch backend health and validate contract config
+      let connected = false;
+      let mockStellarActive = true;
+      try {
+        const response = await fetch(`${apiUrl}/health`);
+        if (!response.ok) {
+          throw new Error(`HTTP Error ${response.status}`);
+        }
+        const health = await response.json();
+        connected = true;
+        setBackendConnected(true);
+        setBackendHealth(health);
+        
+        mockStellarActive = health.mockStellar ?? false;
+        setIsMockStellar(mockStellarActive);
+        
+        // If running in normal (non-mock) mode, verify critical configs
+        if (!mockStellarActive) {
+          const configCheck = health.configCheck ?? {};
+          if (!configCheck.hasPlatformKey || !configCheck.hasContractId) {
+            setStartupError({
+              title: "Configuración del Contrato Incompleta",
+              message: "El servidor de Micopay está en modo real (normal), pero le faltan configuraciones críticas de Stellar o contratos.",
+              details: "Verifica que el backend tenga PLATFORM_SECRET_KEY y ESCROW_CONTRACT_ID configuradas y válidas."
+            });
+            setAuthReady(true);
+            return;
+          }
+          setIsDemoMode(false);
+        } else {
+          setIsDemoMode(true);
+        }
+      } catch (err) {
+        console.warn("Backend not reachable during startup:", err);
+        setBackendConnected(false);
+        
+        // In production, force-block if backend is down.
+        if (envName === 'production') {
+          setStartupError({
+            title: "Servidor Inalcanzable",
+            message: "No se pudo conectar al servidor de Micopay.",
+            details: `La aplicación está en modo producción e intenta conectar a: ${apiUrl}. Por favor verifica tu conexión a internet o el estado del servidor.`
+          });
+          setAuthReady(true);
+          return;
+        } else {
+          // Dev/Testnet builds fallback gracefully to local demo mocks if offline
+          setIsDemoMode(true);
+          setIsMockStellar(true);
+        }
+      }
+
+      // 3. Authenticate and register user
       try {
         const stored = await readJSON<StoredUsers>(USERS_STORAGE_KEY);
         if (stored?.buyer && stored?.seller) {
@@ -399,7 +484,7 @@ function App({ initialTradeId: _initialTradeId = null }: AppProps) {
         setBuyerUser(buyer);
         setSellerUser(seller);
       } catch (e) {
-        console.warn("Backend not available, running in UI-only mode", e);
+        console.warn("Backend unavailable for registration, using local stub", e);
       } finally {
         setAuthReady(true);
       }
@@ -461,7 +546,46 @@ function App({ initialTradeId: _initialTradeId = null }: AppProps) {
     handleDepositOfferSelected,
     handleAccountDeleted,
     resetTradeFlow,
+    envName,
+    backendUrl,
+    isDemoMode,
+    isMockStellar,
+    backendConnected,
+    backendHealth,
+    setDebugOpen,
   };
+
+  if (startupError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FFF8F8] px-6 py-12">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-red-100 animate-fade-in font-['Manrope']">
+          <div className="flex items-center justify-center w-16 h-16 rounded-full bg-red-50 text-red-500 mx-auto mb-6">
+            <span className="material-symbols-outlined text-4xl">warning</span>
+          </div>
+          <h1 className="text-xl font-bold text-gray-900 text-center mb-2">
+            {startupError.title}
+          </h1>
+          <p className="text-gray-600 text-center mb-6 text-xs leading-relaxed">
+            {startupError.message}
+          </p>
+          {startupError.details && (
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 mb-6">
+              <p className="text-[10px] text-gray-500 font-mono break-words leading-normal">
+                {startupError.details}
+              </p>
+            </div>
+          )}
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full py-3 px-4 bg-gray-900 hover:bg-gray-800 text-white rounded-xl font-semibold text-xs transition-all duration-200 shadow-md flex items-center justify-center gap-2"
+          >
+            <span className="material-symbols-outlined text-base">refresh</span>
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!authReady) {
     return (
@@ -475,7 +599,20 @@ function App({ initialTradeId: _initialTradeId = null }: AppProps) {
     <ErrorBoundary>
       <AppContext.Provider value={ctx}>
         <HashRouter>
-          <div className="flex flex-col min-h-screen bg-[#F4FAFF]">
+          <div className="flex flex-col min-h-screen bg-[#F4FAFF] relative">
+            
+            {/* Sticky warning/status banner when demo mode or mock stellar is active */}
+            {isDemoMode && (
+              <div className="sticky top-0 z-40 bg-amber-500 text-amber-950 px-4 py-1.5 flex items-center justify-center gap-1.5 shadow-sm font-['Manrope'] font-semibold text-xs text-center transition-all">
+                <span className="material-symbols-outlined text-base leading-none">theater_comedy</span>
+                <span>
+                  {backendConnected 
+                    ? "Modo Demo Activo (Stellar Simulado)" 
+                    : "Servidor Desconectado (Ejecutando Demo Local)"}
+                </span>
+              </div>
+            )}
+
             <Routes>
               <Route path="/" element={<HomeRoute />} />
               <Route path="/history" element={<HistoryRoute />} />
@@ -498,6 +635,30 @@ function App({ initialTradeId: _initialTradeId = null }: AppProps) {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             <BottomNavAdapter />
+
+            {/* Collapsible debug icon for developers (non-production modes only) */}
+            {envName !== "production" && (
+              <button
+                onClick={() => setDebugOpen(true)}
+                className="fixed bottom-24 right-4 z-40 w-12 h-12 rounded-full bg-primary text-white shadow-xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+                title="Abrir panel de depuración"
+              >
+                <span className="material-symbols-outlined text-2xl">bug_report</span>
+              </button>
+            )}
+
+            {/* Debug overlay component */}
+            <DebugOverlay
+              isOpen={debugOpen}
+              onClose={() => setDebugOpen(false)}
+              envName={envName}
+              backendUrl={backendUrl}
+              isDemoMode={isDemoMode}
+              isMockStellar={isMockStellar}
+              backendConnected={backendConnected}
+              backendHealth={backendHealth}
+            />
+
           </div>
         </HashRouter>
       </AppContext.Provider>
