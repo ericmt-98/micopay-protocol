@@ -1,5 +1,7 @@
 import MapSim from '../components/MapSim';
+import ErrorBanner from '../components/ErrorBanner';
 import { useGeolocation } from '../hooks/useGeolocation';
+import type { ApiErrorAction } from '../utils/apiError';
 
 interface DepositMapProps {
     onBack: () => void;
@@ -7,7 +9,9 @@ interface DepositMapProps {
     loading?: boolean;
     amount?: number;
     creationError?: string | null;
+    creationErrorAction?: ApiErrorAction;
     onDismissCreationError?: () => void;
+    onRetryCreationError?: () => void;
 }
 
 const DepositMap = ({
@@ -16,7 +20,9 @@ const DepositMap = ({
     loading,
     amount = 500,
     creationError,
+    creationErrorAction = 'retry',
     onDismissCreationError,
+    onRetryCreationError,
 }: DepositMapProps) => {
     const geo = useGeolocation();
     return (
@@ -38,24 +44,13 @@ const DepositMap = ({
 
             <main className="max-w-xl mx-auto px-6 pt-8 space-y-8">
                 {creationError ? (
-                    <div
-                        className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 flex flex-col gap-2"
-                        role="alert"
-                    >
-                        <p>{creationError}</p>
-                        <div className="flex flex-wrap gap-2 justify-end">
-                            <button
-                                type="button"
-                                className="text-xs font-semibold text-primary underline"
-                                onClick={() => onDismissCreationError?.()}
-                            >
-                                Ocultar
-                            </button>
-                            <a href="mailto:soporte@micopay.app" className="text-xs font-semibold text-primary underline">
-                                Contactar soporte
-                            </a>
-                        </div>
-                    </div>
+                    <ErrorBanner
+                        message={creationError}
+                        action={creationErrorAction}
+                        onRetry={onRetryCreationError}
+                        onDismiss={onDismissCreationError}
+                        supportState="TRADE_CREATE"
+                    />
                 ) : null}
                 {/* Summary Context */}
                 <section className="space-y-2">
