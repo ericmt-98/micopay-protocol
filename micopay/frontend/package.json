@@ -40,7 +40,6 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.27",
     "jsdom": "^29.1.0",
-    "lightningcss-win32-x64-msvc": "^1.32.0",
     "postcss": "^8.5.8",
     "sharp": "^0.34.5",
     "tailwindcss": "^4.2.2",

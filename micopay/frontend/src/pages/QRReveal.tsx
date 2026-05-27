@@ -1,8 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { getSecret, completeTrade, TradeData } from '../services/api';
 import { getTradeStateDebugOverride, normalizeTradeState, TradeState } from '../components/TradeStateBadge';
+import ErrorBanner from '../components/ErrorBanner';
 import SupportLink from '../components/SupportLink';
+import { mapApiError, type MappedApiError } from '../utils/apiError';
+import { DEMO_QR_PAYLOAD, IS_DEMO_MODE } from '../utils/demoMode';
 
 interface QRRevealProps {
     activeTrade: TradeData | null;
@@ -16,13 +19,18 @@ interface QRRevealProps {
 
 const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat, onSuccess }: QRRevealProps) => {
     const [isConfirming, setIsConfirming] = useState(false);
-    const [qrPayload, setQrPayload] = useState<string>('MICOPAY:DEMO:mock_secret_for_ui_preview');
+    const [qrPayload, setQrPayload] = useState<string | null>(null);
     const [secretLoaded, setSecretLoaded] = useState(false);
+    const [secretLoading, setSecretLoading] = useState(false);
+    const [secretError, setSecretError] = useState<MappedApiError | null>(null);
+    const [completeError, setCompleteError] = useState<MappedApiError | null>(null);
     const [tradeState, setTradeState] = useState<TradeState>('locked');
 
-    // Fetch real HTLC secret from backend
-    useEffect(() => {
+    const loadSecret = useCallback(() => {
         if (!activeTrade || !sellerToken) return;
+
+        setSecretLoading(true);
+        setSecretError(null);
 
         getSecret(activeTrade.id, sellerToken)
             .then(({ qr_payload }) => {
@@ -30,9 +38,21 @@ const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat
                 setSecretLoaded(true);
             })
             .catch((e) => {
-                console.warn('Could not fetch secret, using demo QR', e);
-            });
+                if (IS_DEMO_MODE) {
+                    setQrPayload(DEMO_QR_PAYLOAD);
+                    setSecretLoaded(true);
+                } else {
+                    setSecretError(mapApiError(e));
+                    setQrPayload(null);
+                    setSecretLoaded(false);
+                }
+            })
+            .finally(() => setSecretLoading(false));
     }, [activeTrade, sellerToken]);
+
+    useEffect(() => {
+        loadSecret();
+    }, [loadSecret]);
 
     useEffect(() => {
         const fallbackState: TradeState = secretLoaded ? 'revealed' : 'locked';
@@ -41,20 +61,25 @@ const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat
     }, [activeTrade?.status, secretLoaded]);
 
     const completePurchase = async () => {
-        if (isConfirming) return;
+        if (isConfirming || !secretLoaded || secretError) return;
         setIsConfirming(true);
+        setCompleteError(null);
         setTradeState('pending_cash');
         try {
             if (activeTrade && buyerToken) {
                 await completeTrade(activeTrade.id, buyerToken);
             }
             setTradeState('completed');
-        } catch (e) {
-            console.warn('Could not complete trade on backend, proceeding as demo', e);
-        } finally {
             setTimeout(() => onSuccess(), 1500);
+        } catch (e) {
+            setCompleteError(mapApiError(e));
+            setTradeState('revealed');
+        } finally {
+            setIsConfirming(false);
         }
     };
+
+    const showQr = secretLoaded && qrPayload && !secretError;
 
     return (
         <div className="bg-surface font-body text-on-surface min-h-screen">
@@ -124,36 +149,68 @@ const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat
                 {/* QR Section */}
                 <section className="mb-10 text-center">
                     <h2 className="text-[11px] font-bold text-outline-variant uppercase tracking-[0.2em] mb-6">TU CÓDIGO DE INTERCAMBIO</h2>
-                    <div className="bg-surface-container-low p-8 rounded-[32px] inline-block mx-auto mb-6 border border-outline-variant/10 shadow-sm">
-                        {/* Real QR generated from HTLC secret */}
-                        <QRCodeSVG
-                            value={qrPayload}
-                            size={224}
-                            bgColor="transparent"
-                            fgColor="#1A1C1E"
-                            level="M"
-                            style={{ borderRadius: '12px' }}
-                        />
-                        <div className="mt-6">
-                            <h3 className="font-headline font-extrabold text-xl text-on-surface">Juan Pérez</h3>
-                            <p className="text-primary font-bold text-sm">@juanp</p>
-                            <p className="mt-2 font-headline font-black text-2xl text-on-surface">${amount} MXN</p>
-                            {secretLoaded && (
-                                <p className="text-[10px] text-primary mt-1 font-mono opacity-70">
-                                    Soroban HTLC · Testnet
-                                </p>
-                            )}
+
+                    {secretLoading ? (
+                        <div className="flex flex-col items-center gap-3 py-12">
+                            <div className="relative w-8 h-8">
+                                <div className="absolute inset-0 border-4 border-surface-container-high rounded-full"></div>
+                                <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                            <p className="text-sm font-medium text-outline">Generando código seguro…</p>
                         </div>
-                    </div>
+                    ) : secretError ? (
+                        <ErrorBanner
+                            variant="blocking"
+                            message={secretError.message}
+                            action={secretError.action}
+                            onRetry={loadSecret}
+                            supportTradeId={activeTrade?.id}
+                            supportState="QR_REVEAL_SECRET"
+                        />
+                    ) : showQr ? (
+                        <div className="bg-surface-container-low p-8 rounded-[32px] inline-block mx-auto mb-6 border border-outline-variant/10 shadow-sm">
+                            <QRCodeSVG
+                                value={qrPayload}
+                                size={224}
+                                bgColor="transparent"
+                                fgColor="#1A1C1E"
+                                level="M"
+                                style={{ borderRadius: '12px' }}
+                            />
+                            <div className="mt-6">
+                                <h3 className="font-headline font-extrabold text-xl text-on-surface">Juan Pérez</h3>
+                                <p className="text-primary font-bold text-sm">@juanp</p>
+                                <p className="mt-2 font-headline font-black text-2xl text-on-surface">${amount} MXN</p>
+                                {secretLoaded && (
+                                    <p className="text-[10px] text-primary mt-1 font-mono opacity-70">
+                                        Soroban HTLC · Testnet
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    ) : null}
                 </section>
+
+                {completeError ? (
+                    <ErrorBanner
+                        message={completeError.message}
+                        action={completeError.action}
+                        onRetry={completePurchase}
+                        onDismiss={() => setCompleteError(null)}
+                        supportTradeId={activeTrade?.id}
+                        supportState="QR_REVEAL_COMPLETE"
+                        className="mb-6"
+                    />
+                ) : null}
 
                 {/* Confirm Section */}
                 <section className="mb-10 text-center">
                     {!isConfirming ? (
                         <button
                             onClick={completePurchase}
+                            disabled={!showQr || !!secretError || secretLoading}
                             aria-label="Confirmar recepción de efectivo"
-                            className="w-full py-4 rounded-2xl bg-primary text-on-primary font-bold text-base flex items-center justify-center gap-2 active:scale-95 transition-transform focus:outline-none focus:ring-2 focus:ring-primary"
+                            className="w-full py-4 rounded-2xl bg-primary text-on-primary font-bold text-base flex items-center justify-center gap-2 active:scale-95 transition-transform focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:pointer-events-none"
                         >
                             <span aria-hidden="true" className="material-symbols-outlined" style={{ fontVariationSettings: '"FILL" 1' }}>check_circle</span>
                             Ya recibí el efectivo

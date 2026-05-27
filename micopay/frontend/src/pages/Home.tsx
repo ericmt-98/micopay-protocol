@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Logo } from '../components/Logo';
-import { getTradeHistory, getAccountBalance, TradeHistoryItem } from '../services/api';
+import ErrorBanner from '../components/ErrorBanner';
+import { getTradeHistory, getAccountBalance, getMerchantTrades, TradeHistoryItem } from '../services/api';
+import { mapApiError, type MappedApiError } from '../utils/apiError';
 
 const EXPLORER = 'https://stellar.expert/explorer/testnet/tx';
 
@@ -27,32 +29,50 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token, 
   const [xlmBalance, setXlmBalance] = useState<string | null>(null);
   const [stellarAddress, setStellarAddress] = useState<string>('');
   const [pendingCount, setPendingCount] = useState(0);
+  const [balanceError, setBalanceError] = useState<MappedApiError | null>(null);
+  const [historyError, setHistoryError] = useState<MappedApiError | null>(null);
+  const [pendingError, setPendingError] = useState<MappedApiError | null>(null);
 
-  useEffect(() => {
+  const loadBalance = useCallback(() => {
+    setBalanceError(null);
     getAccountBalance()
       .then(({ xlm, address }) => {
         setXlmBalance(parseFloat(xlm).toLocaleString('es-MX', { maximumFractionDigits: 2 }));
         setStellarAddress(address);
       })
-      .catch(() => {});
+      .catch((e) => setBalanceError(mapApiError(e)));
   }, []);
 
-  useEffect(() => {
+  const loadHistory = useCallback(() => {
     if (!token) return;
+    setHistoryError(null);
     getTradeHistory(token)
       .then(setTrades)
-      .catch(() => {});
+      .catch((e) => {
+        setHistoryError(mapApiError(e));
+        setTrades([]);
+      });
   }, [token]);
 
-  useEffect(() => {
+  const loadPendingCount = useCallback(() => {
     if (!merchantToken) return;
-    fetch(`/api/merchants/me/trades?state=pending`, {
-      headers: { Authorization: `Bearer ${merchantToken}` },
-    })
-      .then(res => res.json())
-      .then(data => setPendingCount(data.trades?.length || 0))
-      .catch(() => {});
+    setPendingError(null);
+    getMerchantTrades(merchantToken, 'pending')
+      .then((items) => setPendingCount(items.length))
+      .catch((e) => setPendingError(mapApiError(e)));
   }, [merchantToken]);
+
+  useEffect(() => {
+    loadBalance();
+  }, [loadBalance]);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
+  useEffect(() => {
+    loadPendingCount();
+  }, [loadPendingCount]);
 
   // Convert XLM to approx MXN (1 XLM ≈ 20 MXN, demo rate)
   const mxnBalance = xlmBalance
@@ -96,6 +116,17 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token, 
           <p className="text-on-surface-variant font-medium opacity-70 capitalize">{today}</p>
         </section>
 
+        {balanceError ? (
+          <ErrorBanner
+            message={balanceError.message}
+            action={balanceError.action}
+            onRetry={loadBalance}
+            onDismiss={() => setBalanceError(null)}
+            supportState="HOME_BALANCE"
+            className="mb-4"
+          />
+        ) : null}
+
         {/* Balance Card */}
         <div className="bg-primary rounded-[24px] p-6 relative overflow-hidden mb-8 shadow-xl shadow-primary/20">
           <div className="absolute -right-8 -bottom-8 opacity-20 pointer-events-none text-white">
@@ -120,7 +151,11 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token, 
             <div className="flex items-center gap-2 mt-1">
               <span className="w-2.5 h-2.5 rounded-full bg-[#5DCAA5] animate-pulse shadow-[0_0_8px_#5DCAA5]"></span>
               <p className="text-[#5DCAA5] text-sm font-bold">
-                {xlmBalance ? `${xlmBalance} XLM · Testnet` : 'Cargando balance…'}
+                {balanceError
+                  ? 'No disponible'
+                  : xlmBalance
+                    ? `${xlmBalance} XLM · Testnet`
+                    : 'Cargando balance…'}
               </p>
             </div>
           </div>
@@ -162,11 +197,30 @@ const Home = ({ onNavigateCashout, onNavigateDeposit, onNavigateHistory, token, 
           </div>
         </section>
 
+        {pendingError ? (
+          <ErrorBanner
+            message={pendingError.message}
+            action={pendingError.action}
+            onRetry={loadPendingCount}
+            onDismiss={() => setPendingError(null)}
+            supportState="HOME_PENDING"
+            className="mb-4"
+          />
+        ) : null}
+
         {/* Actividad */}
         <section className="mb-8">
           <h2 className="text-[11px] font-bold text-outline-variant uppercase tracking-[0.15em] mb-4">Actividad reciente</h2>
 
-          {trades.length === 0 ? (
+          {historyError ? (
+            <ErrorBanner
+              message={historyError.message}
+              action={historyError.action}
+              onRetry={loadHistory}
+              onDismiss={() => setHistoryError(null)}
+              supportState="HOME_HISTORY"
+            />
+          ) : trades.length === 0 ? (
             <div className="bg-white rounded-[20px] border border-outline-variant/10 shadow-sm p-6 text-center">
               <span aria-hidden="true" className="material-symbols-outlined text-outline-variant text-3xl mb-2 block">receipt_long</span>
               <p className="text-sm text-outline font-medium">Sin transacciones aún</p>

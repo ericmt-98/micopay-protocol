@@ -1,5 +1,7 @@
 import MapSim from '../components/MapSim';
+import ErrorBanner from '../components/ErrorBanner';
 import { useGeolocation } from '../hooks/useGeolocation';
+import type { ApiErrorAction } from '../utils/apiError';
 
 interface Offer {
   id: string;
@@ -58,6 +60,10 @@ interface ExploreMapProps {
   loading?: boolean;
   /** Pass [] to show the empty state (e.g. when P2P matching returns no nearby providers) */
   offers?: Offer[];
+  creationError?: string | null;
+  creationErrorAction?: ApiErrorAction;
+  onDismissCreationError?: () => void;
+  onRetryCreationError?: () => void;
 }
 
 const ExploreMap = ({
@@ -66,6 +72,10 @@ const ExploreMap = ({
   amount = 500,
   loading = false,
   offers = DEFAULT_OFFERS,
+  creationError,
+  creationErrorAction = 'retry',
+  onDismissCreationError,
+  onRetryCreationError,
 }: ExploreMapProps) => {
   const geo = useGeolocation();
   return (
@@ -82,6 +92,17 @@ const ExploreMap = ({
       </header>
 
       <main className="pt-24 px-6 max-w-2xl mx-auto">
+        {creationError ? (
+          <ErrorBanner
+            message={creationError}
+            action={creationErrorAction}
+            onRetry={onRetryCreationError}
+            onDismiss={onDismissCreationError}
+            supportState="TRADE_CREATE"
+            className="mb-6"
+          />
+        ) : null}
+
         {/* Map Section */}
         <section className="mb-10">
           <MapSim />
