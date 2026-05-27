@@ -1,6 +1,9 @@
 import Fastify from 'fastify';
 import fastifyJwt from '@fastify/jwt';
 import fastifyCors from '@fastify/cors';
+import fastifyStatic from '@fastify/static';
+import { fileURLToPath } from 'node:url';
+import { join, dirname } from 'node:path';
 import { config } from './config.js';
 import { authRoutes } from './routes/auth.js';
 import { userRoutes } from './routes/users.js';
@@ -10,6 +13,10 @@ import { defiRoutes } from './routes/defi.js';
 import { merchantRoutes } from './routes/merchants.js';
 import { AppError } from './utils/errors.js';
 import { Keypair } from '@stellar/stellar-sdk';
+
+// Resolve the absolute path to the public/ directory next to src/
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PUBLIC_DIR = join(__dirname, '..', 'public');
 
 const app = Fastify({
   logger: process.env.NODE_ENV === 'development' ? {
@@ -27,6 +34,37 @@ const app = Fastify({
 });
 
 // --- Plugins ---
+
+// Serve files in public/ as static assets (e.g. .well-known/assetlinks.json).
+// decorateReply:false avoids conflicts if another plugin adds sendFile.
+app.register(fastifyStatic, {
+  root: PUBLIC_DIR,
+  prefix: '/',
+  decorateReply: false,
+});
+
+// --- Android Digital Asset Links ---
+// Explicit route for /.well-known/assetlinks.json.
+// Android's App Links verifier calls this URL and:
+//   1. Requires HTTP 200 — it does NOT follow redirects.
+//   2. Requires Content-Type: application/json.
+//   3. Caches the response (we set 1 hour).
+// The fastify-static plugin alone might redirect if the path ends without
+// the extension, so this explicit route is the authoritative handler.
+app.get('/.well-known/assetlinks.json', async (_request, reply) => {
+  const fs = await import('node:fs/promises');
+  const filePath = join(PUBLIC_DIR, '.well-known', 'assetlinks.json');
+  try {
+    const content = await fs.readFile(filePath, 'utf-8');
+    reply
+      .status(200)
+      .header('Content-Type', 'application/json')
+      .header('Cache-Control', 'public, max-age=3600')
+      .send(content);
+  } catch (err) {
+    reply.status(404).send({ error: 'assetlinks.json not found' });
+  }
+});
 
 // CORS — explicit allowlist for Capacitor WebView + dev/prod web origins.
 // Extra origins can be added via CORS_EXTRA_ORIGINS (comma-separated).

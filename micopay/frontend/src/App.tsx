@@ -6,7 +6,10 @@ import {
   Navigate,
   useNavigate,
   useLocation,
+  useParams,
 } from "react-router-dom";
+import { App as CapApp } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 import ErrorBoundary from './components/ErrorBoundary';
 
 import Home from "./pages/Home";
@@ -27,6 +30,7 @@ import MerchantInbox from "./pages/MerchantInbox";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Profile from "./pages/Profile";
+import ClaimQR from "./pages/ClaimQR";
 import BottomNav from "./components/BottomNav";
 
 import {
@@ -321,6 +325,62 @@ function TermsRoute() {
   return <Terms onBack={() => navigate('/profile')} />;
 }
 
+// ── Claim deep-link route ────────────────────────────────────────────────────
+// Renders ClaimQR for the /claim/:id path, which is only reachable via an
+// Android App Link or direct URL navigation — not surfaced in the bottom nav.
+function ClaimQRRoute() {
+  const { id } = useParams<{ id: string }>();
+  return <ClaimQR requestId={id ?? ''} />;
+}
+
+// ── Android App Links deep-link listener ────────────────────────────────────
+// Must be mounted *inside* <HashRouter> to access useNavigate().
+// Capacitor.isNativePlatform() ensures the web build (npm run dev) is
+// completely unaffected — the listener is never registered in a browser.
+//
+// Flow (all three app states):
+//   Cold start    → Capacitor fires appUrlOpen after React mounts.
+//   Backgrounded  → launchMode=singleTask routes to onNewIntent; Capacitor
+//                   bridges that to appUrlOpen on the existing instance.
+//   Foregrounded  → same as backgrounded.
+//
+// URL anatomy: https://app.micopay.xyz/claim/mcr-4b6c0e5c
+//   url.pathname → /claim/mcr-4b6c0e5c
+//   navigate()   → HashRouter pushes #/claim/mcr-4b6c0e5c internally.
+function AppUrlOpenListener() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    // addListener returns a Promise<PluginListenerHandle>.
+    // We capture it so we can call .remove() on cleanup.
+    const listenerPromise = CapApp.addListener('appUrlOpen', (event) => {
+      try {
+        const url = new URL(event.url);
+        const pathname = url.pathname;
+        // Guard: only handle /claim/:id — ignore all other paths.
+        if (pathname.startsWith('/claim/')) {
+          // replace:true avoids pushing a duplicate history entry when the
+          // user is already looking at this claim screen.
+          navigate(pathname, { replace: true });
+        }
+      } catch {
+        // new URL() threw — malformed event.url. Silently ignore.
+      }
+    });
+
+    return () => {
+      // Remove the native listener to prevent memory leaks on hot-reload
+      // or when the component unmounts.
+      listenerPromise.then((l) => l.remove()).catch(() => {});
+    };
+  }, [navigate]);
+
+  // Renders nothing — purely a side-effect component.
+  return null;
+}
+
 // ── BottomNav route adapter ─────────────────────────────────────────────────
 
 const ROUTE_TO_PAGE: Record<string, string> = {
@@ -343,12 +403,16 @@ const HIDE_BOTTOMNAV_ROUTES = new Set([
   '/terms',
 ]);
 
+// Claim screens also hide the bottom nav (standalone deep-link UI).
+const HIDE_BOTTOMNAV_PREFIX = ['/claim/'];
+
 function BottomNavAdapter() {
   const navigate = useNavigate();
   const location = useLocation();
   const { sellerUser } = useAppCtx();
 
   if (HIDE_BOTTOMNAV_ROUTES.has(location.pathname)) return null;
+  if (HIDE_BOTTOMNAV_PREFIX.some((p) => location.pathname.startsWith(p))) return null;
 
   const navMap: Record<string, string> = {
     home: '/',
@@ -495,9 +559,16 @@ function App({ initialTradeId: _initialTradeId = null }: AppProps) {
               <Route path="/profile" element={<ProfileRoute />} />
               <Route path="/privacy" element={<PrivacyRoute />} />
               <Route path="/terms" element={<TermsRoute />} />
+              <Route path="/claim/:id" element={<ClaimQRRoute />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             <BottomNavAdapter />
+            {/*
+              AppUrlOpenListener is inside HashRouter (needs useNavigate) but
+              outside Routes (must not unmount when the route changes).
+              isNativePlatform() guard inside makes the web build safe.
+            */}
+            <AppUrlOpenListener />
           </div>
         </HashRouter>
       </AppContext.Provider>

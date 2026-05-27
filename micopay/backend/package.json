@@ -13,6 +13,7 @@
     "@fastify/cors": "^8.5.0",
     "@fastify/jwt": "^8.0.1",
     "@fastify/rate-limit": "^9.1.0",
+    "@fastify/static": "^7.0.4",
     "@stellar/stellar-sdk": "^14.6.1",
     "@types/node": "^20.14.0",
     "@types/pg": "^8.11.6",
