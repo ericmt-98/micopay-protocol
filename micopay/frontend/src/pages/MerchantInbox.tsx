@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { useQRScanner } from '../hooks/useQRScanner';
+import { PermissionGate } from '../components/PermissionGate';
+import { PushPermissionBanner } from '../components/PushPermissionBanner';
 
 interface Trade {
   id: string;
@@ -32,23 +35,59 @@ interface MerchantInboxProps {
   onBack: () => void;
 }
 
+const isNative = Capacitor.isNativePlatform();
+
 const MerchantInbox = ({ token, onBack }: MerchantInboxProps) => {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<string>('all');
+
+  // Scan state
+  const [scanAreaOpen, setScanAreaOpen] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [scannedPayload, setScannedPayload] = useState<string | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
-  const { scan } = useQRScanner();
+  const [manualPayload, setManualPayload] = useState('');
 
-  const handleScan = async () => {
+  const { scan, permState, requestPermission, openSettings } = useQRScanner();
+
+  const triggerScan = async () => {
+    setIsScanning(true);
+    setScanError(null);
+    const result = await scan();
+    setIsScanning(false);
+    if (result.value) {
+      setScannedPayload(result.value);
+      setScanAreaOpen(false);
+    } else if (result.error && result.error !== 'scanner_unavailable') {
+      setScanError(result.error);
+    }
+    // If result.permState is denied/permanently_denied, permState in hook updates
+    // and PermissionGate re-renders automatically
+  };
+
+  const handleScanClick = () => {
+    setScanAreaOpen(true);
     setScanError(null);
     setScannedPayload(null);
-    const { value, error } = await scan();
-    if (error) {
-      setScanError(error);
-      return;
+    // On web: skip permission flow, manual paste shows directly
+    // On native with known grant: scan immediately
+    if (!isNative || permState === 'granted') {
+      triggerScan();
     }
-    if (value) setScannedPayload(value);
+  };
+
+  const handlePermissionRequest = async () => {
+    const perm = await requestPermission();
+    if (perm === 'granted') triggerScan();
+  };
+
+  const handleManualSubmit = () => {
+    const trimmed = manualPayload.trim();
+    if (!trimmed) return;
+    setScannedPayload(trimmed);
+    setManualPayload('');
+    setScanAreaOpen(false);
   };
 
   const fetchTrades = async (state: string = 'all') => {
@@ -71,6 +110,21 @@ const MerchantInbox = ({ token, onBack }: MerchantInboxProps) => {
     fetchTrades(activeFilter);
   }, [activeFilter, token]);
 
+  // Re-check camera permission when app returns from system settings.
+  useEffect(() => {
+    if (!isNative) return;
+    let removed = false;
+    let handle: { remove: () => Promise<void> } | null = null;
+    import('@capacitor/app').then(({ App }) => {
+      if (removed) return;
+      App.addListener('appStateChange', ({ isActive }) => {
+        if (!isActive || !scanAreaOpen) return;
+        requestPermission();
+      }).then(h => { if (removed) h.remove(); else handle = h; });
+    });
+    return () => { removed = true; handle?.remove(); };
+  }, [scanAreaOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const filters = [
     { key: 'all', label: 'Todos' },
     { key: 'pending', label: 'Pendientes' },
@@ -79,13 +133,35 @@ const MerchantInbox = ({ token, onBack }: MerchantInboxProps) => {
     { key: 'completed', label: 'Completados' },
   ];
 
+  const manualPasteFallback = (
+    <div className="space-y-3 text-left">
+      <p className="text-xs text-outline font-medium">
+        Pega el payload del QR del cliente:
+      </p>
+      <textarea
+        value={manualPayload}
+        onChange={e => setManualPayload(e.target.value)}
+        placeholder="micopay://claim?request_id=..."
+        rows={3}
+        className="w-full rounded-xl border border-outline/20 bg-surface-container-lowest p-3 text-xs font-mono resize-none focus:outline-none focus:border-primary"
+      />
+      <button
+        onClick={handleManualSubmit}
+        disabled={!manualPayload.trim()}
+        className="w-full h-[44px] bg-primary/10 text-primary font-bold rounded-xl disabled:opacity-40 active:scale-95 transition-all text-sm"
+      >
+        Confirmar payload
+      </button>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-[#F4FAFF]">
       <header className="fixed top-0 left-0 w-full z-50 bg-white/90 backdrop-blur-md px-6 py-4 pt-[max(1rem,env(safe-area-inset-top))] flex items-center gap-4">
         <button onClick={onBack} className="material-symbols-outlined text-primary">arrow_back</button>
         <h1 className="font-headline font-bold text-lg flex-1">Bandeja de entrada</h1>
         <button
-          onClick={handleScan}
+          onClick={handleScanClick}
           aria-label="Escanear QR del cliente"
           className="flex items-center gap-1 bg-primary text-white px-3 py-2 rounded-full text-xs font-bold shadow active:scale-95"
         >
@@ -95,6 +171,10 @@ const MerchantInbox = ({ token, onBack }: MerchantInboxProps) => {
       </header>
 
       <main className="pt-24 px-6 pb-32">
+
+        <PushPermissionBanner isMerchant={!!token} />
+
+        {/* Result banner */}
         {(scannedPayload || scanError) && (
           <div className={`mb-4 rounded-2xl p-4 ${scanError ? 'bg-red-50 border border-red-200' : 'bg-emerald-50 border border-emerald-200'}`}>
             <div className="flex items-start gap-3">
@@ -119,6 +199,50 @@ const MerchantInbox = ({ token, onBack }: MerchantInboxProps) => {
                 close
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Scan area: permission gate + fallback */}
+        {scanAreaOpen && (
+          <div className="mb-4 rounded-2xl bg-white border border-surface-container-high shadow-sm overflow-hidden relative">
+            <button
+              onClick={() => setScanAreaOpen(false)}
+              aria-label="Cerrar"
+              className="absolute top-3 right-3 z-10 material-symbols-outlined text-outline text-base"
+            >
+              close
+            </button>
+
+            {/* Web: always show paste fallback (no camera API) */}
+            {!isNative && (
+              <div className="px-6 py-8">
+                <p className="text-xs font-bold text-outline uppercase tracking-wider mb-4">Pega el QR manualmente</p>
+                {manualPasteFallback}
+              </div>
+            )}
+
+            {/* Native: show PermissionGate until granted, then scanning state */}
+            {isNative && permState !== 'granted' && (
+              <PermissionGate
+                state={permState}
+                onRequest={handlePermissionRequest}
+                onOpenSettings={openSettings}
+                title="Cámara para escanear QR"
+                description="MicoPay necesita la cámara para leer el código QR del cliente y completar el intercambio."
+                icon="photo_camera"
+                fallback={manualPasteFallback}
+              >
+                {/* children never render here since permState !== 'granted' */}
+                <></>
+              </PermissionGate>
+            )}
+
+            {isNative && permState === 'granted' && isScanning && (
+              <div className="flex items-center justify-center py-10 gap-3">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+                <p className="text-sm text-outline">Escaneando…</p>
+              </div>
+            )}
           </div>
         )}
 

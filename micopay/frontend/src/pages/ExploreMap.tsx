@@ -1,4 +1,7 @@
+import { useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import MapSim from '../components/MapSim';
+import { PermissionGate } from '../components/PermissionGate';
 import { useGeolocation } from '../hooks/useGeolocation';
 
 interface Offer {
@@ -68,6 +71,49 @@ const ExploreMap = ({
   offers = DEFAULT_OFFERS,
 }: ExploreMapProps) => {
   const geo = useGeolocation();
+  const [zoneInput, setZoneInput] = useState('');
+  const [confirmedZone, setConfirmedZone] = useState('');
+
+  // On native: show gate for prompt (rationale before OS dialog) and denied states.
+  // On web: browser handles its own permission dialog; never block with gate.
+  const showGate =
+    geo.permState === 'denied' ||
+    geo.permState === 'permanently_denied' ||
+    (Capacitor.isNativePlatform() && geo.permState === 'prompt');
+
+  const locationLabel =
+    geo.loading
+      ? 'Localizando...'
+      : geo.lat && geo.lng
+      ? `${geo.lat.toFixed(3)}, ${geo.lng.toFixed(3)}`
+      : confirmedZone || 'Zona no disponible';
+
+  const zoneFallback = (
+    <div className="space-y-3 text-left">
+      <p className="text-sm text-outline">Escribe tu zona para ver agentes cercanos:</p>
+      <input
+        type="text"
+        value={zoneInput}
+        onChange={e => setZoneInput(e.target.value)}
+        onKeyDown={e => e.key === 'Enter' && zoneInput.trim() && setConfirmedZone(zoneInput.trim())}
+        placeholder="Ej: Colonia Roma, CDMX"
+        className="w-full rounded-xl border border-outline/20 bg-surface-container-lowest px-4 py-3 text-sm focus:outline-none focus:border-primary"
+      />
+      <button
+        onClick={() => { if (zoneInput.trim()) setConfirmedZone(zoneInput.trim()); }}
+        disabled={!zoneInput.trim()}
+        className="w-full h-[44px] bg-primary/10 text-primary font-bold rounded-xl disabled:opacity-40 active:scale-95 transition-all text-sm"
+      >
+        Buscar en esta zona
+      </button>
+      {confirmedZone && (
+        <p className="text-xs text-primary font-medium text-center">
+          Mostrando agentes para: {confirmedZone}
+        </p>
+      )}
+    </div>
+  );
+
   return (
     <div className="bg-surface-container-lowest text-on-surface font-body min-h-screen pb-24">
       {/* Top Navigation */}
@@ -82,9 +128,24 @@ const ExploreMap = ({
       </header>
 
       <main className="pt-24 px-6 max-w-2xl mx-auto">
-        {/* Map Section */}
+        {/* Map / Permission Gate section */}
         <section className="mb-10">
-          <MapSim />
+          {showGate ? (
+            <PermissionGate
+              state={geo.permState}
+              onRequest={geo.requestPermission}
+              onOpenSettings={geo.openSettings}
+              title="Ubicación para agentes cercanos"
+              description="MicoPay usa tu ubicación para mostrarte los agentes de cambio más próximos."
+              icon="location_on"
+              fallback={zoneFallback}
+            >
+              {/* never rendered since showGate = permState is denied */}
+              <MapSim />
+            </PermissionGate>
+          ) : (
+            <MapSim />
+          )}
         </section>
 
         {offers.length === 0 ? (
@@ -115,14 +176,10 @@ const ExploreMap = ({
                 {offers.length} {offers.length === 1 ? 'oferta' : 'ofertas'} para ${amount} MXN
               </h2>
               <div className="flex items-center gap-1 mt-1">
-                <span className="material-symbols-outlined text-primary text-sm">location_on</span>
-                <p className="text-sm text-outline font-medium">
-                  {geo.loading
-                    ? 'Localizando...'
-                    : geo.lat && geo.lng
-                      ? `${geo.lat.toFixed(3)}, ${geo.lng.toFixed(3)}`
-                      : 'Zona Centro'}
-                </p>
+                <span className="material-symbols-outlined text-primary text-sm">
+                  {showGate ? 'location_off' : 'location_on'}
+                </span>
+                <p className="text-sm text-outline font-medium">{locationLabel}</p>
               </div>
             </div>
 
