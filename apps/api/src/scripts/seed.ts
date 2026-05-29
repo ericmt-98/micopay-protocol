@@ -69,11 +69,11 @@ export async function seedDemoData(): Promise<void> {
   await query(
     `
     INSERT INTO merchants (
-      id, stellar_address, name, type, address, lat, lng,
+      id, display_name, latitude, longitude, address_text,
       available_mxn, max_trade_mxn, min_trade_mxn, tier,
       completion_rate, trades_completed, trades_cancelled, volume_usdc,
       avg_time_minutes, online
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
     ON CONFLICT (id) DO UPDATE SET
       available_mxn = EXCLUDED.available_mxn,
       online        = EXCLUDED.online,
@@ -81,12 +81,10 @@ export async function seedDemoData(): Promise<void> {
   `,
     [
       DEMO_MERCHANT_ID,
-      "GDEMO1MERCHANT111111111111111111111111111111111111111111111",
       "Demo Merchant",
-      "tienda",
-      "Demo Street 1, Demo City",
       19.4195,
       -99.1627,
+      "Demo Street 1, Demo City",
       10000,
       5000,
       100,
@@ -338,46 +336,11 @@ async function seedMerchants() {
     },
   ];
 
-  await query(`
-    CREATE TABLE IF NOT EXISTS merchants (
-      id                  VARCHAR(32) PRIMARY KEY,
-      stellar_address     VARCHAR(56) NOT NULL UNIQUE,
-      name               VARCHAR(100) NOT NULL,
-      type               VARCHAR(50),
-      address            TEXT,
-      lat                DECIMAL(10, 8),
-      lng                DECIMAL(11, 8),
-      available_mxn      DECIMAL(12, 2) DEFAULT 0,
-      max_trade_mxn      DECIMAL(12, 2) DEFAULT 0,
-      min_trade_mxn      DECIMAL(12, 2) DEFAULT 0,
-      tier               VARCHAR(20) DEFAULT 'espora',
-      completion_rate     DECIMAL(5, 4) DEFAULT 0,
-      trades_completed   INTEGER DEFAULT 0,
-      trades_cancelled   INTEGER DEFAULT 0,
-      volume_usdc        DECIMAL(20, 2) DEFAULT 0,
-      avg_time_minutes   INTEGER DEFAULT 10,
-      online             BOOLEAN DEFAULT false,
-      verified           BOOLEAN DEFAULT false,
-      created_at         TIMESTAMPTZ DEFAULT NOW(),
-      updated_at         TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-
-  await query(
-    `CREATE INDEX IF NOT EXISTS idx_merchants_location ON merchants(lat, lng)`,
-  );
-  await query(
-    `CREATE INDEX IF NOT EXISTS idx_merchants_tier ON merchants(tier)`,
-  );
-  await query(
-    `CREATE INDEX IF NOT EXISTS idx_merchants_online ON merchants(online)`,
-  );
-
   for (const m of merchants) {
     await query(
       `
       INSERT INTO merchants (
-        id, stellar_address, name, type, address, lat, lng,
+        id, stellar_address, display_name, type, address_text, latitude, longitude,
         available_mxn, max_trade_mxn, min_trade_mxn, tier,
         completion_rate, trades_completed, trades_cancelled, volume_usdc,
         avg_time_minutes, online
@@ -462,27 +425,6 @@ async function seedX402Payments() {
 
 async function seedSwapHistory() {
   console.log("\n🔄 Seeding swap history...");
-
-  await query(`
-    CREATE TABLE IF NOT EXISTS swap_history (
-      id              SERIAL PRIMARY KEY,
-      swap_id         VARCHAR(64) UNIQUE,
-      initiator       VARCHAR(56) NOT NULL,
-      counterparty    VARCHAR(56),
-      offered_chain   VARCHAR(32),
-      offered_symbol  VARCHAR(16),
-      offered_amount  VARCHAR(32),
-      wanted_chain    VARCHAR(32),
-      wanted_symbol   VARCHAR(16),
-      wanted_amount   VARCHAR(32),
-      rate            DECIMAL(10, 6),
-      status          VARCHAR(20) DEFAULT 'pending',
-      htlc_tx_hash   VARCHAR(64),
-      secret_hash     VARCHAR(72),
-      created_at      TIMESTAMPTZ DEFAULT NOW(),
-      completed_at    TIMESTAMPTZ
-    )
-  `);
 
   const swaps = [
     {

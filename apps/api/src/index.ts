@@ -1,4 +1,4 @@
-import "./config.js";
+import { config } from "./config.js";
 import Fastify from "fastify";
 import { seedDemoData } from "./scripts/seed.js";
 import fastifyCors from "@fastify/cors";
@@ -12,7 +12,12 @@ import { fundRoutes } from "./routes/fund.js";
 import { serviceRoutes } from "./routes/services.js";
 import { demoRoutes } from "./routes/demo.js";
 import { cetesRoutes } from "./routes/cetes.js";
-import { initAuthChallengesTable } from "./db/auth.js";
+import { merchantRoutes } from "./routes/merchants.js";
+import { userRoutes } from "./routes/users.js";
+import { stellarRoutes } from "./routes/stellar.js";
+import { bazaarRoutes } from "./routes/bazaar.js";
+import { swapRoutes } from "./routes/swaps.js";
+import { tradeRoutes } from "./routes/trades.js";
 
 const PORT = parseInt(process.env.PORT ?? "3000", 10);
 const NODE_ENV = process.env.NODE_ENV ?? "development";
@@ -37,9 +42,14 @@ app.register(serviceRoutes);
 app.register(demoRoutes);
 app.register(cetesRoutes);
 app.register(merchantRoutes);
+app.register(userRoutes);
+app.register(stellarRoutes);
+app.register(bazaarRoutes);
+app.register(swapRoutes);
+app.register(tradeRoutes);
 
 async function start() {
-  await initAuthChallengesTable();
+  await seedDemoData();
   await app.listen({ port: PORT, host: "0.0.0.0" });
   console.log(`MicoPay API running on http://localhost:${PORT}`);
 }
