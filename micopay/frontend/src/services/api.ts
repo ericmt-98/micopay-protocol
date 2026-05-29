@@ -367,3 +367,39 @@ export async function updateMerchantConfig(token: string, config: MerchantConfig
   const res = await http.put('/merchants/me/config', config, authHeaders(token));
   return res.data.config;
 }
+
+// ─── Merchant QR scan confirmation (issue #70) ────────────────────────────
+
+export interface MerchantConfirmResult {
+  trade_id: string;
+  status: string;
+  amount_mxn: number;
+  platform_fee_mxn: number;
+  buyer_handle: string;
+  expires_at: string;
+  expired: boolean;
+  created_at: string;
+  lock_tx_hash: string | null;
+  release_tx_hash: string | null;
+}
+
+/**
+ * Merchant scans a QR containing a trade_id and calls the backend to validate
+ * that the trade exists, the merchant is a participant, and the trade state is valid.
+ */
+export async function merchantConfirmScan(
+  tradeId: string,
+  token: string,
+): Promise<MerchantConfirmResult> {
+  try {
+    const res = await http.post(
+      `/trades/${tradeId}/merchant-confirm`,
+      {},
+      authHeaders(token),
+    );
+    return res.data as MerchantConfirmResult;
+  } catch (e: unknown) {
+    const { message } = extractApiErrorPayload(e);
+    throw new Error(message);
+  }
+}

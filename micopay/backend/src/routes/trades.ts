@@ -153,6 +153,23 @@ export async function tradeRoutes(app: FastifyInstance) {
   });
 
   /**
+   * POST /trades/:id/merchant-confirm  (issue #70)
+   *
+   * Merchant scans buyer QR → frontend POSTs here to validate participant,
+   * state, and expiry. Returns a summary for the merchant confirmation screen.
+   *
+   * Errors:
+   *   404 — trade not found / invalid QR
+   *   403 — user is not the seller of this trade
+   *   409 — trade already completed or cancelled
+   *   409 — trade expired
+   */
+  app.post('/trades/:id/merchant-confirm', async (request) => {
+    const { id } = request.params as { id: string };
+    return tradeService.merchantConfirmScan(request, id, request.user.id);
+  });
+
+  /**
    * GET /merchants/me/trades
    * List incoming trades for the authenticated merchant, filtered by state.
    * Returns trades where merchant is the seller, newest first.

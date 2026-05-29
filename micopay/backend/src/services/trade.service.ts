@@ -684,3 +684,103 @@ export async function getMerchantTrades(merchantId: string, state: string = 'all
 
   return trades;
 }
+
+/**
+ * Merchant QR scan confirmation endpoint (issue #70).
+ *
+ * Called when the merchant scans a buyer's QR code. Validates:
+ *   1. The trade exists
+ *   2. The scanning user is a participant (seller) in the trade
+ *   3. The trade has not expired
+ *   4. The trade is in the correct state for the scanned QR type
+ *
+ * Returns a summary suitable for a merchant confirmation screen.
+ */
+export interface MerchantConfirmResult {
+  trade_id: string;
+  status: string;
+  amount_mxn: number;
+  platform_fee_mxn: number;
+  buyer_handle: string;
+  expires_at: string;
+  expired: boolean;
+  created_at: string;
+  lock_tx_hash: string | null;
+  release_tx_hash: string | null;
+}
+
+export async function merchantConfirmScan(
+  request: FastifyRequest,
+  tradeId: string,
+  merchantId: string,
+): Promise<MerchantConfirmResult> {
+  request.log.info(
+    { trade_id: tradeId, merchant_id: merchantId, category: 'trade.lifecycle' },
+    '[trade] Merchant QR scan confirmation',
+  );
+
+  // 1. Trade must exist
+  const trade = await db.getOne('SELECT * FROM trades WHERE id = $1', [tradeId]);
+  if (!trade) {
+    throw new NotFoundError(
+      'TRADE_NOT_FOUND',
+      'El intercambio no existe o el QR es inválido',
+      `Trade ${tradeId} not found`,
+    );
+  }
+
+  // 2. Scanning user must be the seller (merchant) for this trade
+  if (trade.seller_id !== merchantId) {
+    throw new ForbiddenError(
+      'NOT_PARTICIPANT',
+      'No eres participante de este intercambio',
+      `User ${merchantId} is not the seller of trade ${tradeId}`,
+    );
+  }
+
+  // 3. Trade must not already be completed or cancelled
+  if (trade.status === 'completed') {
+    throw new ConflictError(
+      'TRADE_ALREADY_COMPLETED',
+      'Este intercambio ya fue completado',
+      `Trade ${tradeId} is already completed`,
+    );
+  }
+
+  if (trade.status === 'cancelled') {
+    throw new ConflictError(
+      'TRADE_CANCELLED',
+      'Este intercambio fue cancelado',
+      `Trade ${tradeId} is cancelled`,
+    );
+  }
+
+  // 4. Check expiry
+  const expired = new Date(trade.expires_at) < new Date();
+  if (expired) {
+    throw new TradeStateError(
+      'TRADE_EXPIRED',
+      'Este intercambio ha expirado',
+      `Trade ${tradeId} expired at ${trade.expires_at}`,
+    );
+  }
+
+  // Fetch buyer info for display
+  const buyer = await db.getOne<{ username: string }>(
+    'SELECT username FROM users WHERE id = $1',
+    [trade.buyer_id],
+  );
+
+  return {
+    trade_id: trade.id,
+    status: trade.status,
+    amount_mxn: Number(trade.amount_mxn),
+    platform_fee_mxn: Number(trade.platform_fee_mxn ?? 0),
+    buyer_handle: buyer?.username ?? 'Usuario MicoPay',
+    expires_at: trade.expires_at,
+    expired: false,
+    created_at: trade.created_at,
+    lock_tx_hash: trade.lock_tx_hash ?? null,
+    release_tx_hash: trade.release_tx_hash ?? null,
+  };
+}
