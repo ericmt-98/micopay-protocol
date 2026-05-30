@@ -90,6 +90,11 @@ export async function registerUser(username: string): Promise<UserData> {
   return { ...res.data.user, token: res.data.token };
 }
 
+export async function getHealth() {
+  const res = await http.get('/health');
+  return res.data;
+}
+
 export async function createTrade(
   sellerId: string,
   amountMxn: number,
