@@ -11,10 +11,11 @@ const mem: Record<string, any[]> = {
   secret_access_log: [],
   audit_log: [],
   processed_tx: [],
+  merchant_configs: [],
   user_devices: [],
-  chat_messages: [],
-  dispute_events: [],
-  account_funding_log: [],
+  platform_risk_events: [],
+  trade_messages: [],
+  trade_disputes: [],
 };
 
 function memNow() {
