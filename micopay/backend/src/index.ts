@@ -1,18 +1,19 @@
 import Fastify from 'fastify';
 import fastifyJwt from '@fastify/jwt';
 import fastifyCors from '@fastify/cors';
-import fastifyStatic from '@fastify/static';
-import { fileURLToPath } from 'node:url';
-import { join, dirname } from 'node:path';
-import { config } from './config.js';
+import { config, validateConfig } from './config.js';
 import { authRoutes } from './routes/auth.js';
 import { userRoutes } from './routes/users.js';
 import { tradeRoutes } from './routes/trades.js';
 import { stellarRoutes } from './routes/stellar.js';
 import { defiRoutes } from './routes/defi.js';
 import { merchantRoutes } from './routes/merchants.js';
+import { adminRoutes } from './routes/admin.js';
+import { tradeSafetyRoutes } from './routes/trade-safety.js';
 import { AppError } from './utils/errors.js';
 import { Keypair } from '@stellar/stellar-sdk';
+import { createProductionListener } from './services/event-listener.service.js';
+import type { EscrowEventListener } from './services/event-listener.service.js';
 
 // Resolve the absolute path to the public/ directory next to src/
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -71,7 +72,10 @@ app.get('/.well-known/assetlinks.json', async (_request, reply) => {
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://localhost',       // Android (capacitor.config androidScheme: 'https')
   'capacitor://localhost',   // iOS default scheme
-  'http://localhost:5173',   // Vite dev server
+  'ionic://localhost',       // iOS alternate scheme
+  'http://localhost',        // Android/Capacitor localhost fallback
+  'http://localhost:5173',   // Vite dev server default
+  'http://localhost:5181',   // micopay frontend dev server
   'http://localhost:3000',   // same-origin requests during dev
 ];
 const EXTRA = (process.env.CORS_EXTRA_ORIGINS ?? '')
@@ -140,10 +144,15 @@ app.setErrorHandler((error, request, reply) => {
 
 // --- Routes ---
 
+// Holds the singleton event listener (null when disabled or mock mode).
+let eventListener: EscrowEventListener | null = null;
+
 app.get('/health', async () => ({
   status: 'ok',
   timestamp: new Date().toISOString(),
   mockStellar: config.mockStellar,
+  eventListenerHealthy: eventListener?.isHealthy() ?? false,
+  eventListenerState: eventListener?.currentState() ?? 'disabled',
   configCheck: {
     hasPlatformKey: !!config.platformSecretKey,
     hasContractId: !!config.escrowContractId,
@@ -177,6 +186,8 @@ app.register(tradeRoutes, { prefix: '' });
 app.register(stellarRoutes, { prefix: '' });
 app.register(defiRoutes, { prefix: '' });
 app.register(merchantRoutes, { prefix: '' });
+app.register(tradeSafetyRoutes, { prefix: '' });
+app.register(adminRoutes, { prefix: '' });
 
 // --- Start server ---
 
@@ -225,17 +236,58 @@ async function seedData() {
   app.log.info({ category: 'seed' }, '✅ Seeding complete');
 }
 
+async function startEventListener(): Promise<void> {
+  if (!config.eventListenerEnabled || config.mockStellar || !config.escrowContractId) {
+    app.log.info(
+      { category: 'event-listener', enabled: config.eventListenerEnabled, mock: config.mockStellar },
+      '[event-listener] Skipped (disabled, mock mode, or no contract ID configured)',
+    );
+    return;
+  }
+
+  try {
+    eventListener = createProductionListener(
+      config.escrowContractId,
+      config.stellarRpcUrl,
+      {
+        pollIntervalMs: config.eventListenerPollMs,
+        healthStaleMs: config.eventListenerHealthStaleMs,
+      },
+    );
+    await eventListener.start();
+    app.log.info(
+      { contract_id: config.escrowContractId, poll_ms: config.eventListenerPollMs, category: 'event-listener' },
+      '[event-listener] Soroban event listener active',
+    );
+  } catch (err) {
+    // Non-fatal: polling fallback remains active.
+    app.log.error({ err, category: 'event-listener' }, '[event-listener] Failed to start — polling fallback is active');
+  }
+}
+
 async function start() {
   try {
+    // Validate config at startup. Will throw and crash if critical config is missing.
+    validateConfig();
+    
     await seedData();
     await app.listen({ port: config.port, host: '0.0.0.0' });
     app.log.info({ category: 'http', port: config.port }, '🍄 Micopay MVP Backend running');
     app.log.info({ category: 'http', mockStellar: config.mockStellar }, `Mock Stellar: ${config.mockStellar ? 'ON (no on-chain verification)' : 'OFF (real Soroban RPC)'}`);
     app.log.info({ category: 'http', database: config.databaseUrl.replace(/\/\/.*@/, '//***@') }, 'Database connected');
+    await startEventListener();
   } catch (err) {
     app.log.error(err);
     process.exit(1);
   }
+}
+
+// Graceful shutdown: stop the listener loop before the process exits.
+for (const sig of ['SIGTERM', 'SIGINT'] as const) {
+  process.on(sig, () => {
+    eventListener?.stop();
+    process.exit(0);
+  });
 }
 
 start();
