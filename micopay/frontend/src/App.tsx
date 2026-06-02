@@ -7,7 +7,10 @@ import {
   Navigate,
   useNavigate,
   useLocation,
+  useParams,
 } from "react-router-dom";
+import { App as CapApp } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
 import ErrorBoundary from './components/ErrorBoundary';
 
 import Home from "./pages/Home";
@@ -28,6 +31,7 @@ import MerchantInbox from "./pages/MerchantInbox";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Profile from "./pages/Profile";
+import ClaimQR from "./pages/ClaimQR";
 import BottomNav from "./components/BottomNav";
 import DebugOverlay from "./components/DebugOverlay";
 
@@ -356,12 +360,16 @@ const HIDE_BOTTOMNAV_ROUTES = new Set([
   '/terms',
 ]);
 
+// Claim screens also hide the bottom nav (standalone deep-link UI).
+const HIDE_BOTTOMNAV_PREFIX = ['/claim/'];
+
 function BottomNavAdapter() {
   const navigate = useNavigate();
   const location = useLocation();
   const { sellerUser } = useAppCtx();
 
   if (HIDE_BOTTOMNAV_ROUTES.has(location.pathname)) return null;
+  if (HIDE_BOTTOMNAV_PREFIX.some((p) => location.pathname.startsWith(p))) return null;
 
   const navMap: Record<string, string> = {
     home: '/',
