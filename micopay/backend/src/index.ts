@@ -8,6 +8,8 @@ import { tradeRoutes } from './routes/trades.js';
 import { stellarRoutes } from './routes/stellar.js';
 import { defiRoutes } from './routes/defi.js';
 import { merchantRoutes } from './routes/merchants.js';
+import { adminRoutes } from './routes/admin.js';
+import { tradeSafetyRoutes } from './routes/trade-safety.js';
 import { AppError } from './utils/errors.js';
 import { Keypair } from '@stellar/stellar-sdk';
 import { createProductionListener } from './services/event-listener.service.js';
@@ -146,6 +148,8 @@ app.register(tradeRoutes, { prefix: '' });
 app.register(stellarRoutes, { prefix: '' });
 app.register(defiRoutes, { prefix: '' });
 app.register(merchantRoutes, { prefix: '' });
+app.register(tradeSafetyRoutes, { prefix: '' });
+app.register(adminRoutes, { prefix: '' });
 
 // --- Start server ---
 
