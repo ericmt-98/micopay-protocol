@@ -33,6 +33,8 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Profile from "./pages/Profile";
 import ClaimQR from "./pages/ClaimQR";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 import BottomNav from "./components/BottomNav";
 import DebugOverlay from "./components/DebugOverlay";
 
@@ -84,7 +86,7 @@ interface AppCtx {
   setDebugOpen: (b: boolean) => void;
 }
 
-const AppContext = createContext<AppCtx | null>(null);
+export const AppContext = createContext<AppCtx | null>(null);
 
 function useAppCtx(): AppCtx {
   const ctx = useContext(AppContext);
@@ -402,6 +404,10 @@ function ProfileRoute() {
             handleAccountDeleted();
             navigate('/');
           }}
+          onLogout={() => {
+            handleAccountDeleted();
+            navigate('/login');
+          }}
           onNavigatePrivacy={() => navigate('/privacy')}
           onNavigateTerms={() => navigate('/terms')}
       />
@@ -418,6 +424,19 @@ function TermsRoute() {
   return <Terms onBack={() => navigate("/profile")} />;
 }
 
+// ── Route wrappers (auth) ───────────────────────────────────────────────────
+
+function ProtectedRoute({ children }: { children: React.ReactElement }) {
+  const { buyerUser } = useAppCtx();
+  const location = useLocation();
+
+  if (!buyerUser) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+}
+
 // ── BottomNav route adapter ──────────────────────────────────────────────────
 
 const ROUTE_TO_PAGE: Record<string, string> = {
@@ -429,6 +448,8 @@ const ROUTE_TO_PAGE: Record<string, string> = {
 };
 
 const HIDE_BOTTOMNAV_ROUTES = new Set([
+  "/login",
+  "/register",
   "/chat",
   "/chat-deposit",
   "/qr-reveal",
@@ -571,21 +592,25 @@ function App() {
         setDevicePublicKey(pubKey);
 
         const stored = await readJSON<StoredUsers>(USERS_STORAGE_KEY);
-        if (stored?.buyer && stored?.seller) {
+        if (stored?.buyer) {
           setBuyerUser(stored.buyer);
-          setSellerUser(stored.seller);
+          setSellerUser(stored.seller ?? null);
           return;
         }
 
-        const ts = Date.now() % 100000;
-        const [buyer, seller] = await Promise.all([
-          registerUser(`juan_${ts}`),
-          registerUser(`farmacia_${ts}`),
-        ]);
-
-        await writeJSON(USERS_STORAGE_KEY, { buyer, seller });
-        setBuyerUser(buyer);
-        setSellerUser(seller);
+        // Demo builds auto-provision throwaway buyer/seller users. In real
+        // mode we leave the session empty so ProtectedRoute sends the user
+        // to the login/register screens instead of faking an identity.
+        if (import.meta.env.VITE_DEMO_MODE === 'true') {
+          const ts = Date.now() % 100000;
+          const [buyer, seller] = await Promise.all([
+            registerUser(`juan_${ts}`),
+            registerUser(`farmacia_${ts}`),
+          ]);
+          await writeJSON(USERS_STORAGE_KEY, { buyer, seller });
+          setBuyerUser(buyer);
+          setSellerUser(seller);
+        }
       } catch (e) {
         console.warn("Backend unavailable for registration, using local stub", e);
       } finally {
@@ -595,6 +620,12 @@ function App() {
 
     initUsers();
   }, []);
+
+  const handleLoginSuccess = (buyer: UserData, seller: UserData | null) => {
+    setBuyerUser(buyer);
+    setSellerUser(seller);
+    writeJSON(USERS_STORAGE_KEY, { buyer, seller });
+  };
 
   const handleAccountDeleted = () => {
     setBuyerUser(null);
@@ -713,24 +744,26 @@ function App() {
           <HashRouter>
             <div className="flex flex-col min-h-screen bg-[#F4FAFF]">
               <Routes>
-                <Route path="/" element={<HomeRoute />} />
-                <Route path="/history" element={<HistoryRoute />} />
-                <Route path="/inbox" element={<InboxRoute />} />
-                <Route path="/cashout" element={<CashoutRoute />} />
-                <Route path="/deposit" element={<DepositRoute />} />
-                <Route path="/map" element={<MapRoute />} />
-                <Route path="/map-deposit" element={<MapDepositRoute />} />
-                <Route path="/chat" element={<ChatRoute />} />
-                <Route path="/chat-deposit" element={<ChatDepositRoute />} />
-                <Route path="/qr-reveal" element={<QRRevealRoute />} />
-                <Route path="/qr-deposit" element={<QRDepositRoute />} />
-                <Route path="/success" element={<SuccessRoute />} />
-                <Route path="/explore" element={<ExploreRoute />} />
-                <Route path="/cetes" element={<CetesRoute />} />
-                <Route path="/blend" element={<BlendRoute />} />
-                <Route path="/profile" element={<ProfileRoute />} />
-                <Route path="/privacy" element={<PrivacyRoute />} />
-                <Route path="/terms" element={<TermsRoute />} />
+                <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/" element={<ProtectedRoute><HomeRoute /></ProtectedRoute>} />
+                <Route path="/history" element={<ProtectedRoute><HistoryRoute /></ProtectedRoute>} />
+                <Route path="/inbox" element={<ProtectedRoute><InboxRoute /></ProtectedRoute>} />
+                <Route path="/cashout" element={<ProtectedRoute><CashoutRoute /></ProtectedRoute>} />
+                <Route path="/deposit" element={<ProtectedRoute><DepositRoute /></ProtectedRoute>} />
+                <Route path="/map" element={<ProtectedRoute><MapRoute /></ProtectedRoute>} />
+                <Route path="/map-deposit" element={<ProtectedRoute><MapDepositRoute /></ProtectedRoute>} />
+                <Route path="/chat" element={<ProtectedRoute><ChatRoute /></ProtectedRoute>} />
+                <Route path="/chat-deposit" element={<ProtectedRoute><ChatDepositRoute /></ProtectedRoute>} />
+                <Route path="/qr-reveal" element={<ProtectedRoute><QRRevealRoute /></ProtectedRoute>} />
+                <Route path="/qr-deposit" element={<ProtectedRoute><QRDepositRoute /></ProtectedRoute>} />
+                <Route path="/success" element={<ProtectedRoute><SuccessRoute /></ProtectedRoute>} />
+                <Route path="/explore" element={<ProtectedRoute><ExploreRoute /></ProtectedRoute>} />
+                <Route path="/cetes" element={<ProtectedRoute><CetesRoute /></ProtectedRoute>} />
+                <Route path="/blend" element={<ProtectedRoute><BlendRoute /></ProtectedRoute>} />
+                <Route path="/profile" element={<ProtectedRoute><ProfileRoute /></ProtectedRoute>} />
+                <Route path="/privacy" element={<ProtectedRoute><PrivacyRoute /></ProtectedRoute>} />
+                <Route path="/terms" element={<ProtectedRoute><TermsRoute /></ProtectedRoute>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
               <BottomNavAdapter />
