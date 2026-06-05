@@ -1,10 +1,8 @@
-import { useState, useEffect } from "react";
-import { Logo } from "../components/Logo";
-import { getHealth } from "../services/api";
+import { Logo } from '../components/Logo';
 
 interface ExploreProps {
-  onBack?: () => void;
-  onNavigate?: (page: string) => void;
+    onBack?: () => void;
+    onNavigate?: (page: string) => void;
 }
 
 const Explore = ({ onBack, onNavigate }: ExploreProps) => {
@@ -22,14 +20,15 @@ const Explore = ({ onBack, onNavigate }: ExploreProps) => {
                 </div>
             </header>
 
-  useEffect(() => {
-    getHealth()
-      .then((data) => {
-        if (data.features) setFeatures(data.features);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+            <main className="flex-1 mt-20 px-6">
+                <section className="mb-10 pt-4">
+                    <h1 className="font-headline font-extrabold text-3xl text-on-surface leading-tight mb-2">
+                        Explorar
+                    </h1>
+                    <p className="text-on-surface-variant font-medium opacity-70 italic">
+                        Descubre nuevas formas de usar tu dinero
+                    </p>
+                </section>
 
                 <div className="space-y-6">
                     {/* Etherfuse Cetes */}
@@ -103,16 +102,7 @@ const Explore = ({ onBack, onNavigate }: ExploreProps) => {
                 </footer>
             </main>
         </div>
-
-        {/* Footer Section */}
-        <footer className="mt-12 text-center">
-          <p className="text-xs text-outline font-medium">
-            Powered by Stellar, Etherfuse & Blend
-          </p>
-        </footer>
-      </main>
-    </div>
-  );
+    );
 };
 
 export default Explore;

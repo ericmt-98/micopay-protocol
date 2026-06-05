@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { extractApiErrorPayload } from '../utils/apiError';
+import { extractApiErrorPayload, toApiError } from '../utils/apiError';
 import { signChallenge, getPublicKey } from '../lib/keystore';
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
@@ -403,6 +403,51 @@ export async function getMerchantConfig(token: string): Promise<MerchantConfig> 
 export async function updateMerchantConfig(token: string, config: MerchantConfig): Promise<MerchantConfig> {
   const res = await http.put('/merchants/me/config', config, authHeaders(token));
   return res.data.config;
+}
+
+// ─── Merchant discovery (#102) ────────────────────────────────────────────
+
+/** Mirrors backend `AvailableMerchant` from GET /merchants/available. */
+export interface AvailableMerchant {
+  seller_id: string;
+  username: string;
+  rate_percent: number;
+  min_trade_mxn: number;
+  max_trade_mxn: number;
+  daily_cap_mxn: number;
+  latitude: number;
+  longitude: number;
+  address_text: string | null;
+  distance_km: number;
+  /** Payout the buyer receives for the requested amount. */
+  payout_mxn: number;
+}
+
+export interface MerchantsAvailableQuery {
+  lat: number;
+  lng: number;
+  radius_km: number;
+  amount_mxn: number;
+  flow?: 'cashout' | 'deposit';
+}
+
+/**
+ * Public endpoint: find merchants near the caller that can handle the amount.
+ * No auth required.
+ */
+export async function getMerchantsAvailable(
+  query: MerchantsAvailableQuery,
+): Promise<AvailableMerchant[]> {
+  const params: Record<string, string | number> = {
+    lat: query.lat,
+    lng: query.lng,
+    radius_km: query.radius_km,
+    amount_mxn: query.amount_mxn,
+  };
+  if (query.flow) params.flow = query.flow;
+
+  const res = await http.get('/merchants/available', { params });
+  return res.data.merchants;
 }
 
 // ─── Merchant QR scan confirmation (issue #70) ────────────────────────────
