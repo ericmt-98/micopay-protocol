@@ -22,9 +22,3 @@ fn test_wrong_hash_fails() {
     // 9999999999 is not the real hash of 42
     assert(h == 9999999999);
 }
-
-#[test]
-fn print_hash_12345() {
-    let h = std::hash::pedersen_hash([12345]);
-    dep::std::println(h);
-}

@@ -46,6 +46,46 @@ fn main(
     assert(computed_nullifier == nullifier, "Nullifier mismatch");
 }
 
+// Output demo tree values for the Reputation Engine CLI.
+// Run: nargo test compute_demo_values --show-output
+// Values feed apps/api/demo/demo_tree.json (see scripts/rep-engine.ts)
+#[test]
+fn compute_demo_values() {
+    // alice: GOLD (tier=3), single user in depth-20 tree at index 0
+    // All siblings are 0 (sparse tree). path_index all 0 (always left child).
+    let secret_alice: Field = 1001;
+    let tier_alice: Field = 3;
+    let leaf_alice = std::hash::pedersen_hash([secret_alice, tier_alice]);
+
+    // Compute root: 20-level hash chain, each time hashing [node, 0]
+    let mut node = leaf_alice;
+    for _i in 0..20 {
+        node = std::hash::pedersen_hash([node, 0]);
+    }
+    let root = node;
+
+    // Example nullifier for context=42 (demo challenge value)
+    let context_demo: Field = 42;
+    let nullifier_alice = std::hash::pedersen_hash([secret_alice, context_demo]);
+
+    // bob: SILVER (tier=2) -- same tree structure, different leaf
+    let secret_bob: Field = 1002;
+    let tier_bob: Field = 2;
+    let leaf_bob = std::hash::pedersen_hash([secret_bob, tier_bob]);
+
+    // charlie: BRONZE (tier=1)
+    let secret_charlie: Field = 1003;
+    let tier_charlie: Field = 1;
+    let leaf_charlie = std::hash::pedersen_hash([secret_charlie, tier_charlie]);
+
+    // Print values for CLI consumption
+    std::println(leaf_alice);
+    std::println(root);
+    std::println(nullifier_alice);
+    std::println(leaf_bob);
+    std::println(leaf_charlie);
+}
+
 // Tests
 
 // Trivial depth-20 tree with all siblings = 0
