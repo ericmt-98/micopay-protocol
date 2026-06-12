@@ -13,7 +13,8 @@
     "db:reset": "npx tsx -e \"import('./src/db/schema.js').then(m => m.query('DROP TABLE IF EXISTS merchants, swap_history, bazaar_quotes, bazaar_intents, agent_history, x402_payments CASCADE'))\"",
     "rep:build-tree": "tsx src/cli/rep-engine.ts build-tree",
     "rep:publish-root": "tsx src/cli/rep-engine.ts publish-root",
-    "rep:nullifier": "tsx src/cli/rep-engine.ts nullifier"
+    "rep:nullifier": "tsx src/cli/rep-engine.ts nullifier",
+    "deploy:zk": "tsx src/cli/deploy-zk.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.86.1",
