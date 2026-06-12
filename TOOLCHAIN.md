@@ -6,7 +6,7 @@
 |---|---|---|
 | nargo | 1.0.0-beta.9 | `noirup -v 1.0.0-beta.9` |
 | bb (barretenberg) | 0.87.0 | `bbup -v 0.87.0` |
-| soroban-sdk | 22.0.0 | crates.io |
+| soroban-sdk | 26.0.1 | crates.io (actual — spec assumed 22.0.0) |
 | stellar-cli | 25.2.0 | already installed on host |
 | Rust | stable | rust-toolchain.toml |
 | Node | 22.14.0 | already installed on host |
@@ -69,31 +69,30 @@ cargo install --locked stellar-cli --version 25.2.0
 
 ---
 
-## Phase 0 Exit Criterion
+## Phase 0 Exit Criterion (COMPLETED)
 
-Clone and run rs-soroban-ultrahonk until a UltraHonk proof is verified on Stellar testnet:
+Run `run_testnet_e2e.sh` from `rs-soroban-ultrahonk`. Actual commands used:
 
 ```bash
 # WSL2
-git clone https://github.com/yugocabrio/rs-soroban-ultrahonk
-cd rs-soroban-ultrahonk
+git clone https://github.com/yugocabrio/rs-soroban-ultrahonk ~/rs-soroban-ultrahonk
+cd ~/rs-soroban-ultrahonk
 
-# Build WASM verifier contract
-cargo build --target wasm32-unknown-unknown --release
+# stellar-cli not available in WSL2 (cargo build fails)
+# Workaround: symlink Windows binary
+sudo ln -s "/mnt/c/Program Files (x86)/Stellar CLI/stellar.exe" /usr/local/bin/stellar
 
-# Deploy to testnet (adjust contract name from repo README)
-stellar contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/<verifier>.wasm \
-  --source <ADMIN_KEYPAIR> \
-  --network testnet
+# Build WASM contract (uses wasm32v1-none, not wasm32-unknown-unknown)
+SOROBAN_SDK_BUILD_SYSTEM_SUPPORTS_SPEC_SHAKING_V2=1 \
+  cargo rustc --manifest-path=contracts/rs-soroban-ultrahonk/Cargo.toml \
+  --crate-type=cdylib --target=wasm32v1-none --release
 
-# Run the example / invoke verify()
-# → success criterion: transaction returns verified = true
+# Deploy and invoke are handled by run_testnet_e2e.sh
 ```
 
-Document the actual contract ID here once deployed:
+**ULTRAHONK_EXAMPLE_CONTRACT_ID (rs-soroban-ultrahonk tornado_classic):**
 ```
-ULTRAHONK_EXAMPLE_CONTRACT_ID=<paste after Phase 0>
+CCGVDISESZOPZQZTB367A6GFPW7ZOW7CMJVKU636JZSSIX6PORBA4MEZ
 ```
 
 ---
@@ -167,13 +166,31 @@ X402_MOCK_MODE=true
 - **PROOF_BYTES = 14592**: UltraHonk proofs = 456 x 32 bytes. Confirmed against `PROOF_FIELDS = 456` in ultrahonk_soroban_verifier.
 - **Non-ASCII in Noir comments**: nargo 1.0.0-beta.9 rejects non-ASCII in comments. Use ASCII only.
 - **bb verify public inputs path**: `bb verify` hardcodes `./target/public_inputs`. Run from the directory that contains `target/public_inputs`.
+- **stellar-cli in WSL2**: `cargo install stellar-cli` fails at compile (build-utils errors). Workaround: symlink Windows stellar.exe into WSL2 PATH: `sudo ln -s "/mnt/c/Program Files (x86)/Stellar CLI/stellar.exe" /usr/local/bin/stellar`.
 - **UltraHonkVerifier API**: `UltraHonkVerifier::new(&env, &vk_bytes)?` then `verifier.verify(&env, &proof_bytes, &public_inputs)?`. Both take `Bytes`, NOT Vec<BytesN<32>>.
 
-## Phase 0 Results
+## Phase 0 Results (COMPLETE — 2026-06-12)
 
 - nargo 1.0.0-beta.9: installed at `~/.nargo/bin/nargo` in WSL2
 - bb 0.87.0: installed at `~/.bb/bb` in WSL2
-- poseidon_preimage circuit: compiled + 2 nargo tests pass + proof 14592 bytes + **locally verified**
+- poseidon_preimage circuit: compiled + 2 nargo tests pass + proof 14592 bytes + locally verified
 - reputation_v1 circuit: compiled + 4 nargo tests pass
 - PROOF_BYTES = 14592 confirmed (matches ultrahonk_soroban_verifier::PROOF_BYTES)
-- On-chain verification: pending — deploy rs-soroban-ultrahonk to testnet
+- **On-chain verification: PASSED**
+
+### Testnet Deployment (rs-soroban-ultrahonk tornado_classic circuit)
+
+| Item | Value |
+|---|---|
+| alice account | `GDQLSQW6CUWP5UDIFYSOUHJ7NA4S4NRC2PXOIWMCU7IWXJOBXEPHQ3G6` |
+| Contract ID | `CCGVDISESZOPZQZTB367A6GFPW7ZOW7CMJVKU636JZSSIX6PORBA4MEZ` |
+| WASM upload tx | `42b85ed1c0770fe4c7bc26ad01f31986e5843c8c10d81de9f195520783df66c1` |
+| Deploy tx | `57acb910a28108e6c85e41a71b710f3d4caacd5ed64c861b42b2d86ec17be29c` |
+| **verify_proof tx** | `30eab1f185db57468a000247ca059614f4a9fe7ffe6720e46083a04cbda1ce7a` |
+| WASM size | 25106 bytes |
+| Proof size | 14592 bytes |
+| Public inputs size | 32 bytes |
+
+Explorer: https://stellar.expert/explorer/testnet/tx/30eab1f185db57468a000247ca059614f4a9fe7ffe6720e46083a04cbda1ce7a
+
+**Exit criterion met: UltraHonk proof verified on-chain on Stellar testnet.**
