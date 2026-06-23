@@ -46,7 +46,10 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: micopay/frontend/package-lock.json
-      - run: npm ci
+      # `npm install` (no `npm ci`) a propósito: el lock se genera en Windows y
+      # omite los binarios opcionales de Linux (rollup/lightningcss) — bug npm
+      # #4828. `npm install` re-resuelve el binario correcto para la plataforma.
+      - run: npm install --no-audit --no-fund
       - name: Build (tsc + vite build) — BLOQUEANTE
         run: npm run build
       # No-bloqueante por ahora: la suite TradeDetail tiene 21 tests rojos
