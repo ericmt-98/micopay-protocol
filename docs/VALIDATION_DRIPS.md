@@ -15,7 +15,7 @@
 
 ## The story we're proving for the SDF
 
-A funding/grant case for MicoPay on Stellar rests on four claims. The five research issues
+A funding/grant case for MicoPay on Stellar rests on five claims. The research issues
 each supply evidence for one of them:
 
 | Claim | Backed by | One-line thesis |
@@ -24,8 +24,9 @@ each supply evidence for one of them:
 | **2. Supply exists** | V-3 (liquidity providers) | Real people/businesses would provide the cash for a commission |
 | **3. Stellar is usable** | V-4 (non-custodial onboarding) | Mainstream users can handle a self-custodial Stellar wallet |
 | **4. Trust / PMF** | V-5 (flow trust) | Users would actually adopt and complete the flow |
+| **5. Differentiation** | V-7 (alternatives & switching) | Stellar P2P solves high fees, downtime, and limits of current options |
 
-> Put together: **demand + supply + usable tech + trust = a credible case that a Stellar P2P
+> Put together: **demand + supply + usable tech + trust + differentiation = a credible case that a Stellar P2P
 > cash network serves the financially underserved.**
 
 ---
@@ -59,6 +60,8 @@ Fill these in as answers arrive. Keep counts and percentages only.
 | % who find non-custodial backup clear (vs confusing) | V-4 | onboarding viability |
 | Top trust blocker in the flow | V-5 | PMF / UX priority |
 | Top reason to abandon the flow | V-5 | drop-off risk |
+| Top alternative/switching trigger | V-7 | differentiation / switching drivers |
+| Top switching dealbreaker | V-7 | entry barriers |
 | Regions represented (count by region) | all | geographic spread |
 | Total respondents (N) | all | sample size |
 
@@ -90,6 +93,42 @@ _(no responses yet)_
 
 ### V-5 · Trust in the cash-in/cash-out flow
 _(no responses yet)_
+
+### V-7 · Market validation: current alternatives & switching
+Small anonymized sample (N=4; self + 3 peers, convenience sample across Mexico and other Latin American regions):
+
+- Respondent A — Monterrey region, Mexico
+  - What they use today: OXXO stores and traditional bank ATMs.
+  - What they like: High availability and the security of established, well-known brands.
+  - What frustrates them: High transaction/convenience fees, long wait lines, and occasional ATM outages.
+  - What would make them switch: Lower fees, zero queue times, and local neighborhood exchange points.
+  - Dealbreaker: Upfront payment/fees before receiving cash, or overly complex apps that require advanced crypto/technical knowledge.
+
+- Respondent B — Bogotá area, Colombia
+  - What they use today: Mobile wallets (Nequi, Daviplata) and physical lottery kiosks (Efecty, Paga Todo) for cash-out.
+  - What they like: Instant digital transfers and wide physical availability of cash points.
+  - What frustrates them: Frequent app system outages, daily transaction limits, and high agent commissions.
+  - What would make them switch: A highly reliable system working 24/7 with transparent, lower fees and flexible limits.
+  - Dealbreaker: Lack of immediate transaction confirmation or lack of support channels to resolve stuck operations.
+
+- Respondent C — Buenos Aires, Argentina
+  - What they use today: Local informal exchange houses ("cuevas") and P2P crypto exchanges (Binance P2P).
+  - What they like: Inflation hedging by holding stablecoins (USDT) and converting to fiat cash as needed.
+  - What frustrates them: Safety risks of carrying physical cash from physical exchanges, and counterparty trust issues in online P2P.
+  - What would make them switch: A secure, trust-rated network of local merchants/providers for safe, local stablecoin-to-cash exchange.
+  - Dealbreaker: High platform service fees or mandatory KYC that requires multi-day validation for tiny transactions.
+
+- Respondent D — Caracas metropolitan area, Venezuela
+  - What they use today: Binance P2P, Pago Móvil bank transfers, and informal USD cash transactions.
+  - What they like: Fast digital payments (Pago Móvil) and holding USD-linked assets.
+  - What frustrates them: Scarcity of physical USD/local fiat cash and high exchange/broker fees (often >5%).
+  - What would make them switch: Direct connection to nearby verified cash providers at low transaction fees (<2%) with instant escrow settlement.
+  - Dealbreaker: High rate of transaction failures or lack of secure escrows to prevent loss/theft of digital assets during cash exchanges.
+
+Aggregate signal:
+- **Current alternatives:** Users rely heavily on established retail/agent networks (OXXO, Efecty), mobile wallets, and crypto P2P platforms (Binance) depending on the country's economic context.
+- **Key switching drivers:** Lower transaction fees, zero queues, higher system uptime (avoiding wallet outages), and safer/more localized physical exchange points.
+- **Key dealbreakers:** Escrow/security concerns (fear of losing funds), high entry friction (e.g. upfront payments or heavy KYC for small amounts), and poor app usability/technical complexity.
 
 ### V-10 · Product validation: repeat use & provider discovery
 Small anonymized sample (N=4; self + 3 peers, convenience sample across Mexico and other Latin American regions):
