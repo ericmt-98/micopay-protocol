@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { extractApiErrorPayload, toApiError } from '../utils/apiError';
 import { signChallenge, getPublicKey } from '../lib/keystore';
+import { removeKey } from './secureStorage';
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
@@ -516,3 +517,15 @@ export async function merchantConfirmScan(
     throw new Error(message);
   }
 }
+
+// Global 401 handler: clear the persisted session and bounce to login.
+http.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      removeKey('micopay_users');
+      window.location.href = '/#/login';
+    }
+    return Promise.reject(error);
+  }
+);

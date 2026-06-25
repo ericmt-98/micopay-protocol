@@ -33,6 +33,8 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Profile from "./pages/Profile";
 import ClaimQR from "./pages/ClaimQR";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
 import MerchantSettings from "./pages/MerchantSettings";
 import BottomNav from "./components/BottomNav";
 import DebugOverlay from "./components/DebugOverlay";
@@ -48,6 +50,8 @@ import {
   TradeHistoryItem,
 } from "./services/api";
 import { readJSON, writeJSON, removeKey } from "./services/secureStorage";
+import { mapApiError, type MappedApiError } from "./utils/apiError";
+import { IS_DEMO_MODE } from "./utils/demoMode";
 
 const USERS_STORAGE_KEY = "micopay_users";
 
@@ -67,13 +71,17 @@ interface AppCtx {
   releaseTxHash: string | null;
   activeAmount: number;
   tradeLoading: boolean;
+  tradeError: MappedApiError | null;
   flow: Flow;
   devicePublicKey: string | null;
   setActiveAmount: (n: number) => void;
   setFlow: (f: Flow) => void;
   setReleaseTxHash: (h: string | null) => void;
-  handleOfferSelected: (offerId: string) => Promise<void>;
-  handleDepositOfferSelected: (offerId: string) => Promise<void>;
+  handleOfferSelected: (offerId: string) => Promise<boolean>;
+  handleDepositOfferSelected: (offerId: string) => Promise<boolean>;
+  tradeError: MappedApiError | null;
+  clearTradeError: () => void;
+  retryTradeFlow: () => Promise<boolean>;
   handleAccountDeleted: () => void;
   resetTradeFlow: () => void;
   envName: string;
@@ -85,7 +93,7 @@ interface AppCtx {
   setDebugOpen: (b: boolean) => void;
 }
 
-const AppContext = createContext<AppCtx | null>(null);
+export const AppContext = createContext<AppCtx | null>(null);
 
 function useAppCtx(): AppCtx {
   const ctx = useContext(AppContext);
@@ -175,30 +183,44 @@ function DepositRoute() {
 
 function MapDepositRoute() {
   const navigate = useNavigate();
-  const { handleDepositOfferSelected, tradeLoading } = useAppCtx();
+  const { handleDepositOfferSelected, tradeLoading, tradeError, clearTradeError, retryTradeFlow } = useAppCtx();
   return (
       <DepositMap
           onBack={() => navigate('/deposit')}
           onSelectOffer={async (offerId) => {
-            await handleDepositOfferSelected(offerId);
-            navigate('/chat-deposit');
+            const ok = await handleDepositOfferSelected(offerId);
+            if (ok) navigate('/chat-deposit');
           }}
           loading={tradeLoading}
+          creationError={tradeError?.message ?? null}
+          creationErrorAction={tradeError?.action}
+          onDismissCreationError={clearTradeError}
+          onRetryCreationError={async () => {
+            const ok = await retryTradeFlow();
+            if (ok) navigate('/chat-deposit');
+          }}
       />
   );
 }
 
 function MapRoute() {
   const navigate = useNavigate();
-  const { activeAmount, handleOfferSelected, tradeLoading } = useAppCtx();
+  const { activeAmount, handleOfferSelected, tradeLoading, tradeError, clearTradeError, retryTradeFlow } = useAppCtx();
   return (
       <ExploreMap
           amount={activeAmount}
           loading={tradeLoading}
           onBack={() => navigate('/cashout')}
           onSelectOffer={async (offerId) => {
-            await handleOfferSelected(offerId);
-            navigate('/chat');
+            const ok = await handleOfferSelected(offerId);
+            if (ok) navigate('/chat');
+          }}
+          creationError={tradeError?.message ?? null}
+          creationErrorAction={tradeError?.action}
+          onDismissCreationError={clearTradeError}
+          onRetryCreationError={async () => {
+            const ok = await retryTradeFlow();
+            if (ok) navigate('/chat');
           }}
       />
   );
@@ -411,6 +433,10 @@ function ProfileRoute() {
             handleAccountDeleted();
             navigate('/');
           }}
+          onLogout={() => {
+            handleAccountDeleted();
+            navigate('/login');
+          }}
           onNavigatePrivacy={() => navigate('/privacy')}
           onNavigateTerms={() => navigate('/terms')}
       />
@@ -438,6 +464,19 @@ function TermsRoute() {
   return <Terms onBack={() => navigate("/profile")} />;
 }
 
+// ── Route wrappers (auth) ───────────────────────────────────────────────────
+
+function ProtectedRoute({ children }: { children: React.ReactElement }) {
+  const { buyerUser } = useAppCtx();
+  const location = useLocation();
+
+  if (!buyerUser) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+}
+
 // ── BottomNav route adapter ──────────────────────────────────────────────────
 
 const ROUTE_TO_PAGE: Record<string, string> = {
@@ -449,6 +488,8 @@ const ROUTE_TO_PAGE: Record<string, string> = {
 };
 
 const HIDE_BOTTOMNAV_ROUTES = new Set([
+  "/login",
+  "/register",
   "/merchant-settings",
   "/chat",
   "/chat-deposit",
@@ -500,6 +541,7 @@ function App() {
   const [releaseTxHash, setReleaseTxHash] = useState<string | null>(null);
   const [activeAmount, setActiveAmount] = useState(500);
   const [tradeLoading, setTradeLoading] = useState(false);
+  const [tradeError, setTradeError] = useState<MappedApiError | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [devicePublicKey, setDevicePublicKey] = useState<string | null>(null);
 
@@ -591,21 +633,25 @@ function App() {
         setDevicePublicKey(pubKey);
 
         const stored = await readJSON<StoredUsers>(USERS_STORAGE_KEY);
-        if (stored?.buyer && stored?.seller) {
+        if (stored?.buyer) {
           setBuyerUser(stored.buyer);
-          setSellerUser(stored.seller);
+          setSellerUser(stored.seller ?? null);
           return;
         }
 
-        const ts = Date.now() % 100000;
-        const [buyer, seller] = await Promise.all([
-          registerUser(`juan_${ts}`),
-          registerUser(`farmacia_${ts}`),
-        ]);
-
-        await writeJSON(USERS_STORAGE_KEY, { buyer, seller });
-        setBuyerUser(buyer);
-        setSellerUser(seller);
+        // Demo builds auto-provision throwaway buyer/seller users. In real
+        // mode we leave the session empty so ProtectedRoute sends the user
+        // to the login/register screens instead of faking an identity.
+        if (import.meta.env.VITE_DEMO_MODE === 'true') {
+          const ts = Date.now() % 100000;
+          const [buyer, seller] = await Promise.all([
+            registerUser(`juan_${ts}`),
+            registerUser(`farmacia_${ts}`),
+          ]);
+          await writeJSON(USERS_STORAGE_KEY, { buyer, seller });
+          setBuyerUser(buyer);
+          setSellerUser(seller);
+        }
       } catch (e) {
         console.warn("Backend unavailable for registration, using local stub", e);
       } finally {
@@ -615,6 +661,12 @@ function App() {
 
     initUsers();
   }, []);
+
+  const handleLoginSuccess = (buyer: UserData, seller: UserData | null) => {
+    setBuyerUser(buyer);
+    setSellerUser(seller);
+    writeJSON(USERS_STORAGE_KEY, { buyer, seller });
+  };
 
   const handleAccountDeleted = () => {
     setBuyerUser(null);
@@ -633,9 +685,12 @@ function App() {
     setReleaseTxHash(null);
   };
 
-  const runTradeFlow = async () => {
-    if (!buyerUser || !sellerUser) return;
+  const clearTradeError = () => setTradeError(null);
+
+  const runTradeFlow = async (): Promise<boolean> => {
+    if (!buyerUser || !sellerUser) return false;
     setTradeLoading(true);
+    setTradeError(null);
     try {
       const trade = await createTrade(
         sellerUser.id,
@@ -646,20 +701,30 @@ function App() {
       await revealTrade(trade.id, sellerUser.token);
       setActiveTrade(trade);
       setLockTxHash(lock_tx_hash);
+      return true;
     } catch (e) {
-      console.error("Trade flow failed, continuing as demo", e);
+      const mapped = mapApiError(e);
+      setTradeError(mapped);
+      if (IS_DEMO_MODE) {
+        setActiveTrade({
+          id: `demo-${Date.now()}`,
+          status: 'revealed',
+          secret_hash: 'demo',
+          amount_mxn: activeAmount,
+          lock_tx_hash: 'mock_lock_hash',
+        });
+        setLockTxHash('mock_lock_hash');
+        return true;
+      }
+      return false;
     } finally {
       setTradeLoading(false);
     }
   };
 
-  const handleOfferSelected = async (_offerId: string) => {
-    await runTradeFlow();
-  };
+  const handleOfferSelected = async (_offerId: string) => runTradeFlow();
 
-  const handleDepositOfferSelected = async (_offerId: string) => {
-    await runTradeFlow();
-  };
+  const handleDepositOfferSelected = async (_offerId: string) => runTradeFlow();
 
   const ctx: AppCtx = {
     buyerUser,
@@ -669,6 +734,7 @@ function App() {
     releaseTxHash,
     activeAmount,
     tradeLoading,
+    tradeError,
     flow,
     devicePublicKey,
     setActiveAmount,
@@ -676,6 +742,8 @@ function App() {
     setReleaseTxHash,
     handleOfferSelected,
     handleDepositOfferSelected,
+    clearTradeError,
+    retryTradeFlow: runTradeFlow,
     handleAccountDeleted,
     resetTradeFlow,
     envName,
@@ -733,26 +801,28 @@ function App() {
           <HashRouter>
             <div className="flex flex-col min-h-screen bg-[#F4FAFF]">
               <Routes>
-                <Route path="/" element={<HomeRoute />} />
-                <Route path="/history" element={<HistoryRoute />} />
-                <Route path="/trade/:id" element={<TradeDetailRoute />} />
-                <Route path="/merchant-settings" element={<MerchantSettingsRoute />} />
-                <Route path="/inbox" element={<InboxRoute />} />
-                <Route path="/cashout" element={<CashoutRoute />} />
-                <Route path="/deposit" element={<DepositRoute />} />
-                <Route path="/map" element={<MapRoute />} />
-                <Route path="/map-deposit" element={<MapDepositRoute />} />
-                <Route path="/chat" element={<ChatRoute />} />
-                <Route path="/chat-deposit" element={<ChatDepositRoute />} />
-                <Route path="/qr-reveal" element={<QRRevealRoute />} />
-                <Route path="/qr-deposit" element={<QRDepositRoute />} />
-                <Route path="/success" element={<SuccessRoute />} />
-                <Route path="/explore" element={<ExploreRoute />} />
-                <Route path="/cetes" element={<CetesRoute />} />
-                <Route path="/blend" element={<BlendRoute />} />
-                <Route path="/profile" element={<ProfileRoute />} />
-                <Route path="/privacy" element={<PrivacyRoute />} />
-                <Route path="/terms" element={<TermsRoute />} />
+                <Route path="/login" element={<Login onLoginSuccess={handleLoginSuccess} />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/" element={<ProtectedRoute><HomeRoute /></ProtectedRoute>} />
+                <Route path="/history" element={<ProtectedRoute><HistoryRoute /></ProtectedRoute>} />
+                <Route path="/trade/:id" element={<ProtectedRoute><TradeDetailRoute /></ProtectedRoute>} />
+                <Route path="/merchant-settings" element={<ProtectedRoute><MerchantSettingsRoute /></ProtectedRoute>} />
+                <Route path="/inbox" element={<ProtectedRoute><InboxRoute /></ProtectedRoute>} />
+                <Route path="/cashout" element={<ProtectedRoute><CashoutRoute /></ProtectedRoute>} />
+                <Route path="/deposit" element={<ProtectedRoute><DepositRoute /></ProtectedRoute>} />
+                <Route path="/map" element={<ProtectedRoute><MapRoute /></ProtectedRoute>} />
+                <Route path="/map-deposit" element={<ProtectedRoute><MapDepositRoute /></ProtectedRoute>} />
+                <Route path="/chat" element={<ProtectedRoute><ChatRoute /></ProtectedRoute>} />
+                <Route path="/chat-deposit" element={<ProtectedRoute><ChatDepositRoute /></ProtectedRoute>} />
+                <Route path="/qr-reveal" element={<ProtectedRoute><QRRevealRoute /></ProtectedRoute>} />
+                <Route path="/qr-deposit" element={<ProtectedRoute><QRDepositRoute /></ProtectedRoute>} />
+                <Route path="/success" element={<ProtectedRoute><SuccessRoute /></ProtectedRoute>} />
+                <Route path="/explore" element={<ProtectedRoute><ExploreRoute /></ProtectedRoute>} />
+                <Route path="/cetes" element={<ProtectedRoute><CetesRoute /></ProtectedRoute>} />
+                <Route path="/blend" element={<ProtectedRoute><BlendRoute /></ProtectedRoute>} />
+                <Route path="/profile" element={<ProtectedRoute><ProfileRoute /></ProtectedRoute>} />
+                <Route path="/privacy" element={<ProtectedRoute><PrivacyRoute /></ProtectedRoute>} />
+                <Route path="/terms" element={<ProtectedRoute><TermsRoute /></ProtectedRoute>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
               <BottomNavAdapter />
