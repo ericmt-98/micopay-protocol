@@ -27,13 +27,13 @@ reviews each PR for privacy before merging.
 A funding/grant case for MicoPay on Stellar rests on a few claims. The research issues each
 supply evidence for one of them:
 
-| Claim | Backed by | One-line thesis |
-|---|---|---|
-| **1. Demand exists** | V-1 (cash-out), V-2 (cash-in), V-6 (remittances) | A real, recurring pain converting digital ↔ cash |
-| **2. Supply exists** | V-3 (liquidity providers) | Real people/businesses would provide cash for a commission |
-| **3. It can win** | V-7 (alternatives), V-8 (fair fee) | Better than current options, at a fee users accept |
-| **4. Stellar is usable** | V-4 (non-custodial onboarding) | Mainstream users can handle a self-custodial wallet |
-| **5. Trust / PMF** | V-5 (flow trust), V-9 (safety), V-10 (repeat use) | Users would adopt, feel safe, and come back |
+| Claim                    | Backed by                                         | One-line thesis                                            |
+| ------------------------ | ------------------------------------------------- | ---------------------------------------------------------- |
+| **1. Demand exists**     | V-1 (cash-out), V-2 (cash-in), V-6 (remittances)  | A real, recurring pain converting digital ↔ cash           |
+| **2. Supply exists**     | V-3 (liquidity providers)                         | Real people/businesses would provide cash for a commission |
+| **3. It can win**        | V-7 (alternatives), V-8 (fair fee)                | Better than current options, at a fee users accept         |
+| **4. Stellar is usable** | V-4 (non-custodial onboarding)                    | Mainstream users can handle a self-custodial wallet        |
+| **5. Trust / PMF**       | V-5 (flow trust), V-9 (safety), V-10 (repeat use) | Users would adopt, feel safe, and come back                |
 
 > Put together: **demand + supply + a winning, affordable, usable, trusted experience = a
 > credible case that a Stellar P2P cash network serves the financially underserved.**
@@ -42,8 +42,8 @@ supply evidence for one of them:
 
 ## Macro context (TAM — from public data, not from this survey)
 
-The *size* of the problem comes from public sources; cite them in the deck. The survey adds
-*willingness and trust*, which public data can't give. Approximate figures to verify and cite:
+The _size_ of the problem comes from public sources; cite them in the deck. The survey adds
+_willingness and trust_, which public data can't give. Approximate figures to verify and cite:
 
 - Remittances to Mexico: ~US$60B+/year (cite World Bank / Banxico, latest year).
 - Share of population unbanked / underbanked in Mexico: majority (cite ENIF / World Bank Findex).
@@ -58,19 +58,19 @@ The *size* of the problem comes from public sources; cite them in the deck. The 
 
 Fill these in as answers arrive. Keep counts and percentages only.
 
-| Metric | From | Target signal |
-|---|---|---|
-| % reporting cash-out as a recurring need · top friction | V-1 | demand |
-| % with a real cash-in use case · main trust barrier | V-2 | bidirectional demand |
-| % willing to provide liquidity · acceptable commission (%) | V-3 | supply / unit economics |
-| % who find non-custodial backup clear (vs confusing) | V-4 | onboarding viability |
-| Top trust blocker · top reason to abandon | V-5 | PMF / drop-off risk |
-| % who receive remittances · would same-day local cash help | V-6 | remittance demand |
-| What they use today · top switch trigger · dealbreaker | V-7 | differentiation |
-| Fair commission % (distribution) · "too high" threshold | V-8 | unit economics |
-| Comfort meeting a stranger · top safety fear · shops vs individuals | V-9 | safety / de-risking |
-| Discovery method · repeat-use (yes/maybe/no) · recommend driver | V-10 | retention / PMF |
-| Regions represented (count by region) · total respondents (N) | all | spread / sample size |
+| Metric                                                              | From | Target signal           |
+| ------------------------------------------------------------------- | ---- | ----------------------- |
+| % reporting cash-out as a recurring need · top friction             | V-1  | demand                  |
+| % with a real cash-in use case · main trust barrier                 | V-2  | bidirectional demand    |
+| % willing to provide liquidity · acceptable commission (%)          | V-3  | supply / unit economics |
+| % who find non-custodial backup clear (vs confusing)                | V-4  | onboarding viability    |
+| Top trust blocker · top reason to abandon                           | V-5  | PMF / drop-off risk     |
+| % who receive remittances · would same-day local cash help          | V-6  | remittance demand       |
+| What they use today · top switch trigger · dealbreaker              | V-7  | differentiation         |
+| Fair commission % (distribution) · "too high" threshold             | V-8  | unit economics          |
+| Comfort meeting a stranger · top safety fear · shops vs individuals | V-9  | safety / de-risking     |
+| Discovery method · repeat-use (yes/maybe/no) · recommend driver     | V-10 | retention / PMF         |
+| Regions represented (count by region) · total respondents (N)       | all  | spread / sample size    |
 
 ---
 
@@ -93,22 +93,88 @@ Fill these in as answers arrive. Keep counts and percentages only.
 * Main friction: High cumulative transaction fees, unreliable ATM availability, and daily withdrawal limits.
 * Personal experience: I frequently receive digital funds and need physical cash for everyday expenses such as transportation and purchases at local markets. One recent experience was particularly frustrating, I spent more than an hour moving between three different bank locations because the first two had either empty ATMs or network issues. When I finally found a working ATM, the withdrawal limit was so low that I had to make multiple transactions, resulting in additional bank charges.
 
-
 ### V-2 · Cash-in / deposit context
+
 _(no responses yet)_
 
 ### V-3 · Liquidity provider perspective
+
 _(no responses yet)_
 
 ### V-4 · Non-custodial wallet onboarding
-_(no responses yet)_
+
+**Contributor:** Shadow-MMN
+
+- **Is it clear to YOU that you hold the key and must back it up?:** Not clear at all. There is no onboarding screen or maybe I am missing something but the keypair was generated (I found out by checking the brower's localStorage).
+- **Your biggest doubt or fear about a non-custodial wallet:** Losing the key to a hacker since it is stored on my localStorage.
+- **What would make YOU trust this onboarding:** I would not trust it in its current form because there is no onboarding at all. A dedicated screen at first launch explaining that a wallet was created and showing the public key, with a clear call to back up the secret key, would be the minimum.
+- **Your preference: create a new wallet vs import an existing Stellar key (and why):** Import an existing wallet key. I already have a wallet with funds and do not want the hassle of moving money between wallets.
+- **In your view, should backing up the key be mandatory at sign-up, or optional? (and why):** Optional, but the UI should make it trivially easy i.e a single tap to copy the key, accompanied by a visible note telling the user to save the copied text somewhere safe and never share it. Making it mandatory would frustrate users who just want to try the app, but the option should be prominent enough that nobody misses it.
 
 ### V-5 · Trust in the cash-in/cash-out flow
+
 _(no responses yet)_
 
 ### V-6 · Remittances cash-out context
 **Contributor:** [@KaruG1999](https://github.com/KaruG1999) · **PR:** [#146](https://github.com/ericmt-98/micopay-protocol/pull/146) · **Region:** Argentina (LATAM)
 
+<<<<<<< HEAD
+=======
+- **Country / general region:** Argentina (LATAM)
+- **Do YOU receive money from abroad?:** Yes
+- **How do you receive it today?:** Crypto (Stablecoins via Stellar/Soroban protocols and P2P networks) and global digital platforms.
+- **Your main friction receiving + cashing it out:** Fee and trust. Standard international banking wires trigger excessive regulatory friction, high baseline inbound fees, and unfavorable official currency conversion rates. While crypto solves cross-border speed, cashing out stablecoins to local fiat (ARS) still relies heavily on localized P2P order books or physical over-the-counter (OTC) exchanges, introducing variable spread fees and counterparty trust risks.
+- **Would getting it as cash nearby, same day, help YOU?:** Yes. Eliminating the P2P counterparty matching phase and having an immediate, compliant, same-day physical cash-out point nearby would drastically reduce transactional friction and eliminate exchange-rate slippage.
+
+### V-7 · Current alternatives & switching
+
+Small anonymized sample (N=4; self + 3 peers, convenience sample across Mexico and other Latin American regions):
+
+- Respondent A — Monterrey region, Mexico
+  - What they use today: OXXO stores and traditional bank ATMs.
+  - What they like: High availability and the security of established, well-known brands.
+  - What frustrates them: High transaction/convenience fees, long wait lines, and occasional ATM outages.
+  - What would make them switch: Lower fees, zero queue times, and local neighborhood exchange points.
+  - Dealbreaker: Upfront payment/fees before receiving cash, or overly complex apps that require advanced crypto/technical knowledge.
+
+- Respondent B — Bogotá area, Colombia
+  - What they use today: Mobile wallets (Nequi, Daviplata) and physical lottery kiosks (Efecty, Paga Todo) for cash-out.
+  - What they like: Instant digital transfers and wide physical availability of cash points.
+  - What frustrates them: Frequent app system outages, daily transaction limits, and high agent commissions.
+  - What would make them switch: A highly reliable system working 24/7 with transparent, lower fees and flexible limits.
+  - Dealbreaker: Lack of immediate transaction confirmation or lack of support channels to resolve stuck operations.
+
+- Respondent C — Buenos Aires, Argentina
+  - What they use today: Local informal exchange houses ("cuevas") and P2P crypto exchanges (Binance P2P).
+  - What they like: Inflation hedging by holding stablecoins (USDT) and converting to fiat cash as needed.
+  - What frustrates them: Safety risks of carrying physical cash from physical exchanges, and counterparty trust issues in online P2P.
+  - What would make them switch: A secure, trust-rated network of local merchants/providers for safe, local stablecoin-to-cash exchange.
+  - Dealbreaker: High platform service fees or mandatory KYC that requires multi-day validation for tiny transactions.
+
+- Respondent D — Caracas metropolitan area, Venezuela
+  - What they use today: Binance P2P, Pago Móvil bank transfers, and informal USD cash transactions.
+  - What they like: Fast digital payments (Pago Móvil) and holding USD-linked assets.
+  - What frustrates them: Scarcity of physical USD/local fiat cash and high exchange/broker fees (often >5%).
+  - What would make them switch: Direct connection to nearby verified cash providers at low transaction fees (<2%) with instant escrow settlement.
+  - Dealbreaker: High rate of transaction failures or lack of secure escrows to prevent loss/theft of digital assets during cash exchanges.
+
+Aggregate signal:
+
+- **Current alternatives:** Users rely heavily on established retail/agent networks (OXXO, Efecty), mobile wallets, and crypto P2P platforms (Binance) depending on the country's economic context.
+- **Key switching drivers:** Lower transaction fees, zero queues, higher system uptime (avoiding wallet outages), and safer/more localized physical exchange points.
+- **Key dealbreakers:** Escrow/security concerns (fear of losing funds), high entry friction (e.g. upfront payments or heavy KYC for small amounts), and poor app usability/technical complexity.
+
+### V-8 · Fair commission / fee tolerance
+
+- **Country / region:** Lagos area, Nigeria.
+- **Fair commission for cashing out:** 1–3% feels reasonable to me — enough to compensate a provider for their time and liquidity risk, but low enough that the convenience is still worth it over walking to a bank or agent.
+- **Too-high threshold:** Anything above 5% and I would rather deal with the friction of a traditional channel. At that point the fee starts to feel exploitative rather than a fair service charge.
+- **What would justify a higher fee:** Not having to use a bank account at all is the biggest one for me — that alone unlocks access. Speed (same-day settlement) and a clear safety guarantee (verified provider, in-app dispute path) would also make me willing to stretch a little above my usual ceiling.
+- **Would I pay more for a closer / faster provider:** Yes. If the alternative is travelling further or waiting longer, a small premium for proximity and speed is worth it.
+
+### V-9 · Safety meeting in person
+
+>>>>>>> a84be11 (V-4: add non-custodial wallet onboarding response)
 First-person response (privacy-safe):
 
 - Do I receive money from abroad? Yes — via stablecoins on Stellar/Soroban and P2P networks.
@@ -158,6 +224,7 @@ First-person response (privacy-safe):
 **SDF narrative:** Extends the geographic sample beyond LATAM into South Asia, confirming that safety concerns around in-person exchange are universal. The safety design requirements that emerge are directly actionable for the provider matching screen UX.
 
 ### V-10 · Product validation: repeat use & provider discovery
+
 > Note: submitted in the earlier multi-respondent format (kept as-is). Newer entries are first-person.
 
 Small anonymized sample (N=4; self + 3 peers, convenience sample across Mexico and other Latin American regions):
@@ -187,6 +254,7 @@ Small anonymized sample (N=4; self + 3 peers, convenience sample across Mexico a
   - What would make them recommend it: a clear, low-friction experience that felt easy to explain to someone else.
 
 Aggregate signal:
+
 - Discovery is likely to happen through a map/list and search, with referrals acting as a trust multiplier.
 - Repeat use looks plausible if the first experience is fast, predictable, and visibly trustworthy.
 - The main risk to repeat use is uncertainty around provider quality, availability, and support.
