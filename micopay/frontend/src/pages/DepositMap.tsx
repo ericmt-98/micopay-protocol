@@ -378,7 +378,7 @@ const DepositMap = ({
 
         {/* Map View Section */}
         <section>
-          <MapSim type="deposit" />
+          <MapSim type="deposit" merchants={merchants} />
         </section>
 
         {/* Offers List */}

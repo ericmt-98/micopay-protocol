@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import MapSim from '../components/MapSim';
 import { useMerchantsAvailable } from '../hooks/useMerchantsAvailable';
 import type { AvailableMerchant } from '../services/api';
@@ -55,11 +55,17 @@ const ExploreMap = ({
   amount = 500,
   loading = false,
 }: ExploreMapProps) => {
+  const [selectedMerchantId, setSelectedMerchantId] = useState<string | null>(null);
+  const selectedOfferRef = useRef<HTMLElement | null>(null);
   const { state, refetch } = useMerchantsAvailable({
     amount_mxn: amount,
     flow: 'cashout',
     radius_km: 5,
   });
+
+  useEffect(() => {
+    selectedOfferRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [selectedMerchantId]);
 
   if (state.status === 'loading' || state.status === 'idle') {
     return <LoadingSkeleton onBack={onBack} />;
@@ -73,10 +79,8 @@ const ExploreMap = ({
     return <FetchError onBack={onBack} onRetry={refetch} />;
   }
 
-  const offers: Offer[] =
-    state.status === 'success'
-      ? state.merchants.map((m, i) => merchantToOffer(m, i))
-      : [];
+  const merchants = state.status === 'success' ? state.merchants : [];
+  const offers: Offer[] = merchants.map((m, i) => merchantToOffer(m, i));
 
   return (
     <div className="bg-surface-container-lowest text-on-surface font-body min-h-screen pb-24">
@@ -97,7 +101,11 @@ const ExploreMap = ({
       <main className="pt-24 px-6 max-w-2xl mx-auto">
         {/* Map Section */}
         <section className="mb-10">
-          <MapSim />
+          <MapSim
+            merchants={merchants}
+            selectedMerchantId={selectedMerchantId}
+            onSelectMerchant={setSelectedMerchantId}
+          />
         </section>
 
         {offers.length === 0 ? (
@@ -119,16 +127,23 @@ const ExploreMap = ({
             <div className="space-y-4">
               {offers.map((offer, idx) => {
                 const isPrimary = offer.isPrimary ?? idx === 0;
+                const isSelected = selectedMerchantId === offer.id;
                 if (isPrimary) {
                   return (
                     <article
                       key={offer.id}
-                      className="relative bg-surface p-6 rounded-[24px] border border-primary-container/10 shadow-[0_4px_24px_rgba(0,133,96,0.06)] overflow-hidden"
+                      ref={isSelected ? selectedOfferRef : null}
+                      className={`relative bg-surface p-6 rounded-[24px] border shadow-[0_4px_24px_rgba(0,133,96,0.06)] overflow-hidden transition-all ${isSelected ? 'border-primary ring-2 ring-primary/30' : 'border-primary-container/10'}`}
                     >
                       <div className="flex gap-2 mb-4">
                         <span className="px-3 py-1 bg-primary text-white text-[11px] font-bold rounded-full uppercase tracking-wider">
                           Mejor oferta
                         </span>
+                        {isSelected && (
+                          <span className="px-3 py-1 bg-primary/10 text-primary text-[11px] font-bold rounded-full uppercase tracking-wider">
+                            Seleccionado en mapa
+                          </span>
+                        )}
                         {offer.badge && (
                           <span className="px-3 py-1 bg-surface-container-high text-primary text-[11px] font-bold rounded-full uppercase tracking-wider">
                             {offer.badge}
@@ -184,7 +199,8 @@ const ExploreMap = ({
                 return (
                   <article
                     key={offer.id}
-                    className="bg-surface-container-low/30 p-5 rounded-[24px] border border-transparent hover:border-surface-container-high transition-all"
+                    ref={isSelected ? selectedOfferRef : null}
+                    className={`bg-surface-container-low/30 p-5 rounded-[24px] border transition-all ${isSelected ? 'border-primary ring-2 ring-primary/30 bg-primary/5' : 'border-transparent hover:border-surface-container-high'}`}
                   >
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
@@ -196,6 +212,11 @@ const ExploreMap = ({
                           {offer.badge && (
                             <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
                               {offer.badge}
+                            </span>
+                          )}
+                          {isSelected && (
+                            <span className="ml-2 text-[11px] font-bold text-primary bg-white px-2 py-0.5 rounded-md">
+                              Seleccionado en mapa
                             </span>
                           )}
                         </div>
