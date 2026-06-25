@@ -27,17 +27,18 @@ local no-custodial: crear keypair en la app o importar una clave secreta Stellar
 wallets externas móviles (LOBSTR, WalletConnect, etc.) quedan fuera del alcance inmediato; Freighter
 no debe asumirse como flujo principal para APK/iOS.
 
-**⚠️ Bloqueante #0 (verificado 2026-06-23):** aunque el frontend compila verde, el **backend
-`npm run build` falla** (errores TS en `index.ts`, `trade.service.ts`, `requestId.test.ts`, falta
-`firebase-admin`, props de config inexistentes). La app móvil habla con un backend que hoy **no es
-deployable**. Esto antecede a todos los P0 de frontend — ver B-1 en §6 y §8.
+**✅ Bloqueante #0 resuelto (2026-06-25):** `npm run build` en `micopay/backend` pasa limpio.
+CI gate en `.github/workflows/ci.yml` bloquea merges si backend o frontend rompen. El stack
+es ahora deployable. Los P0 de frontend son el siguiente foco.
 
 | Nivel | # | Tema |
 |------|---|------|
-| 🔴 B-1 | 1 | **Backend no compila** — bloqueante #0, precede a todo |
+| ~~🔴 B-1~~ | ~~1~~ | ~~**Backend no compila**~~ → ✅ **Resuelto 2026-06-25** |
+| ~~🟡 P2-1~~ | ~~1~~ | ~~**Sin CI gate**~~ → ✅ **Resuelto 2026-06-25** |
 | 🔴 P0 | 4 | Identidad doble, trade contra sí mismo, balance falso, fetch roto en APK |
 | 🟠 P1 | 4 | UI descarta datos reales (mapa, economía de oferta, nombres, tipo de cambio) |
-| 🟡 P2 | 3 | Sin CI gate, DeFi simulado, config de release |
+| 🟡 P2 | 2 | DeFi simulado, config de release (CI ya resuelto) |
+| ⚠️ B pendiente | 3 | B-3 (fallback in-memory), B-4 (seed en prod), B-7 (health real) — trabajo interno |
 
 ---
 
@@ -203,24 +204,24 @@ lo demás.
 
 | ID | Título corto | Superficie | Track | Complejidad | `Stellar Wave` | Notas |
 |----|--------------|-----------|-------|-------------|:---:|-------|
-| B-1 | Backend `npm run build` debe pasar | `wave:backend` | `wave:trust` | high | ✅ | **Bloqueante #0. Verificado: falla hoy.** |
-| P2-1 | CI gate: tsc + vite build + backend build | `wave:backend`,`wave:frontend` | `wave:docs` | medium | ✅ | Debe incluir el build del backend, no solo frontend |
-| P0-1 | Una sola identidad por dispositivo | `wave:frontend` | `wave:trust` | high | ✅ | Unir con P0-2 (mismo rediseño) · `wave:needs-product` |
+| ~~B-1~~ | ~~Backend `npm run build` debe pasar~~ | — | — | — | — | ✅ **Resuelto 2026-06-25** — build pasa limpio |
+| ~~P2-1~~ | ~~CI gate: tsc + vite build + backend build~~ | — | — | — | — | ✅ **Resuelto 2026-06-25** — `.github/workflows/ci.yml` |
+| ~~B-2~~ | ~~Config prod fail-fast si faltan secretos~~ | — | — | — | — | ✅ **Resuelto 2026-06-25** — `validateConfig()` lanza y crashea |
+| ~~B-6~~ | ~~Migraciones reproducibles + fix `init.sql`~~ | — | — | — | — | ✅ **Resuelto 2026-06-25** — `init.sql` eliminado, schema en código |
+| P0-1 | Una sola identidad por dispositivo | `wave:frontend` | `wave:trust` | high | ✅ | Unir con P0-2 (mismo rediseño) |
 | P0-2 | Trade contra contraparte real | `wave:frontend`,`wave:backend` | `wave:retail` | high | ✅ | Depende de P0-1 |
-| P0-4 | Fix fetch relativo en APK | `wave:frontend` | `wave:merchant` | low | ✅ | `bug` · independiente, merge cuando sea |
-| P0-3 | Saldo real de la wallet del usuario | `wave:frontend`,`wave:backend` | `wave:retail` | medium | ✅ | Depende de P0-1 · `wave:needs-product` |
-| P1-1 | ExploreMap usa economía real | `wave:frontend` | `wave:retail` | medium | ✅ | Independiente |
+| ~~P0-4~~ | ~~Fix fetch relativo en APK~~ | — | — | — | — | ✅ **Resuelto** — issue #150 cerrado, PR #154 mergeado |
+| P0-3 | Saldo real de la wallet del usuario | `wave:frontend`,`wave:backend` | `wave:retail` | medium | ✅ | Depende de P0-1 |
+| P0-5 | Onboarding mínimo: alias + respaldo de clave obligatorio (KYC Nivel 0) | `wave:frontend` | `wave:trust` | medium | ✅ | Sienta base para KYC por niveles (D-4) · pendiente pregunta 3 §9 |
+| ~~P1-1~~ | ~~ExploreMap usa economía real~~ | — | — | — | — | Issue #151 publicado (abierto, sin asignar) |
 | P1-3 | Nombre real del agente en recibo | `wave:frontend` | `wave:retail` | low | ✅ | `ux` · depende de P0-2 (trade real) |
-| P1-2 | Mapa grafica comercios reales | `wave:frontend` | `wave:retail` | medium | ✅ | `ux` · independiente |
+| ~~P1-2~~ | ~~Mapa grafica comercios reales~~ | — | — | — | — | ✅ **Resuelto** — issue #152 cerrado, PR #156 mergeado |
 | P1-4 | Tipo de cambio XLM→MXN real | `wave:frontend`,`wave:backend` | `wave:retail` | medium | ✅ | Necesita endpoint de rate |
-| B-2 | Config prod fail-fast si faltan secretos | `wave:backend` | `wave:trust` | medium | ✅ | Depende de B-1 |
-| B-3 | Desactivar fallback in-memory en prod | `wave:backend` | `wave:trust` | medium | ✅ | Depende de B-1 |
-| B-4 | No sembrar datos demo en prod | `wave:backend` | `wave:trust` | low | ✅ | Depende de B-1 |
-| B-6 | Migraciones reproducibles + fix `init.sql` (users duplicado, `audit_log` x2) | `wave:backend` | `wave:trust` | medium | ✅ | Depende de B-1 |
-| P0-5 | Onboarding mínimo: alias + respaldo de clave obligatorio (KYC Nivel 0) | `wave:frontend` | `wave:trust` | medium | ✅ | Sienta base para KYC por niveles (D-4) · `wave:needs-product` (pregunta 3) |
-| B-7 | Health/readiness real (DB + config) | `wave:backend` | `wave:trust` | medium | ✅ | Depende de B-1 |
-| P2-2 | Feature-gate o productizar DeFi | `wave:frontend`,`wave:backend` | `wave:retail` | medium | ✅ | `wave:needs-product` |
-| P2-3 | Config de release APK | `wave:frontend` | `wave:retail` | medium | ✅ | Push, firma, code-splitting |
+| B-3 | Desactivar fallback in-memory en prod | `wave:backend` | `wave:trust` | medium | — | **Interno** — `initPg()` aún silencioso; no publicar como Drips |
+| B-4 | No sembrar datos demo en prod | `wave:backend` | `wave:trust` | low | — | **Interno** — `seedData()` sin flag; no publicar como Drips |
+| B-7 | Health/readiness real (DB + config) | `wave:backend` | `wave:trust` | medium | — | **Interno** — `/health` parcial; no publicar como Drips |
+| ~~P2-2~~ | ~~Feature-gate o productizar DeFi~~ | — | — | — | — | Cerrado como issue #86 (wave anterior) |
+| ~~P2-3~~ | ~~Config de release APK~~ | — | — | — | — | Cerrado como issue #89 (wave anterior) |
 
 **Tratamiento especial:**
 - **B-5 (Dockerfile/guía de deploy)** → trabajo interno de maintainer/integrator. Roza Risk
@@ -335,55 +336,21 @@ datos personales ni detalles que identifiquen a participantes.
 
 ## 8. Backend readiness para servidor
 
-El backend tiene buen esqueleto para operar en servidor (`PORT`, `DATABASE_URL`, `/health`, logs,
-CORS para Capacitor y `listen` en `0.0.0.0`), pero **todavía no está listo para hostear como
-servicio real**. La verificación `cd micopay/backend && npm run build` falla actualmente con errores
-de TypeScript, por lo que el primer objetivo es volverlo deployable antes de exponerlo.
+> **Actualización 2026-06-25:** B-1 y P2-1 están resueltos (ver tabla abajo). B-5 se trata
+> internamente. B-3, B-4 y B-7 tienen trabajo pendiente puntual.
 
-### Issues iniciales sugeridos
+### Estado de los issues internos (verificado 2026-06-25)
 
-1. **Backend deploy blocker: `npm run build` debe pasar**
-   - Evidencia: `tsc` falla por imports faltantes en `src/index.ts`, config de event listener no
-     declarada, `sendTradeNotificationToMerchant` sin import, referencias a `query` sin definición
-     y un test con comparación literal inválida.
-   - Aceptación: `npm run build` pasa en `micopay/backend` sin errores TypeScript.
-
-2. **Backend production config: fallar fuerte si faltan secretos reales**
-   - Problema: `JWT_SECRET` cae a `dev_jwt_secret`; producción no debe arrancar con secretos demo.
-   - Aceptación: con `NODE_ENV=production`, el backend falla si faltan `DATABASE_URL`, `JWT_SECRET`,
-     `SECRET_ENCRYPTION_KEY` y las variables Stellar requeridas para el modo elegido.
-
-3. **Backend persistence: desactivar fallback in-memory en producción**
-   - Problema: `src/db/schema.ts` puede caer a almacenamiento en memoria si PostgreSQL no está
-     disponible. Eso es útil en demo/dev, pero peligroso en servidor real.
-   - Aceptación: en producción, si PostgreSQL no conecta, el proceso falla y `/health` no reporta
-     servicio sano. El fallback in-memory queda limitado a development/test.
-
-4. **Backend seed data: no sembrar datos demo en producción**
-   - Problema: `seedData()` inserta usuarios/trades demo al arrancar si no hay trades.
-   - Aceptación: el seed solo corre con flag explícito (`SEED_DEMO_DATA=true`) y nunca por default
-     en producción.
-
-5. **Backend deploy artifact: Dockerfile o guía de despliegue reproducible**
-   - Problema: no hay Dockerfile/compose/Procfile ni README operativo de despliegue.
-   - Aceptación: existe una ruta documentada para levantar el backend con Node + Postgres, variables
-     requeridas, build, start, health check y estrategia de logs.
-
-6. **Backend database schema/migrations reproducibles**
-   - Problema: no hay flujo claro de migraciones para crear/actualizar tablas en un servidor nuevo.
-     Además, **`sql/init.sql` está malformado**: la tabla `users` tiene columnas duplicadas/mezcladas
-     (dos bloques de definición pegados, líneas ~14–25) y el archivo **define `audit_log` dos veces**
-     con esquemas distintos (líneas ~32 y ~104). Un servidor nuevo no puede provisionar schema con
-     este archivo tal cual.
-   - Aceptación: un servidor vacío puede provisionar schema de forma reproducible antes de arrancar
-     la app, sin depender de estado local o inserts manuales. `sql/init.sql` corregido: `users` con
-     una sola definición coherente y `audit_log` declarada una sola vez (separar el audit de trades
-     del audit general si se necesitan ambos).
-
-7. **Backend health/readiness real**
-   - Problema: `/health` existe, pero debe distinguir proceso vivo vs servicio listo.
-   - Aceptación: health/readiness valida conexión a DB, configuración crítica y estado del listener
-     si está habilitado, sin exponer secretos.
+| ID | Título | Estado | Evidencia |
+|----|--------|--------|-----------|
+| **B-1** | Backend `npm run build` debe pasar | ✅ **Resuelto** | `cd micopay/backend && npm run build` → exit 0 sin errores TypeScript |
+| **P2-1** | CI gate: tsc + vite build + backend build | ✅ **Resuelto** | `.github/workflows/ci.yml` bloquea merge si backend o frontend no buildean; tests en modo informativo mientras P0/P1 se estabilizan |
+| **B-2** | Config prod fail-fast si faltan secretos | ✅ **Resuelto** | `validateConfig()` en `src/config.ts:92` lanza error y `start()` crashea via `process.exit(1)` si faltan `DATABASE_URL`, `SECRET_ENCRYPTION_KEY` o variables Stellar en modo real |
+| **B-6** | Migraciones / `init.sql` duplicado | ✅ **Resuelto** | `sql/init.sql` eliminado; schema vive en `src/db/schema.ts`; la tabla duplicada y el `audit_log` doble ya no existen |
+| **B-5** | Dockerfile / guía de deploy | — | Trabajo interno de maintainer; no se publica como issue Drips |
+| **B-3** | Desactivar fallback in-memory en prod | ⚠️ **Pendiente puntual** | `initPg()` corre a nivel de módulo y activa in-memory silenciosamente si Postgres falla. `validateConfig` solo verifica que `DATABASE_URL` no sea string vacío, no conectividad real. Criterio original: proceso falla si PG no conecta en producción |
+| **B-4** | No sembrar datos demo en producción | ⚠️ **Pendiente puntual** | `seedData()` en `src/index.ts:210` siembra sin flag explícito. Criterio original: seed solo corre con `SEED_DEMO_DATA=true` |
+| **B-7** | Health/readiness real | ⚠️ **Parcial** | `/health` expone `hasPlatformKey/hasDbUrl` (checks de string) y `eventListenerHealthy`, pero no verifica conectividad real al pool PG en cada request. Suficiente para demo; no suficiente como readiness probe de producción |
 
 ---
 
