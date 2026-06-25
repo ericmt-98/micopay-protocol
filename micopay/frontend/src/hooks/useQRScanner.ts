@@ -1,30 +1,34 @@
 import { useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { resolveErrorMessage } from '../constants/errorMap';
+import { useCameraPermission, type PermState } from './usePermission';
 
 export interface ScanResult {
   value: string | null;
   error?: string;
+  permState?: PermState;
 }
 
 export function useQRScanner() {
+  const { state: permState, request: requestPerm, openSettings } = useCameraPermission();
+
   const scan = useCallback(async (): Promise<ScanResult> => {
     if (!Capacitor.isNativePlatform()) {
-      const value = window.prompt('El escáner de QR sólo está disponible en el teléfono. Pega el contenido aquí:');
-      return { value: value && value.trim() ? value.trim() : null };
+      // Web: caller should render a manual paste UI instead of calling scan()
+      return { value: null, error: 'scanner_unavailable' };
     }
 
     const mod = await import('@capacitor-mlkit/barcode-scanning');
     const { BarcodeScanner, BarcodeFormat } = mod;
 
-    const perm = await BarcodeScanner.requestPermissions();
-    if (perm.camera !== 'granted' && perm.camera !== 'limited') {
-      return { value: null, error: resolveErrorMessage({ message: 'camera_denied' }).message };
+    // check-before-request: detects permanently_denied without showing dialog
+    const perm = await requestPerm();
+    if (perm !== 'granted') {
+      return { value: null, permState: perm };
     }
 
     const supported = await BarcodeScanner.isSupported();
     if (!supported.supported) {
-      return { value: null, error: resolveErrorMessage({ message: 'scan_failed' }).message };
+      return { value: null, error: 'Scanner no disponible en este device' };
     }
 
     try {
@@ -33,9 +37,9 @@ export function useQRScanner() {
       });
       return { value: barcodes[0]?.rawValue ?? null };
     } catch (e) {
-      return { value: null, error: resolveErrorMessage({ message: 'scan_failed' }).message };
+      return { value: null, error: e instanceof Error ? e.message : 'Scan cancelado' };
     }
-  }, []);
+  }, [requestPerm]);
 
-  return { scan };
+  return { scan, permState, requestPermission: requestPerm, openSettings };
 }
