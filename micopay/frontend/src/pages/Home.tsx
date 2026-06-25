@@ -5,6 +5,7 @@ import {
   getAccountBalance,
   TradeHistoryItem,
   getCurrentUser,
+  getMerchantTrades,
 } from "../services/api";
 
 const EXPLORER = "https://stellar.expert/explorer/testnet/tx";
@@ -60,11 +61,8 @@ const Home = ({
 
   useEffect(() => {
     if (!merchantToken) return;
-    fetch(`/api/merchants/me/trades?state=pending`, {
-      headers: { Authorization: `Bearer ${merchantToken}` },
-    })
-      .then((res) => res.json())
-      .then((data) => setPendingCount(data.trades?.length || 0))
+    getMerchantTrades(merchantToken, 'pending')
+      .then((trades) => setPendingCount(trades.length))
       .catch(() => {});
   }, [merchantToken]);
 
