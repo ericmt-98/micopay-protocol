@@ -208,11 +208,11 @@ Aggregate signal:
 ### V-11 · Transaction failure: dispute and recovery context
 
 - **Country / general region:** Nigeria (West Africa)
-- **Q1 — What happened:** I was trying to transfer money from my local bank to an online bank so I could purchase something. The transfer failed at the very last stage — right after I entered the correct OTP verification code. Instead of completing, the transaction simply returned a failed error.
+- **Q1 — What happened:** I was trying to transfer money from my local bank to an online bank so I could purchase something. The transfer failed at the very last stage right after I entered the correct OTP verification code. Instead of completing, the transaction simply returned a failed error.
 - **Q2 — What I did next:** Since the transfer wouldn't go through, I had to find another way to get the money I needed. I reached out to my brother, who sent me cash to cover what I was trying to do instead of waiting on the bank.
 - **Q3 — Resolution and timeframe:** As of now, it's been over a week and the issue is still unresolved. I haven't been able to visit my bank's physical branch yet to report and resolve it, but I'm planning to if the error keeps happening.
-- **Q4 — What was missing:** Some way to immediately know what actually went wrong after entering the OTP — even a basic in-app explanation or status check — would have saved me from guessing. Easier access to support (without needing to physically visit a branch) would also make resolving this far less of a hassle.
-- **Q5 — How it changed my behavior:** I no longer have full confidence in my local bank's transfer system, since I now know it can fail at any point, even at the final OTP stage. That said, I haven't stopped using the bank entirely — I'm still trying it again and hoping things stabilize, since switching banks isn't simple either.
+- **Q4 — What was missing:** Some way to immediately know what actually went wrong after entering the OTP even a basic in-app explanation or status check would have saved me from guessing. Easier access to support (without needing to physically visit a branch) would also make resolving this far less of a hassle.
+- **Q5 — How it changed my behavior:** I no longer have full confidence in my local bank's transfer system, since I now know it can fail at any point, even at the final OTP stage. That said, I haven't stopped using the bank entirely I'm still trying it again and hoping things stabilize, since switching banks isn't simple either.
 
 ### V-12 · Market validation: living without a bank account — daily cash management
 
