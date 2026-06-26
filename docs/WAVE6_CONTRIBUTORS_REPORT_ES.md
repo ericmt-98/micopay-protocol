@@ -20,8 +20,9 @@
 | [#146](https://github.com/ericmt-98/micopay-protocol/pull/146) | [@KaruG1999](https://github.com/KaruG1999) | #138 | V-6 · Contexto de remesas y cash-out | Argentina | ✅ Mergeado |
 | [#147](https://github.com/ericmt-98/micopay-protocol/pull/147) | [@deep-bhikadiya](https://github.com/deep-bhikadiya) | #141 | V-9 · Seguridad en reunión presencial | India / Sur de Asia | ✅ Mergeado |
 | [#148](https://github.com/ericmt-98/micopay-protocol/pull/148) | [@rosemary21](https://github.com/rosemary21) | #140 | V-8 · Tolerancia a comisiones y tarifas | Nigeria (área de Lagos) | ✅ Mergeado |
+| [#170](https://github.com/ericmt-98/micopay-protocol/pull/170) | [@Max-Owolabi](https://github.com/Max-Owolabi) | #167 | V-14 · Validación de producto: modelo mental de stablecoin y peso digital | Nigeria (África Occidental) | ✅ Mergeado |
 
-**Total de respuestas hasta ahora: N=8** (1 lote multi-respondente en V-10 + 4 respuestas en primera persona + 3 implícitas en el lote de V-7)
+**Total de respuestas hasta ahora: N=9** (1 lote multi-respondente en V-10 + 5 respuestas en primera persona + 3 implícitas en el lote de V-7)
 **Regiones representadas:** México, Colombia, Argentina, Venezuela, India, Nigeria
 
 ---
@@ -35,7 +36,7 @@ Cada contribución avanza uno o más de los cinco argumentos de nuestra narrativ
 | **1. Existe demanda** (la gente necesita convertir efectivo ↔ digital) | V-1, V-2, V-6 | V-6 ✅ (KaruG1999) | V-1 y V-2 aún sin respuesta |
 | **2. Existe oferta** (proveedores darían efectivo por una comisión) | V-3 | Ninguna aún | V-3 sin asignar |
 | **3. MicoPay puede ganar** (mejor que las alternativas actuales, a una tarifa aceptable) | V-7, V-8 | V-7 ✅ (barnabasolutayo-lgtm) · V-8 ✅ (rosemary21) | Ambos cubiertos |
-| **4. Stellar es usable** (usuarios normales pueden manejar wallets no-custodiales) | V-4 | Ninguna aún | V-4 asignado a @Shadow-MMN, sin PR |
+| **4. Stellar es usable** (usuarios normales pueden manejar wallets no-custodiales) | V-4, V-14 | V-14 ✅ (Max-Owolabi) | V-4 asignado a @Shadow-MMN, sin PR |
 | **5. Confianza y PMF** (usuarios se sienten seguros, regresarían y recomendarían) | V-5, V-9, V-10 | V-9 ✅ (deep-bhikadiya) · V-10 ✅ (attyolu) | V-5 asignado a @Truphile, sin PR |
 
 > **Prioridad urgente:** V-1 (demanda de cash-out) y V-3 (oferta de liquidez) — los dos lados centrales del mercado. Sin al menos una respuesta por cada uno, el caso de financiamiento no tiene base.
@@ -143,6 +144,25 @@ Cada contribución avanza uno o más de los cinco argumentos de nuestra narrativ
 - **¿Pagarías más por un proveedor más cercano o más rápido?** Sí. La proximidad y la velocidad justifican un pequeño premium sobre la tarifa base.
 
 **Aporte a la narrativa SDF:** Incorpora África Subsahariana a la muestra y aporta el argumento más claro de la propuesta de valor "sin necesidad de cuenta bancaria". La banda de 1–5% de tarifa confirmada aquí coincide con las señales de Venezuela (<2% como trigger de cambio) y LATAM en general, estableciendo un ancla de precios regional para las conversaciones de economía unitaria con la SDF.
+
+---
+
+### V-14 · Validación de producto: modelo mental de stablecoin y peso digital
+**Contribuidor:** [@Max-Owolabi](https://github.com/Max-Owolabi) — Emmanuel Max-Owolabi · **PR:** [#170](https://github.com/ericmt-98/micopay-protocol/pull/170) · **Mergeado:** 2026-06-26
+
+**Formato:** Primera persona, respondente único.
+
+**Región:** Nigeria (África Occidental)
+
+**Hallazgos principales:**
+
+- **Experiencia previa con stablecoins:** Sí (USDC y USDT en Stellar y otras redes) para protegerse contra la inflación de la moneda local y pagar por servicios digitales globales donde las tarjetas locales fallan.
+- **Modelo mental de stablecoins vs. efectivo:** Inicialmente percibido como un número abstracto en la pantalla. La confianza se construyó con base en la viabilidad de la conversión, la capacidad de pago global, la seguridad de los contratos inteligentes y la transparencia de las transacciones on-chain.
+- **Fricción principal / parte más difícil:** Concepto de tarifas de gas/red, diferencias multichain para el mismo token y gestión de claves de autocustodia sin un banco centralizado para restablecer contraseñas.
+- **Primera reacción al saldo de wallet digital:** Curiosidad combinada con precaución (segura contra robo físico pero potencialmente expuesta a hackeos digitales o errores de usuario).
+- **Detonador de equivalencia a efectivo:** Conversión instantánea a efectivo en comercios/tiendas locales de barrio sin tarifas altas, y verificación clara del depósito en garantía (escrow) in-app.
+
+**Aporte a la narrativa SDF:** Valida el Argumento 4 (Stellar es usable) al mostrar que las stablecoins son muy valoradas en mercados inflacionarios (como África Occidental), pero que la simplicidad en la interfaz de usuario en torno a las comisiones de red y la recuperación de claves son esenciales para conectar el modelo mental digital-físico.
 
 ---
 

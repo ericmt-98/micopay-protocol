@@ -16,12 +16,13 @@
 | PR | GitHub user | Issue closed | Validation topic | Region | Status |
 |----|-------------|-------------|-----------------|--------|--------|
 | [#143](https://github.com/ericmt-98/micopay-protocol/pull/143) | [@attyolu](https://github.com/attyolu) | #142 | V-10 · Repeat use & provider discovery | Mexico / LATAM | ✅ Merged |
-| [#145](https://github.com/ericmt-98/micopay-protocol/pull/145) | [@barnabasolutayo-lgtm](https://github.com/barnabasolutayo-lgtm) | #139 | V-7 · Current alternatives & switching | Monterrey MX / Bogotá CO / Buenos Aires AR / Caracas VE | ✅ Merged |
+| [#145](https://github.com/ericmt-98/micopay-protocol/pull/145) | [@barnabasolutayo-lgtm](https://github.com/barnabasolutayo-lgtm) | #139 | V-7 · Alternatives & switching | Monterrey MX / Bogotá CO / Buenos Aires AR / Caracas VE | ✅ Merged |
 | [#146](https://github.com/ericmt-98/micopay-protocol/pull/146) | [@KaruG1999](https://github.com/KaruG1999) | #138 | V-6 · Remittances cash-out context | Argentina | ✅ Merged |
 | [#147](https://github.com/ericmt-98/micopay-protocol/pull/147) | [@deep-bhikadiya](https://github.com/deep-bhikadiya) | #141 | V-9 · Safety meeting in person | India / South Asia | ✅ Merged |
 | [#148](https://github.com/ericmt-98/micopay-protocol/pull/148) | [@rosemary21](https://github.com/rosemary21) | #140 | V-8 · Fair commission / fee tolerance | Nigeria (Lagos area) | ✅ Merged |
+| [#170](https://github.com/ericmt-98/micopay-protocol/pull/170) | [@Max-Owolabi](https://github.com/Max-Owolabi) | #167 | V-14 · Product validation: stablecoin and digital peso mental model | Nigeria (West Africa) | ✅ Merged |
 
-**Total responses so far: N=8** (1 multi-respondent batch in V-10 + 4 first-person + 3 implicit in V-7 batch)
+**Total responses so far: N=9** (1 multi-respondent batch in V-10 + 5 first-person + 3 implicit in V-7 batch)
 **Regions represented:** Mexico, Colombia, Argentina, Venezuela, India, Nigeria
 
 ---
@@ -35,7 +36,7 @@ Each contribution advances one or more of the five claims in our funding narrati
 | **1. Demand exists** (people need cash ↔ digital conversion) | V-1, V-2, V-6 | V-6 ✅ (KaruG1999) | V-1 and V-2 still open |
 | **2. Supply exists** (providers would offer cash for a commission) | V-3 | None yet | V-3 unassigned |
 | **3. MicoPay can win** (better than current options, at an acceptable fee) | V-7, V-8 | V-7 ✅ (barnabasolutayo-lgtm) · V-8 ✅ (rosemary21) | Both covered |
-| **4. Stellar is usable** (mainstream users can handle non-custodial wallets) | V-4 | None yet | V-4 assigned to @Shadow-MMN, no PR yet |
+| **4. Stellar is usable** (mainstream users can handle non-custodial wallets) | V-4, V-14 | V-14 ✅ (Max-Owolabi) | V-4 assigned to @Shadow-MMN, no PR yet |
 | **5. Trust & PMF** (users feel safe, would return, would recommend) | V-5, V-9, V-10 | V-9 ✅ (deep-bhikadiya) · V-10 ✅ (attyolu) | V-5 assigned to @Truphile, no PR yet |
 
 > **Priority to unlock:** V-1 (cash-out demand) and V-3 (liquidity supply) — the two core sides of the market. Without at least one response each, the funding case is missing its foundation.
@@ -143,6 +144,25 @@ Each contribution advances one or more of the five claims in our funding narrati
 - **Would you pay a premium for a closer/faster provider?** Yes. Proximity and speed justify a small premium over the base rate.
 
 **SDF narrative contribution:** Adds sub-Saharan Africa to the sample and contributes the clearest statement of the "no bank account needed" value proposition. The 1–5% fee band confirmed here matches the signals from Venezuela (<2% trigger) and LATAM generally, establishing a cross-regional pricing anchor for unit economics conversations with SDF.
+
+---
+
+### V-14 · Product validation: stablecoin and digital peso mental model
+**Contributor:** [@Max-Owolabi](https://github.com/Max-Owolabi) — Emmanuel Max-Owolabi · **PR:** [#170](https://github.com/ericmt-98/micopay-protocol/pull/170) · **Merged:** 2026-06-26
+
+**Format:** First-person, single respondent.
+
+**Region:** Nigeria (West Africa)
+
+**Key findings:**
+
+- **Prior stablecoin experience:** Yes (USDC and USDT on Stellar/other networks) to hedge against inflation and pay for global digital services.
+- **Mental model of stablecoins vs cash:** Initially seen as abstract numbers on screen. Trust was built on conversion usability, global payment ability, smart contract security, and transaction transparency.
+- **Top friction/hardest part:** Gas/network fees, multi-chain differences for the same token, and self-custody key management without bank support.
+- **First reaction to digital wallet balance:** Curiosity combined with caution (safe from physical theft but vulnerable to hacks/errors).
+- **Cash equivalence trigger:** Instant conversion to cash at local merchants/stores without high fees, and clear in-app escrow verification.
+
+**SDF narrative contribution:** Validates Claim 4 (Stellar is usable) by showing that stablecoins are highly valued in inflationary markets (like West Africa), but that user interface simplicity around network fees and key recovery are essential to bridge the digital-to-physical mental model.
 
 ---
 
