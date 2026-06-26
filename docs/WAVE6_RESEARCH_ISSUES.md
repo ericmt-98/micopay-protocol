@@ -32,7 +32,7 @@
 |----|-------|-------|-------------------------|--------|
 | V-1 | [#131](https://github.com/ericmt-98/micopay-protocol/issues/131) | Cash-out context | User-side demand (digital → cash) | ✅ PR #155 · @larryjay007 |
 | V-2 | [#132](https://github.com/ericmt-98/micopay-protocol/issues/132) | Cash-in / deposit | Bidirectional demand (cash → digital) | ✅ PR #159 · @Truphile |
-| V-3 | [#133](https://github.com/ericmt-98/micopay-protocol/issues/133) | Liquidity provider | Supply side (who provides the cash) | 🔴 Open — no PR yet |
+| V-3 | [#133](https://github.com/ericmt-98/micopay-protocol/issues/133) | Liquidity provider | Supply side (who provides the cash) | ✅ PR #169 · @DevSolex |
 | V-4 | [#134](https://github.com/ericmt-98/micopay-protocol/issues/134) | Non-custodial onboarding | Stellar self-custody usable by normal users | ✅ PR #157 · @Shadow-MMN |
 | V-5 | [#135](https://github.com/ericmt-98/micopay-protocol/issues/135) | Trust in the flow | Trust / product-market fit | ✅ PR #158 · @Truphile |
 | V-6 | [#138](https://github.com/ericmt-98/micopay-protocol/issues/138) | Remittances cash-out | Cross-border remittance demand (receiver) | ✅ PR #146 · @KaruG1999 |
@@ -42,7 +42,7 @@
 | V-10 | [#142](https://github.com/ericmt-98/micopay-protocol/issues/142) | Repeat use & discovery | Retention / sustained usage | ✅ PR #143 · @attyolu |
 | V-11 | [#164](https://github.com/ericmt-98/micopay-protocol/issues/164) | Failed transaction / dispute | Trust recovery after failure | 🆕 Open |
 | V-12 | [#165](https://github.com/ericmt-98/micopay-protocol/issues/165) | Living unbanked | Core demand — bank-free users | 🆕 Open |
-| V-13 | [#166](https://github.com/ericmt-98/micopay-protocol/issues/166) | Remittance sender | Cross-border demand (sender side) | 🆕 Open |
+| V-13 | [#166](https://github.com/ericmt-98/micopay-protocol/issues/166) | Remittance sender | Cross-border demand (sender side) | ✅ PR #171 · @Jo-anny |
 | V-14 | [#167](https://github.com/ericmt-98/micopay-protocol/issues/167) | Stablecoin / digital peso mental model | Stellar stablecoin layer trust | 🆕 Open |
 | V-15 | [#168](https://github.com/ericmt-98/micopay-protocol/issues/168) | First-time trust threshold | PMF — first adoption barrier | 🆕 Open |
 

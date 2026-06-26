@@ -24,9 +24,11 @@
 | [#146](https://github.com/ericmt-98/micopay-protocol/pull/146) | [@KaruG1999](https://github.com/KaruG1999) | #138 | V-6 · Remittances cash-out context | Argentina | ✅ Merged |
 | [#147](https://github.com/ericmt-98/micopay-protocol/pull/147) | [@deep-bhikadiya](https://github.com/deep-bhikadiya) | #141 | V-9 · Safety meeting in person | India / South Asia | ✅ Merged |
 | [#148](https://github.com/ericmt-98/micopay-protocol/pull/148) | [@rosemary21](https://github.com/rosemary21) | #140 | V-8 · Fair commission / fee tolerance | Nigeria (Lagos area) | ✅ Merged |
+| [#169](https://github.com/ericmt-98/micopay-protocol/pull/169) | [@DevSolex](https://github.com/DevSolex) | #133 | V-3 · Liquidity provider perspective | Nigeria (West Africa) | ✅ Merged |
+| [#171](https://github.com/ericmt-98/micopay-protocol/pull/171) | [@Jo-anny](https://github.com/Jo-anny) | #166 | V-13 · Remittance sender context | Europe → Latin America | ✅ Merged |
 
-**Total responses: N=12** (V-1, V-2, V-4, V-5 first-person + 1 multi-respondent batch in V-10 + 4 first-person V-6/V-8/V-9 + 3 implicit in V-7 batch)
-**Regions represented:** Nigeria (×3), Mexico, Colombia, Argentina, Venezuela, India
+**Total responses: N=14** (V-1, V-2, V-3, V-4, V-5, V-13 first-person + 1 multi-respondent batch in V-10 + 3 first-person V-6/V-8/V-9 + 3 implicit in V-7 batch)
+**Regions represented:** Nigeria (×4), Mexico, Colombia, Argentina, Venezuela, India, Europe
 
 ---
 
@@ -37,12 +39,12 @@ Each contribution advances one or more of the five claims in our funding narrati
 | SDF Claim | Issues that back it | Responses in so far | Gap |
 |-----------|--------------------|--------------------|-----|
 | **1. Demand exists** (people need cash ↔ digital conversion) | V-1, V-2, V-6 | V-1 ✅ (larryjay007) · V-2 ✅ (Truphile) · V-6 ✅ (KaruG1999) | Fully covered (3 responses) |
-| **2. Supply exists** (providers would offer cash for a commission) | V-3 | None yet | V-3 unassigned — **🔴 critical gap** |
+| **2. Supply exists** (providers would offer cash for a commission) | V-3 | V-3 ✅ (DevSolex) | Covered — Nigeria individual provider |
 | **3. MicoPay can win** (better than current options, at an acceptable fee) | V-7, V-8 | V-7 ✅ (barnabasolutayo-lgtm) · V-8 ✅ (rosemary21) | Both covered |
 | **4. Stellar is usable** (mainstream users can handle non-custodial wallets) | V-4 | V-4 ✅ (Shadow-MMN) | Covered |
 | **5. Trust & PMF** (users feel safe, would return, would recommend) | V-5, V-9, V-10 | V-5 ✅ (Truphile) · V-9 ✅ (deep-bhikadiya) · V-10 ✅ (attyolu) | Fully covered (3 responses) |
 
-> **Only remaining gap:** V-3 (liquidity provider perspective) — the supply side of the market. Without a first-person provider viewpoint, the SDF supply-side argument is unsubstantiated.
+> **All 5 SDF claims now have at least one response.** The supply-side gap (V-3) was closed by DevSolex. Remaining open validation issues (V-11, V-12, V-14, V-15) strengthen the deck but are not blocking the core funding case.
 
 ---
 
@@ -224,6 +226,46 @@ Each contribution advances one or more of the five claims in our funding narrati
 
 ---
 
+### V-3 · Liquidity provider perspective
+**Contributor:** [@DevSolex](https://github.com/DevSolex) · **PR:** [#169](https://github.com/ericmt-98/micopay-protocol/pull/169) · **Merged:** 2026-06-26
+
+**Format:** First-person, single respondent.
+
+**Region:** Nigeria (West Africa)
+
+**Key findings:**
+
+- **Would provide liquidity?** Yes — with conditions: escrow must lock funds before cash is handed over.
+- **Provider type:** Individual with an informal side-hustle; handles modest cash flows and does occasional P2P exchanges locally.
+- **Main motivation:** Commission income + convenience of converting already-held stablecoins back to local currency without going through a bank. Also builds local reputation.
+- **Perceived risks:** Non-payment or fake/reversed digital transfer; physical safety when carrying cash in public; regulatory ambiguity; no clear dispute resolution path.
+- **Expected commission:** 2–3%. Below 2% doesn't cover time/liquidity risk; above 4% pushes users back to informal channels.
+- **Trust trigger:** USDC locked in escrow before any cash is handed over — removes most of the risk. Also: verified counterparty history, clear in-app step-by-step instructions, visible support/dispute path.
+
+**SDF narrative contribution:** Closes the supply-side gap for Claim 2. Confirms real willingness to provide liquidity among informal P2P exchangers in West Africa, and pins the commission range at 2–3% — consistent with the 1–5% window from V-8. The escrow-first design requirement is the clearest product signal: the escrow lock must be visible to the provider before they move any cash.
+
+---
+
+### V-13 · Remittance sender context — sending money abroad
+**Contributor:** [@Jo-anny](https://github.com/Jo-anny) · **PR:** [#171](https://github.com/ericmt-98/micopay-protocol/pull/171) · **Merged:** 2026-06-26
+
+**Format:** First-person, single respondent.
+
+**Region:** Europe → Latin America (sender side)
+
+**Key findings:**
+
+- **Current method:** Mix of bank transfers and digital remittance services; sometimes crypto P2P for faster cash access.
+- **Cost:** High single-digit percent range (fees + currency conversion spread combined).
+- **Delivery time:** Same day to next day normally; banks can take several days if compliance checks trigger.
+- **Biggest frustration:** Opacity — unknown final delivered amount until after the transaction clears. Recipient must also handle separate cash-out steps or agent availability.
+- **Recipient behavior:** Cashes out via bank deposit, cash pickup, or mobile wallet + agent withdrawal.
+- **Switch trigger:** Cheaper, faster, more transparent — and crucially, knowing the final received amount and cash-out option **before** sending.
+
+**SDF narrative contribution:** Adds the sender-side view to the remittance demand signal (Claim 1). The V-6 Argentina response covered the receiver; V-13 closes the loop from the sender. The "certainty before sending" requirement is a direct product spec: the trade confirmation screen must show the exact MXN-equivalent and nearby provider availability before the user commits.
+
+---
+
 ## Cross-cutting insights (for the SDF deck)
 
 ### 1. The fee ceiling is universal: 2–5%
@@ -255,12 +297,12 @@ Responses now span 6+ countries across 3 continents (LATAM, South Asia, Africa).
 |-------|----------|----|-----------------------|
 | V-1 · Cash-out demand | [@larryjay007](https://github.com/larryjay007) | [#155](https://github.com/ericmt-98/micopay-protocol/pull/155) ✅ | Merged — Nigeria (South West) |
 | V-2 · Cash-in / deposit context | [@Truphile](https://github.com/Truphile) | [#159](https://github.com/ericmt-98/micopay-protocol/pull/159) ✅ | Merged — Nigeria (West Africa) |
-| V-3 · Liquidity provider perspective | [@3m1n3nc3](https://github.com/3m1n3nc3) | None yet | 🔴 Critical — supply side of the market |
+| V-3 · Liquidity provider perspective | [@DevSolex](https://github.com/DevSolex) | [#169](https://github.com/ericmt-98/micopay-protocol/pull/169) ✅ | Merged — Nigeria (West Africa) |
 | V-4 · Non-custodial wallet onboarding | [@Shadow-MMN](https://github.com/Shadow-MMN) | [#157](https://github.com/ericmt-98/micopay-protocol/pull/157) ✅ | Merged |
 | V-5 · Trust in the flow | [@Truphile](https://github.com/Truphile) | [#158](https://github.com/ericmt-98/micopay-protocol/pull/158) ✅ | Merged — Nigeria (West Africa) |
+| V-13 · Remittance sender context | [@Jo-anny](https://github.com/Jo-anny) | [#171](https://github.com/ericmt-98/micopay-protocol/pull/171) ✅ | Merged — Europe → LATAM |
 
-> V-3 is the remaining critical gap. Without a first-person liquidity-provider perspective,
-> the supply side of the SDF narrative is unsubstantiated.
+> All five SDF claims now have coverage. Open issues: V-11, V-12, V-14, V-15.
 
 ---
 
@@ -269,9 +311,9 @@ Responses now span 6+ countries across 3 continents (LATAM, South Asia, Africa).
 - **First-person** entries reflect each contributor's own lived experience — not a survey of others.
 - **Convenience sample**, self-selected via Stellar Drips Wave 6. Directional and qualitative, not statistically representative.
 - **Privacy-first:** no names, no contact information, no transaction amounts, no wallet addresses.
-- Current sample size: **N=12 individual perspectives** across **6+ countries / 3 regions**.
+- Current sample size: **N=14 individual perspectives** across **7+ countries / 3 regions**.
 - Report `N` plainly. Let the cross-regional consistency of the patterns speak for itself.
 
 ---
 
-*Last updated: 2026-06-25 · Maintainer: [@ericmt-98](https://github.com/ericmt-98)*
+*Last updated: 2026-06-26 · Maintainer: [@ericmt-98](https://github.com/ericmt-98)*

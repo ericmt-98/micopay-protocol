@@ -167,14 +167,9 @@ es ahora deployable. Los P0 de frontend son el siguiente foco.
 - **Criterio de aceptación:** ningún flujo presenta una transacción simulada como real sin
   etiqueta visible.
 
-### P2-4 · `/rate/xlm-mxn` sin caché — riesgo de rate-limit CoinGecko
-- **Archivo:** `micopay/backend/src/routes/rate.ts`
-- **Qué pasa:** cada vez que `Home` monta hace una llamada directa a CoinGecko. El free tier
-  permite ~50 req/min por IP. Con varios usuarios simultáneos o recargas frecuentes, el servidor
-  puede quedar bloqueado y todos los usuarios verían el fallback `~×20` al mismo tiempo.
-- **Criterio de aceptación:** el endpoint guarda la última tasa en memoria con TTL de 60 s.
-  Si el TTL no expiró, responde el valor cacheado sin tocar CoinGecko. Si CoinGecko falla y
-  hay un valor previo en caché (aunque vencido), devolverlo con `stale: true` en lugar de 503.
+### ~~P2-4~~ · ~~`/rate/xlm-mxn` sin caché — riesgo de rate-limit CoinGecko~~ → ✅ **Resuelto 2026-06-26**
+- **Resuelto por:** [@josealfredo79](https://github.com/josealfredo79) · **PR:** [#172](https://github.com/ericmt-98/micopay-protocol/pull/172)
+- **Solución:** caché module-level con TTL de 60 s, fallback `stale: true` si CoinGecko falla con valor previo en caché, 503 solo si no hay caché. Tests en `rateCache.test.ts` (5 escenarios).
 
 ### P2-3 · Configuración de release incompleta
 - **Push notifications:** `build.gradle:67-74` aplica `google-services` solo si existe
@@ -220,7 +215,7 @@ lo demás.
 | P1-1 | ExploreMap usa economía real | `wave:frontend` | `wave:retail` | medium | ✅ | Issue #151 publicado, abierto sin asignar |
 | P1-3 | Nombre real del agente en recibo | `wave:frontend` | `wave:retail` | low | ✅ | `ux` · depende de P0-2 (trade real) |
 | ~~P1-4~~ | ~~Tipo de cambio XLM→MXN real~~ | — | — | — | — | ✅ **Resuelto** — PR #162 · @josealfredo79 · follow-up: P2-4 caché |
-| P2-4 | Caché en-memoria para `/rate/xlm-mxn` | `wave:backend` | `wave:retail` | low | ✅ | Follow-up de P1-4 — ver §5 P2-4 |
+| ~~P2-4~~ | ~~Caché en-memoria para `/rate/xlm-mxn`~~ | — | — | — | — | ✅ **Resuelto** — PR #172 · @josealfredo79 |
 | B-3 | Desactivar fallback in-memory en prod | `wave:backend` | `wave:trust` | medium | — | **Interno** — `initPg()` aún silencioso; no publicar como Drips |
 | B-4 | No sembrar datos demo en prod | `wave:backend` | `wave:trust` | low | — | **Interno** — `seedData()` sin flag; no publicar como Drips |
 | B-7 | Health/readiness real (DB + config) | `wave:backend` | `wave:trust` | medium | — | **Interno** — `/health` parcial; no publicar como Drips |
@@ -264,7 +259,7 @@ lo demás.
 
 **Etapa 2 — "la UI deja de mentir" (P1):** 🔄 Parcialmente completa
 7. ~~**P1-2**~~ ✅ PR #156 · @Gozirimdev. **P1-1** (issue #151, abierto sin asignar).
-8. ~~**P1-4**~~ ✅ PR #162 · @josealfredo79. **P1-3** espera P0-2. **P2-4** (caché rate) listo para publicar.
+8. ~~**P1-4**~~ ✅ PR #162 · @josealfredo79. **P1-3** espera P0-2. ~~**P2-4**~~ ✅ PR #172 · @josealfredo79.
 
 **Etapa 3 — Backend hardening (interno):**
 9. **B-3, B-4, B-7** — trabajo interno pendiente. ~~B-2~~✅ ~~B-6~~✅

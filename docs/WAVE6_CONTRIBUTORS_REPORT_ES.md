@@ -24,9 +24,11 @@
 | [#146](https://github.com/ericmt-98/micopay-protocol/pull/146) | [@KaruG1999](https://github.com/KaruG1999) | #138 | V-6 · Contexto de remesas y cash-out | Argentina | ✅ Mergeado |
 | [#147](https://github.com/ericmt-98/micopay-protocol/pull/147) | [@deep-bhikadiya](https://github.com/deep-bhikadiya) | #141 | V-9 · Seguridad en reunión presencial | India / Sur de Asia | ✅ Mergeado |
 | [#148](https://github.com/ericmt-98/micopay-protocol/pull/148) | [@rosemary21](https://github.com/rosemary21) | #140 | V-8 · Tolerancia a comisiones y tarifas | Nigeria (área de Lagos) | ✅ Mergeado |
+| [#169](https://github.com/ericmt-98/micopay-protocol/pull/169) | [@DevSolex](https://github.com/DevSolex) | #133 | V-3 · Perspectiva del proveedor de liquidez | Nigeria (África Occidental) | ✅ Mergeado |
+| [#171](https://github.com/ericmt-98/micopay-protocol/pull/171) | [@Jo-anny](https://github.com/Jo-anny) | #166 | V-13 · Contexto del remitente — envío al exterior | Europa → América Latina | ✅ Mergeado |
 
-**Total de respuestas: N=12** (V-1, V-2, V-4, V-5 en primera persona + 1 lote multi-respondente en V-10 + 4 primera persona V-6/V-8/V-9 + 3 implícitas en el lote de V-7)
-**Regiones representadas:** Nigeria (×3), México, Colombia, Argentina, Venezuela, India
+**Total de respuestas: N=14** (V-1, V-2, V-3, V-4, V-5, V-13 en primera persona + 1 lote multi-respondente en V-10 + 3 primera persona V-6/V-8/V-9 + 3 implícitas en el lote de V-7)
+**Regiones representadas:** Nigeria (×4), México, Colombia, Argentina, Venezuela, India, Europa
 
 ---
 
@@ -37,12 +39,12 @@ Cada contribución avanza uno o más de los cinco argumentos de nuestra narrativ
 | Argumento SDF | Issues que lo respaldan | Respuestas recibidas | Faltante |
 |---------------|------------------------|---------------------|----------|
 | **1. Existe demanda** (la gente necesita convertir efectivo ↔ digital) | V-1, V-2, V-6 | V-1 ✅ (larryjay007) · V-2 ✅ (Truphile) · V-6 ✅ (KaruG1999) | Cubierto por completo (3 respuestas) |
-| **2. Existe oferta** (proveedores darían efectivo por una comisión) | V-3 | Ninguna aún | V-3 sin asignar — **🔴 brecha crítica** |
+| **2. Existe oferta** (proveedores darían efectivo por una comisión) | V-3 | V-3 ✅ (DevSolex) | Cubierto — proveedor individual en Nigeria |
 | **3. MicoPay puede ganar** (mejor que las alternativas actuales, a una tarifa aceptable) | V-7, V-8 | V-7 ✅ (barnabasolutayo-lgtm) · V-8 ✅ (rosemary21) | Ambos cubiertos |
 | **4. Stellar es usable** (usuarios normales pueden manejar wallets no-custodiales) | V-4 | V-4 ✅ (Shadow-MMN) | Cubierto |
 | **5. Confianza y PMF** (usuarios se sienten seguros, regresarían y recomendarían) | V-5, V-9, V-10 | V-5 ✅ (Truphile) · V-9 ✅ (deep-bhikadiya) · V-10 ✅ (attyolu) | Cubierto por completo (3 respuestas) |
 
-> **Única brecha restante:** V-3 (perspectiva del proveedor de liquidez) — el lado de la oferta del mercado. Sin una perspectiva en primera persona del proveedor, el argumento de oferta ante la SDF queda sin sustento.
+> **Los 5 argumentos SDF tienen cobertura.** La brecha de la oferta (V-3) fue cerrada por DevSolex. Los issues de validación abiertos (V-11, V-12, V-14, V-15) fortalecen el deck pero no son bloqueantes para el caso de financiamiento.
 
 ---
 
@@ -224,6 +226,46 @@ Cada contribución avanza uno o más de los cinco argumentos de nuestra narrativ
 
 ---
 
+### V-3 · Perspectiva del proveedor de liquidez
+**Contribuidor:** [@DevSolex](https://github.com/DevSolex) · **PR:** [#169](https://github.com/ericmt-98/micopay-protocol/pull/169) · **Mergeado:** 2026-06-26
+
+**Formato:** Primera persona, respondente único.
+
+**Región:** Nigeria (África Occidental)
+
+**Hallazgos principales:**
+
+- **¿Proveería liquidez?** Sí — con condiciones: el escrow debe bloquear los fondos antes de entregar el efectivo.
+- **Tipo de proveedor:** Individual con actividad informal paralela; maneja flujos de efectivo modestos y hace intercambios P2P ocasionales en su círculo local.
+- **Motivación principal:** Ingresos por comisión + conveniencia de convertir stablecoins ya en posesión a moneda local sin pasar por el banco. También genera reputación local.
+- **Riesgos percibidos:** No pago o transferencia digital falsa/reversada; seguridad física al llevar o entregar efectivo en público; ambigüedad regulatoria; falta de ruta de resolución de disputas.
+- **Comisión esperada:** 2–3%. Menos del 2% no cubre el tiempo y el riesgo de liquidez; más del 4% devuelve a los usuarios a los canales informales.
+- **Detonador de confianza:** Ver el USDC bloqueado en escrow *antes* de entregar cualquier efectivo — esa única garantía elimina la mayor parte del riesgo.
+
+**Aporte a la narrativa SDF:** Cierra la brecha del lado de la oferta para el Argumento 2. Confirma voluntad real de proveer liquidez entre cambiadores P2P informales en África Occidental, y fija el rango de comisión en 2–3% — consistente con la ventana de 1–5% de V-8. El requisito de diseño más claro: el bloqueo del escrow debe ser visible para el proveedor antes de que mueva cualquier efectivo.
+
+---
+
+### V-13 · Contexto del remitente — envío de dinero al exterior
+**Contribuidor:** [@Jo-anny](https://github.com/Jo-anny) · **PR:** [#171](https://github.com/ericmt-98/micopay-protocol/pull/171) · **Mergeado:** 2026-06-26
+
+**Formato:** Primera persona, respondente único.
+
+**Región:** Europa → América Latina (lado del remitente)
+
+**Hallazgos principales:**
+
+- **Método actual:** Mezcla de transferencias bancarias y servicios de remesas digitales; a veces P2P cripto para acceso más rápido del receptor.
+- **Costo:** Porcentaje de un solo dígito alto en total (fees de servicio + spread de conversión combinados).
+- **Tiempo de entrega:** Mismo día o al día siguiente normalmente; los bancos pueden tardar varios días si se activan verificaciones de compliance.
+- **Mayor frustración:** Opacidad — el monto final recibido es desconocido hasta que la transacción se liquida. El receptor además tiene que gestionar pasos separados de cash-out o disponibilidad de agentes.
+- **¿Qué haría el receptor con el dinero?** Hace cash-out a moneda local via banco, pickup en efectivo, o wallet móvil + retiro con agente.
+- **Detonador de cambio:** Más barato, rápido y transparente — y crucialmente, saber el monto final recibido y la opción de cash-out **antes** de enviar.
+
+**Aporte a la narrativa SDF:** Añade la perspectiva del remitente a la señal de demanda de remesas (Argumento 1). V-6 (Argentina) cubrió al receptor; V-13 cierra el ciclo desde el emisor. El requisito de "certeza antes de enviar" es un spec de producto directo: la pantalla de confirmación de la transacción debe mostrar el equivalente exacto en MXN y la disponibilidad de proveedores cercanos antes de que el usuario confirme.
+
+---
+
 ## Conclusiones transversales (para el deck ante la SDF)
 
 ### 1. El techo de tarifa es universal: 2–5%
@@ -255,12 +297,12 @@ Las respuestas ya abarcan 6+ países en 3 continentes (LATAM, Sur de Asia, Áfri
 |-------|-----------|----|-----------------------------|
 | V-1 · Demanda de cash-out | [@larryjay007](https://github.com/larryjay007) | [#155](https://github.com/ericmt-98/micopay-protocol/pull/155) ✅ | Mergeado — Nigeria (Sur Oeste) |
 | V-2 · Contexto de cash-in / depósito | [@Truphile](https://github.com/Truphile) | [#159](https://github.com/ericmt-98/micopay-protocol/pull/159) ✅ | Mergeado — Nigeria (África Occidental) |
-| V-3 · Perspectiva del proveedor de liquidez | [@3m1n3nc3](https://github.com/3m1n3nc3) | Sin PR aún | 🔴 Crítico — lado de la oferta del mercado |
+| V-3 · Perspectiva del proveedor de liquidez | [@DevSolex](https://github.com/DevSolex) | [#169](https://github.com/ericmt-98/micopay-protocol/pull/169) ✅ | Mergeado — Nigeria (África Occidental) |
 | V-4 · Onboarding a wallet no-custodial | [@Shadow-MMN](https://github.com/Shadow-MMN) | [#157](https://github.com/ericmt-98/micopay-protocol/pull/157) ✅ | Mergeado |
 | V-5 · Confianza en el flujo | [@Truphile](https://github.com/Truphile) | [#158](https://github.com/ericmt-98/micopay-protocol/pull/158) ✅ | Mergeado — Nigeria (África Occidental) |
+| V-13 · Contexto del remitente | [@Jo-anny](https://github.com/Jo-anny) | [#171](https://github.com/ericmt-98/micopay-protocol/pull/171) ✅ | Mergeado — Europa → LATAM |
 
-> V-3 es la brecha crítica restante. Sin una perspectiva en primera persona del proveedor de liquidez,
-> el lado de la oferta de la narrativa ante la SDF queda sin sustento.
+> Los 5 argumentos SDF tienen cobertura. Issues abiertos: V-11, V-12, V-14, V-15.
 
 ---
 
@@ -269,9 +311,9 @@ Las respuestas ya abarcan 6+ países en 3 continentes (LATAM, Sur de Asia, Áfri
 - **Primera persona:** cada entrada refleja la experiencia propia del contribuidor — no una encuesta a terceros.
 - **Muestra por conveniencia**, auto-seleccionada a través del programa Stellar Drips Wave 6. Señal direccional y cualitativa, no representativa estadísticamente.
 - **Privacy-first:** sin nombres, sin datos de contacto, sin montos de dinero, sin direcciones de wallet.
-- Tamaño actual de la muestra: **N=12 perspectivas individuales** en **6+ países / 3 regiones**.
+- Tamaño actual de la muestra: **N=14 perspectivas individuales** en **7+ países / 3 regiones**.
 - Reportar `N` con claridad. Dejar que la consistencia de los patrones entre regiones hable por sí sola.
 
 ---
 
-*Última actualización: 2026-06-25 · Maintainer: [@ericmt-98](https://github.com/ericmt-98)*
+*Última actualización: 2026-06-26 · Maintainer: [@ericmt-98](https://github.com/ericmt-98)*
