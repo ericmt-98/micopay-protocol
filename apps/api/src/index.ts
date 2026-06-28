@@ -12,9 +12,11 @@ import { fundRoutes } from "./routes/fund.js";
 import { serviceRoutes } from "./routes/services.js";
 import { demoRoutes } from "./routes/demo.js";
 import { cetesRoutes } from "./routes/cetes.js";
+import { blendRoutes } from "./routes/blend.js";
 import { merchantRoutes } from "./routes/merchants.js";
 import { tradeMessagesRoutes } from "./routes/trade-messages.js";
 import { zkRoutes } from "./routes/zk.js";
+import { inferenceRoutes } from "./routes/inference.js";
 import { initAuthChallengesTable } from "./db/auth.js";
 import { config } from "./config.js";
 
@@ -52,6 +54,7 @@ if (config.enableInvestments) {
 app.register(merchantRoutes);
 app.register(tradeMessagesRoutes);
 app.register(zkRoutes);
+app.register(inferenceRoutes);
 
 async function start() {
   await initAuthChallengesTable();
