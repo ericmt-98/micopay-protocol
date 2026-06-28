@@ -23,8 +23,14 @@
 >   e2e en testnet — credencial válida → `verify_unique` quema el nullifier → Claude responde
 >   (`credential_spent: true`); reusarla → 409; proof inválido → 400/403. El consumo del recurso
 >   ya está cableado (la credencial es el "ticket" prepagado; x402 vive en la etapa de compra).
-> - **Pendientes aún abiertos:** §2.4 (medición de saldo / "cuánto le queda"), emisión vía x402
->   (`/api/v1/credentials/buy`), árbol multi-usuario para anonimato creíble (hoy 1 hoja), §4 (Base/Solana).
+> - **Etapa de compra x402 RESUELTA (2026-06-28):** `POST /api/v1/credentials/buy` (x402) →
+>   emite credencial + publica su raíz. Tubería completa de 3 piezas probada e2e: comprar (x402)
+>   → gastar (credencial+ZK) → Claude responde; pago público, gasto anónimo y no-ligable.
+>   Caveat demo: credencial server-minted (producción = commitment del cliente); contrato de raíz
+>   única → una credencial activa a la vez.
+> - **Pendientes aún abiertos:** §2.4 (medición de saldo / "cuánto le queda"), árbol multi-usuario
+>   para anonimato creíble (hoy 1 hoja por raíz), commitment generado por el cliente (no-ligabilidad
+>   total frente al emisor), §4 (Base/Solana).
 
 ---
 

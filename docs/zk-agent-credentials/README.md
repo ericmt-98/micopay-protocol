@@ -47,10 +47,14 @@ on-chain (doble-gasto bloqueado). Eso último es el control que evita el consumo
 - ✅ **Nullifier determinista por credencial:** el dominio es una constante del circuito que el
   prover no puede rotar → cada credencial se gasta exactamente una vez. `verify_unique` lee el
   nullifier como los últimos 32 bytes (compatible con `reputation_v1`).
-- ✅ **Consumo real cableado y probado e2e (2026-06-28):** `POST /api/v1/inference` gateado por
-  credencial ZK — presentas la prueba → se quema la credencial on-chain → **Claude responde**.
-  Probado en vivo: credencial fresca → respuesta real (`credential_spent: true`); reusarla → 409;
-  proof inválido → 400/403. (Resuelve audit §3.)
+- ✅ **Tubería completa de 3 piezas probada e2e (2026-06-28):**
+  - **Comprar (x402):** `POST /api/v1/credentials/buy` — pagas USDC → recibes una credencial y su
+    raíz se activa on-chain. Pago **público**.
+  - **Gastar (credencial + ZK):** `POST /api/v1/inference` — presentas la prueba → se quema el
+    nullifier on-chain → **Claude responde** (`credential_spent: true`). Gasto **anónimo y
+    no-ligable** a la compra.
+  - Probado en vivo: comprar (x402 mock) → credencial 4001 → proof → Claude responde; reusar → 409;
+    proof inválido → 400/403. (Resuelve audit §3 y la etapa de compra.)
 - ⛔ **Base/Solana: 0% construido.** El x402 actual solo entiende Stellar+mock. `BASE_BRIDGE_PLAN.md`
   es diseño post-hackathon.
 
