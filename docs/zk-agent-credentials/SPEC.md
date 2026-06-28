@@ -1,15 +1,7 @@
 # ZK-as-a-Service (ZKaaS) on Micopay
+**Private resource-access verification for AI agents — pay-per-use, zero-knowledge, on Stellar (Soroban).**
 
-> ⚠️ **Documento histórico (framing previo: "reputación pública vs privada").**
-> La iniciativa se reencuadró a **credenciales de acceso anónimas para que agentes
-> consuman recursos**. La fuente de verdad actual vive en
-> [`docs/zk-agent-credentials/`](../zk-agent-credentials/README.md) — empieza por el
-> [índice](../zk-agent-credentials/README.md), el [one-pager](../zk-agent-credentials/HACKATHON.md)
-> y la [auditoría](../zk-agent-credentials/AUDIT.md).
-
-**Private, pay-per-use zero-knowledge verification on Stellar — demonstrated with anonymous reputation for humans and AI agents.**
-
-> **Pitch in one line:** ZKaaS is a Soroban-powered verification service where anyone — especially AI agents — pays cents via x402 to verify ZK proofs. Its flagship circuit lets a user prove *"my reputation tier is ≥ GOLD"* without revealing who they are, their address, or their history.
+> **Pitch in one line:** ZKaaS is a Soroban-powered verification service where an AI agent proves it holds a valid, unspent access credential — **without revealing who it is or letting anyone link its activity**. Verified on-chain on Stellar, paid via x402. Reputation is one application of the same engine.
 
 ## Table of Contents
 1. [Overview](#overview)
@@ -40,12 +32,12 @@ ZKaaS ships with **two registered circuits**:
 
 | Circuit | What it proves | Role |
 |---------|----------------|------|
-| `poseidon_preimage` | "I know the secret behind this hash" — without revealing it | Validates the rail end-to-end; building block for HTLC coordination and cross-chain swaps |
-| `reputation_v1` 🏆 | "My reputation tier is ≥ T" — without revealing identity, address, or exact score | **The flagship demo.** Private reputation earned in Micopay, consumed by merchants and AI agents |
+| `poseidon_preimage` | "I know the secret behind this hash" — without revealing it | Building block for HTLC coordination and cross-chain swaps |
+| `reputation_v1` 🏆 | "I hold a valid leaf in this set with tier ≥ T" — without revealing which leaf, who I am, or linking my uses | **The deployed anonymous-membership engine** (Merkle membership + nullifier + tier check). The anonymous *access credential* is the same engine with the leaf meaning "paid access" and no tier check — the immediate build, not yet a separately registered circuit. |
 
-Because verification runs inside a single Soroban contract calling the BN254/Poseidon host functions (Protocol 25/26), the cost per verification is negligible — the caller only pays the x402 micropayment (e.g., 0.001 USDC).
+Because verification runs inside a single Soroban contract calling the BN254 host functions (`g1_msm`, `pairing_check`, `keccak256` — Protocol 25/26), the cost per verification is negligible — the caller only pays the x402 micropayment (e.g., 0.001 USDC).
 
-**The product story:** today Micopay's reputation is public (badges, exact scores via API). ZKaaS adds the private mode. *Your reputation, your choice — flaunt it publicly (badge) or prove it privately (ZK).*
+**The product story:** an AI agent consumes a resource (inference, data, APIs) by proving it holds a valid access credential — without revealing who it is, which credential it holds, or linking its activity across sessions. Reputation is one instance: the same Merkle-membership engine can prove "my tier is ≥ SILVER" using a reputation leaf instead of an access leaf. **Access credentials are the flagship; reputation is an application.**
 
 ## Problem Statement
 
@@ -57,7 +49,7 @@ Because verification runs inside a single Soroban contract calling the BN254/Pos
 | **High barrier to ZK adoption** | Developers must deploy and maintain their own verifier contracts and understand low-level cryptography. |
 | **Agents can't buy trust** | AI agents coordinating transactions (Micopay's Bazaar) have no way to verify a counterparty's trustworthiness without doxxing them — and no way to pay for that verification autonomously. |
 
-The hackathon's theme — **Real-World ZK on Stellar** — demands a production-like use case. Ours: *an AI agent pays $0.001 to verify that an anonymous counterparty has good reputation, before locking funds in an escrow.*
+The hackathon's theme — **Real-World ZK on Stellar** — demands a production-like use case. Ours: *an AI agent consumes a resource (e.g., paid inference) by proving it holds a valid, unspent access credential — anonymous and unlinkable — verified on Soroban.* The deployed circuit `reputation_v1` demonstrates the same engine with a reputation leaf: prove tier ≥ T without revealing identity.
 
 ## Solution Overview
 
@@ -74,6 +66,38 @@ We expose a generic ZK verification endpoint that:
 
 4. Returns `{ verified: true | false }`
 
+### The anonymous access credential model (flagship)
+
+The core primitive is **Merkle membership + nullifier** — think arcade tokens:
+
+```
+Buy:     secret s  →  commitment C = H(s)  →  C added as a leaf in a Merkle tree
+         → only the 32-byte ROOT is published on Soroban
+
+Consume: ZK proof  "I know the secret behind ONE leaf in the tree"
+         + reveal nullifier H(s, context)
+         → WITHOUT revealing which leaf, the secret, or who you are
+
+Reuse:   same nullifier → rejected on-chain (double-spend prevented)
+
+Privacy: you are hidden among EVERY credential in the tree (the anonymity set).
+         More credentials in the tree = stronger privacy.
+```
+
+Even MicoPay cannot link a spend back to a purchase: you cannot go from `H(s)` to the leaf `C` without knowing `s`.
+
+**What ZK does and doesn't hide:**
+
+| Hidden ✅ | Not hidden ❌ |
+|---|---|
+| **Who you are** (identity, address) | The **content** of your request (the prompt/payload) |
+| **Linkability** across uses and back to your purchase | |
+| **Your balance / which credential** you hold | |
+
+> Hiding request *content* requires FHE/TEE — **roadmap, not claimed here**. ZK hides *who* is asking, not *what* they are asking.
+
+**Reputation is one application** of this engine: a reputation leaf encodes `H(secret, tier)`. Access credentials encode `H(secret, "paid")`. Same cryptographic primitives, different leaf semantics.
+
 ### Why a VK registry (and not one contract per circuit)
 
 UltraHonk verification is bound to a specific circuit via its verification key. A registry keyed by `circuit_id`:
@@ -82,7 +106,7 @@ UltraHonk verification is bound to a specific circuit via its verification key. 
 - Is the security boundary: the API **never** accepts a caller-supplied VK (an attacker could submit a VK for a trivially satisfiable circuit and forge `verified: true`). Only the admin registers audited VKs.
 - Is honest about the moat: a sophisticated caller could invoke the contract directly. The value of the API is **curation** (audited VKs), ergonomics (HTTP/JSON, no Stellar account needed), and the x402 audit trail — not exclusivity.
 
-### The reputation pipeline (flagship)
+### The reputation pipeline (one application of the access credential engine)
 
 All of it is Stellar-native:
 
@@ -110,11 +134,9 @@ The submission is structured so a last-day failure in the stretch goal cannot si
 ### CORE (the minimum viable submission — 100% Stellar)
 
 1. **ZKaaS service**: `/api/v1/zk/verify` + x402 + Soroban verifier contract with VK registry
-2. **Circuit 1** (`poseidon_preimage`): proves knowledge of a Poseidon pre-image
-3. **Circuit 2** (`reputation_v1`): Merkle membership + tier threshold + nullifier
-4. **Agent demo (Stellar-only)**: AI agent A wants to trade with market maker B →
-   B requires "reputation ≥ SILVER" → A proves it via ZKaaS without revealing identity →
-   A commits to an HTLC secret via circuit 1 → funds locked in Soroban HTLC
+2. **Circuit 1** (`poseidon_preimage`): proves knowledge of a Pedersen hash pre-image (BN254 Pedersen — `poseidon_preimage` is the registry name; see §6.1 for the hash note)
+3. **Circuit 2** (`reputation_v1`): the anonymous-membership engine — Merkle membership + tier threshold + nullifier (the access-credential circuit is the same engine without the tier check)
+4. **Agent demo (Stellar-only)**: an agent consumes a resource by proving it holds a valid, unspent credential — anonymous, unlinkable, double-spend-proof (reuse → nullifier rejected on-chain). Demonstrated today with `reputation_v1` as the engine (leaf = reputation tier); the credential walk-through is in [`HACKATHON.md`](./HACKATHON.md).
 
 ### STRETCH (cross-chain leg — only if time allows)
 
@@ -165,35 +187,35 @@ The submission is structured so a last-day failure in the stretch goal cannot si
 - **Micopay API** – enforces x402, forwards to the Soroban contract, returns the result
 - **ZkVerifierRegistry (Soroban)** – VK registry + dispatch to the verifier crate; also stores the current reputation Merkle root (updated by the Reputation Engine's admin key)
 - **Reputation Engine** – off-chain service that scores users from Micopay activity and publishes Merkle roots
-- **Verifier internals** – there is **no single `verify_ultrahonk` host function**. The `ultrahonk_soroban_verifier` crate is compiled into the contract WASM and performs verification using the BN254 host functions (`env.crypto().bn254().g1_msm()`, `.pairing_check()`) plus `keccak256`. Poseidon does **not** exist in soroban-sdk — it runs off-chain inside the Noir circuit only, which is correct for our design (the circuit hashes; the chain verifies the proof).
+- **Verifier internals** – there is **no single `verify_ultrahonk` host function**. The `ultrahonk_soroban_verifier` crate is compiled into the contract WASM and performs verification using the BN254 host functions (`env.crypto().bn254().g1_msm()`, `.pairing_check()`) plus `keccak256`. The hashing inside the circuits runs off-chain (inside the WASM prover) — the chain only verifies the UltraHonk proof, not the circuit's hash function.
 
 ## Technical Details
 
-### 6.1. Circuit 1: Poseidon pre-image (Noir)
+### 6.1. Circuit 1: Pedersen pre-image / `poseidon_preimage` (Noir)
 
-Proves knowledge of a pre-image of a Poseidon hash. Used to validate the rail and, in the agent demo, as the *commitment step* of an HTLC: the buyer proves they know the swap secret **before** the counterparty locks funds — removing the trust gap in HTLC setup.
+Proves knowledge of a pre-image of a Pedersen hash. Used to validate the rail and, in the agent demo, as the *commitment step* of an HTLC: the buyer proves they know the swap secret **before** the counterparty locks funds — removing the trust gap in HTLC setup.
+
+> **Hash note:** Despite the circuit registry name `poseidon_preimage`, the circuit uses **BN254 Pedersen** (`std::hash::pedersen_hash`) because `poseidon::bn254` is not exported in nargo 1.0.0-beta.9 (our pinned version). The registry name is fixed on-chain; the implementation is correct. Both are BN254-native and circuit-cheap — the UltraHonk verifier is hash-agnostic.
 
 **File: `circuits/poseidon_preimage/src/main.nr`**
 
 ```noir
-use dep::std::hash::poseidon::bn254;
-
-// `secret` is private (default); `pub hash` is the public input.
-fn main(secret: Field, pub hash: Field) {
-    let h = bn254::hash_1([secret]);
+// `secret` is private (default); `hash` is the public input.
+fn main(secret: Field, hash: pub Field) {
+    let h = std::hash::pedersen_hash([secret]);
     assert(h == hash);
 }
 ```
 
-### 6.2. Circuit 2: Private reputation (Noir) — the flagship
+### 6.2. Circuit 2: Anonymous credential engine / `reputation_v1` (Noir)
 
-Proves: *"I know a leaf in the official reputation Merkle tree (root R) whose tier is ≥ T"* — revealing neither the leaf, the address, nor the exact tier.
+This is the **access credential engine**: Merkle membership + threshold check + nullifier. With a reputation leaf (`H(secret, tier)`) it proves *"I know a leaf in the official Merkle tree (root R) whose tier is ≥ T"*. With an access leaf (`H(secret, "paid")`) it proves *"I hold a valid, unspent access credential"*. The circuit is identical — the leaf semantics differ. The deployed instance (`reputation_v1`) uses the reputation variant; `access_credential_v1` is the same circuit with access semantics, the immediate next build on a proven engine.
+
+> **Hash note:** The circuit uses **BN254 Pedersen** (`std::hash::pedersen_hash`) instead of Poseidon because `poseidon::bn254` is not exported in nargo 1.0.0-beta.9 (our pinned version). The VKs on-chain match this implementation. The Merkle root published on Soroban was built with the same Pedersen hash.
 
 **File: `circuits/reputation_v1/src/main.nr`**
 
 ```noir
-use dep::std::hash::poseidon::bn254;
-
 global TREE_DEPTH: u32 = 20;   // 2^20 ≈ 1M users
 
 fn main(
@@ -208,15 +230,15 @@ fn main(
     pub context: Field,                  // H(verifier_id, session) — binds the proof
     pub nullifier: Field,                // H(secret, context) — prevents replay
 ) {
-    // 1. Leaf commitment
-    let leaf = bn254::hash_2([secret, tier]);
+    // 1. Leaf commitment (BN254 Pedersen)
+    let leaf = std::hash::pedersen_hash([secret, tier]);
 
     // 2. Merkle inclusion proof
     let mut node = leaf;
     for i in 0..TREE_DEPTH {
         let sibling = path_elements[i];
         let (l, r) = if path_index[i] == 0 { (node, sibling) } else { (sibling, node) };
-        node = bn254::hash_2([l, r]);
+        node = std::hash::pedersen_hash([l, r]);
     }
     assert(node == merkle_root);
 
@@ -227,7 +249,7 @@ fn main(
     // 4. Nullifier: unique per (secret, context). The verifier supplies
     //    `context`; a proof generated for one verifier/session cannot be
     //    replayed at another.
-    let n = bn254::hash_2([secret, context]);
+    let n = std::hash::pedersen_hash([secret, context]);
     assert(n == nullifier);
 }
 ```
@@ -391,7 +413,9 @@ Every verification is an x402 transaction on Stellar — a transparent usage/fee
 
 Same end-to-end flow as the original spec: compile the pre-image circuit, generate a proof for `secret = 123456789`, call the endpoint, get `{ verified: true }`; tamper with the witness, get `{ verified: false }`. See §6.3 for the current toolchain commands.
 
-### 7.2. Demo B — the flagship: anonymous reputation for AI agents
+### 7.2. Demo B — the flagship: anonymous credential verification for AI agents
+
+Demonstrates the access credential engine using reputation as the leaf type (same Merkle-membership + nullifier primitives; the leaf meaning is "reputation tier" instead of "paid access").
 
 **Cast:** Agent A (buyer bot) · Agent B (market-maker bot) · the ZKaaS API · Soroban.
 
@@ -432,7 +456,7 @@ If the XRPL leg lands: after step 4 above, B locks XRP in a **native XRPL escrow
 
 ## Why This Fills a Gap in the Stellar Ecosystem
 
-Stellar has no native credential primitive (authorized trustlines are binary; SEP-12 KYC is off-chain by design) and Soroban has no dominant attestation standard (no EAS equivalent). Stellar's philosophy is *sensitive data off-chain, enforcement on-chain* — and ZKaaS follows it faithfully, upgrading "trust the anchor" to "verify the math":
+Stellar has no native credential primitive (authorized trustlines are binary; SEP-12 KYC is off-chain by design) and Soroban has no dominant attestation standard (no EAS equivalent). ZKaaS fills that gap with **anonymous access credentials**: an agent proves it holds a valid credential without revealing identity, and no one can link its uses. Stellar's philosophy is *sensitive data off-chain, enforcement on-chain* — ZKaaS follows it faithfully, upgrading "trust the anchor" to "verify the math":
 
 ```
 Stellar philosophy:   sensitive data off-chain  +  enforcement on-chain
@@ -447,7 +471,7 @@ ZKaaS is one half of a larger trust infrastructure for LatAm:
 
 | Phase | What | Where |
 |-------|------|-------|
-| **Now (this hackathon)** | ZKaaS + private reputation, earned in Micopay, consumed by agents | Stellar |
+| **Now (this hackathon)** | ZKaaS + anonymous access credentials (Merkle membership + nullifier on Soroban); reputation as flagship application | Stellar |
 | **+3 months (XRPL hackathon)** | **Avales Líquidos**: a capital pool locks funds in native XRPL escrows to guarantee user obligations (rent, tenders); users pay a fee instead of immobilizing capital. Reputation tiers anchored as XLS-70 Credentials. | XRPL |
 | **Convergence** | The Reputation Engine ingests **both** sources (Micopay P2P history + Avales payment history + XLS-70 credentials) into the same Merkle tree. One reputation, earned anywhere, provable privately everywhere — without ever linking a user's Stellar and XRPL addresses publicly (the ZK proof hides the linkage). | Both |
 | **Agents everywhere** | Rental platforms, marketplaces and AI agents consume `quote / status / reputation` via x402 — guarantees and trust checks as API calls. | Both |
@@ -545,6 +569,6 @@ This report and the accompanying sample code are released under the MIT License.
 
 ---
 
-**Last updated:** 2026-06-12
+**Last updated:** 2026-06-17
 **Author:** Eric Mota Tejeda
-**Project:** Micopay / Stellar Hacks — ZK-as-a-Service + Private Reputation
+**Project:** Micopay / Stellar Hacks — ZK-as-a-Service + Private Resource Access for AI Agents
