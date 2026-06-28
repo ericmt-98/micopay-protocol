@@ -100,10 +100,16 @@ impl ZkVerifierRegistry {
             .map_err(|_| ZkError::VerificationFailed)
     }
 
-    /// Verify a proof AND record its nullifier to prevent replay.
-    /// For reputation_v1: public_inputs has 4 fields (128 bytes).
-    /// The nullifier is field index 3 → bytes [96..128].
-    /// A nullifier can only be used once per ZkVerifierRegistry instance.
+    /// Verify a proof AND record its nullifier to prevent replay (burn-once).
+    ///
+    /// Convention: the nullifier is the LAST public input (final 32 bytes of
+    /// `public_inputs`, 32 bytes per BN254 field). This holds for every circuit
+    /// whose last public input is the nullifier, e.g.:
+    ///   - reputation_v1        [merkle_root, tier_threshold, context, nullifier] (128 bytes -> [96..128])
+    ///   - access_credential_v1 [merkle_root, nullifier]                          (64 bytes  -> [32..64])
+    /// A nullifier can only be used once per ZkVerifierRegistry instance, so a
+    /// credential whose nullifier is deterministic (e.g. access_credential_v1's
+    /// H(secret, DOMAIN)) can be spent at most once -> anti-double-spend / anti-spam.
     ///
     /// Use this instead of `verify` for circuits that carry a nullifier field.
     pub fn verify_unique(
@@ -112,14 +118,16 @@ impl ZkVerifierRegistry {
         public_inputs: Bytes,
         proof: Bytes,
     ) -> Result<(), ZkError> {
-        // Extract nullifier (bytes 96..128 = field index 3) before verification
-        // so a bad proof cannot sneak a nullifier into the used set.
-        if public_inputs.len() < 128 {
+        // Extract the nullifier (last 32 bytes) before verification so a bad
+        // proof cannot sneak a nullifier into the used set.
+        let len = public_inputs.len();
+        if len < 32 {
             return Err(ZkError::ProofParseError);
         }
+        let offset = len - 32;
         let mut nullifier_arr = [0u8; 32];
         for i in 0..32u32 {
-            nullifier_arr[i as usize] = public_inputs.get(96 + i).unwrap_or(0);
+            nullifier_arr[i as usize] = public_inputs.get(offset + i).unwrap_or(0);
         }
         let nullifier = Bytes::from_array(&env, &nullifier_arr);
 

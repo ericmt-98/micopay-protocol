@@ -10,7 +10,14 @@ const NET = StellarSdk.Networks.TESTNET;
 const CIRCUIT_SPECS: Record<string, { numInputs: number }> = {
   poseidon_preimage: { numInputs: 1 }, // [hash]
   reputation_v1: { numInputs: 4 }, // [merkle_root, tier_threshold, context, nullifier]
+  access_credential_v1: { numInputs: 2 }, // [merkle_root, nullifier] — burn-once access credential
 };
+
+// Circuits whose last public input is a nullifier → routed to verify_unique
+// (on-chain anti-double-spend). Others use verify.
+const NULLIFIER_CIRCUITS = new Set(["reputation_v1", "access_credential_v1"]);
+// Circuits whose public_inputs[0] is a Merkle root to cross-check against the on-chain root.
+const ROOTED_CIRCUITS = new Set(["reputation_v1", "access_credential_v1"]);
 
 interface ZkVerifyBody {
   circuit_id: string;
@@ -45,10 +52,9 @@ async function invokeVerify(
   const account = await rpc.getAccount(signerKP.publicKey());
   const contract = new StellarSdk.Contract(contractId);
 
-  // reputation_v1 → verify_unique (records nullifier to prevent replay)
-  // poseidon_preimage → verify (no nullifier field)
-  // NOTE: verify_unique requires a redeployed contract — see IMPLEMENTATION_PLAN.md WP4.
-  const contractFn = circuitId === "reputation_v1" ? "verify_unique" : "verify";
+  // Circuits carrying a nullifier → verify_unique (records nullifier to prevent replay).
+  // poseidon_preimage → verify (no nullifier field).
+  const contractFn = NULLIFIER_CIRCUITS.has(circuitId) ? "verify_unique" : "verify";
 
   const circuitIdVal = StellarSdk.xdr.ScVal.scvSymbol(circuitId);
   const inputsBuf = encodePublicInputs(publicInputs);
@@ -161,8 +167,9 @@ export async function zkRoutes(fastify: FastifyInstance): Promise<void> {
         return reply.status(400).send({ error: "proof must be valid base64" });
       }
 
-      // 6. For reputation_v1: cross-check public_inputs[0] against on-chain root
-      if (circuit_id === "reputation_v1") {
+      // 6. For rooted circuits: cross-check public_inputs[0] (merkle_root) against
+      //    the published on-chain root so a prover can't use a fabricated root.
+      if (ROOTED_CIRCUITS.has(circuit_id)) {
         try {
           const onChainRoot = await fetchReputationRoot();
           if (onChainRoot && public_inputs[0] !== onChainRoot) {
@@ -173,7 +180,7 @@ export async function zkRoutes(fastify: FastifyInstance): Promise<void> {
           }
         } catch (err) {
           // Non-fatal if root unavailable — let contract decide
-          fastify.log.warn({ err }, "Could not fetch on-chain reputation root");
+          fastify.log.warn({ err }, "Could not fetch on-chain root");
         }
       }
 
