@@ -33,7 +33,7 @@ export async function cetesRoutes(fastify: FastifyInstance): Promise<void> {
         return reply.send({
           apy: 5.78,
           xlmPerUsdc: 17.5,
-          cetesIssuer: "CETES7CKqqKQizuSN6iWQwmTeFRjbJR6Vw2XRKfEDR8f",
+          cetesIssuer: "GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC",
           cesPriceMxn: 1.156,
           network: process.env.STELLAR_NETWORK ?? "TESTNET",
           note: "Fallback rates - Etherfuse API unavailable",

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getCETESRate, buyCETES, sellCETES, CETESRate, CETESTxResult } from '../services/api';
+import { getCETESRate, CETESRate } from '../services/api';
+import { buyCETESOnDex, sellCETESOnDex, DexSwapResult } from '../services/stellarDex';
 import { extractApiErrorPayload } from '../utils/apiError';
 
 interface CETESScreenProps {
@@ -18,7 +19,7 @@ const CETESScreen = ({ onBack, onBanco }: CETESScreenProps) => {
   const [rate, setRate] = useState<CETESRate | null>(null);
   const [rateLoading, setRateLoading] = useState(true);
   const [txLoading, setTxLoading] = useState(false);
-  const [txResult, setTxResult] = useState<CETESTxResult | null>(null);
+  const [txResult, setTxResult] = useState<DexSwapResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,8 +68,8 @@ const CETESScreen = ({ onBack, onBanco }: CETESScreenProps) => {
     try {
       const result =
         tab === 'buy'
-          ? await buyCETES(amount, sourceAsset)
-          : await sellCETES(amount, sourceAsset);
+          ? await buyCETESOnDex(amount, sourceAsset)
+          : await sellCETESOnDex(amount, sourceAsset);
       setTxResult(result);
       setAmount('');
     } catch (err: unknown) {
