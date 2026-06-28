@@ -103,10 +103,17 @@ es ahora deployable. Los P0 de frontend son el siguiente foco.
 - **Por qué importa:** el "saldo" de la pantalla principal es de adorno; no representa los
   fondos del usuario. Como MicoPay no es custodial, este no es un tema de modelo abierto: la UI
   debe reflejar la dirección Stellar del usuario, no una wallet central.
-- **Criterio de aceptación:** la pantalla principal muestra el saldo de la dirección Stellar
-  del propio usuario (autenticada por token o consultada por dirección pública validada contra
-  el usuario actual). El endpoint `/account/balance` deja de usar `platformSecretKey` para la
-  Home o se reemplaza por un endpoint explícito de saldo de usuario.
+- **Decisión de implementación (2026-06-28):** el frontend consulta Horizon directamente con
+  la llave pública del dispositivo (`getPublicKey()` de `lib/keystore.ts`) — sin pasar por el
+  backend. El saldo de una cuenta Stellar es información pública; proxearlo por el backend
+  introduciría acoplamiento innecesario e iría en contra del modelo no-custodial (D-2).
+  Horizon no requiere auth para leer balances:
+  `GET https://horizon-testnet.stellar.org/accounts/<stellar_address>` → `.balances[]`.
+  El backend no cambia; `GET /account/balance` se puede deprecar en iteraciones posteriores.
+  Edge case: cuenta no fondeada (Horizon 404) → mostrar "0.00 MXNe" sin crash.
+- **Criterio de aceptación:** la pantalla principal muestra el saldo MXNe real de la dirección
+  Stellar del propio usuario, consultado directamente desde el frontend contra Horizon.
+  `VITE_MXNE_ISSUER_ADDRESS` (ya en `.env.testnet`) se usa para filtrar el asset correcto.
 
 ### ~~P0-4 · Fetch con ruta relativa roto dentro del APK~~ ✅ Resuelto
 - **Resuelto por:** [@josealfredo79](https://github.com/josealfredo79) · **Issue:** #150 · **PR:** #154 · **Mergeado:** 2026-06-25
@@ -215,11 +222,11 @@ lo demás.
 | P0-1 | Una sola identidad por dispositivo | `wave:frontend` | `wave:trust` | high | ✅ | Unir con P0-2 (mismo rediseño) |
 | P0-2 | Trade contra contraparte real | `wave:frontend`,`wave:backend` | `wave:retail` | high | ✅ | Depende de P0-1 |
 | ~~P0-4~~ | ~~Fix fetch relativo en APK~~ | — | — | — | — | ✅ **Resuelto** — issue #150 cerrado, PR #154 mergeado |
-| P0-3 | Saldo real de la wallet del usuario | `wave:frontend`,`wave:backend` | `wave:retail` | medium | ✅ | Depende de P0-1 |
-| P0-5 | Onboarding mínimo: alias + visibilidad de llave + respaldo escalonado | `wave:frontend` | `wave:trust` | medium | ✅ | 📝 **Borrador listo (§10)** · §9.3 decidido (escalonado) · 🔒 blocked-by #160 — publicar al mergear #160 |
+| P0-3 | Saldo real de la wallet del usuario | `wave:frontend` | `wave:retail` | medium | ✅ | Issue #193 publicado · frontend consulta Horizon directo (sin backend) |
+| P0-5 | Onboarding mínimo: alias + visibilidad de llave + respaldo escalonado | `wave:frontend` | `wave:trust` | medium | ✅ | Issue #188 publicado |
 | ~~P1-2~~ | ~~Mapa grafica comercios reales~~ | — | — | — | — | ✅ **Resuelto** — PR #156 · @Gozirimdev |
 | P1-1 | ExploreMap usa economía real | `wave:frontend` | `wave:retail` | medium | ✅ | Issue #151 publicado, abierto sin asignar |
-| P1-3 | Nombre real del agente en recibo | `wave:frontend` | `wave:retail` | low | ✅ | 📎 **Plegado a #160** — `seller_username` ya se fetchea, falta cablear `agentName`; mismo `App.tsx` que P0-1/P0-2 |
+| P1-3 | Nombre real del agente en recibo | `wave:frontend` | `wave:retail` | low | ✅ | Issue #189 publicado |
 | ~~P1-4~~ | ~~Tipo de cambio XLM→MXN real~~ | — | — | — | — | ✅ **Resuelto** — PR #162 · @josealfredo79 · follow-up: P2-4 caché |
 | ~~P2-4~~ | ~~Caché en-memoria para `/rate/xlm-mxn`~~ | — | — | — | — | ✅ **Resuelto** — PR #172 · @josealfredo79 |
 | ~~B-3~~ | ~~Desactivar fallback in-memory en prod~~ | — | — | — | — | ✅ **Resuelto 2026-06-28** — `initPg()` hace `process.exit(1)` en prod si PG no conecta (salvo `ALLOW_IN_MEMORY_DB=true`) |
@@ -260,18 +267,20 @@ lo demás.
 **Etapa 1 — Núcleo "un usuario real, una transacción real" (P0):** 🔄 En curso
 3. **P0-1 + P0-2** (issue #160, asignado en Drips) — en curso.
 4. ~~**P0-4**~~ ✅ PR #154 · @josealfredo79.
-5. **P0-3** — espera a que P0-1 aterrice.
-6. **P0-5** — 📝 borrador listo (§10); §9.3 decidido (escalonado); espera a que #160 mergee para publicar.
+5. ~~**P0-3**~~ — Issue #193 publicado · frontend consulta Horizon directo.
+6. ~~**P0-5**~~ — Issue #188 publicado.
 
 **Etapa 2 — "la UI deja de mentir" (P1):** 🔄 Parcialmente completa
-7. ~~**P1-2**~~ ✅ PR #156 · @Gozirimdev. **P1-1** (issue #151, abierto sin asignar).
-8. ~~**P1-4**~~ ✅ PR #162 · @josealfredo79. **P1-3** espera P0-2. ~~**P2-4**~~ ✅ PR #172 · @josealfredo79.
+7. ~~**P1-2**~~ ✅ PR #156 · @Gozirimdev. ~~**P1-1**~~ ✅ PR #186 · @gidadoabdullateef5.
+8. ~~**P1-4**~~ ✅ PR #162 · @josealfredo79. ~~**P1-3**~~ Issue #189 publicado. ~~**P2-4**~~ ✅ PR #172 · @josealfredo79.
 
 **Etapa 3 — Backend hardening (interno):** ✅ COMPLETA
 9. ~~**B-3, B-4, B-7**~~ ✅ resueltos 2026-06-28. ~~B-2~~✅ ~~B-6~~✅
 
 **Etapa 4 — Decisiones de producto / release:**
 10. ~~**P2-2**~~ ✅ etiquetado simulado (PR #178). **P2-3** (config de release APK) sigue pendiente.
+
+**T-1** Issue #194 · **T-2** Issue #190 · **T-3** Issue #191 · **T-4** Issue #195 · **T-5** Issue #192 — todos publicados.
 
 **Etapa paralela — Research (V-1…V-15):** 🔄 14/15 completas
 - ~~V-1~~✅ ~~V-2~~✅ ~~V-3~~✅ ~~V-4~~✅ ~~V-5~~✅ ~~V-6~~✅ ~~V-7~~✅ ~~V-8~~✅ ~~V-9~~✅ ~~V-10~~✅
@@ -396,8 +405,10 @@ datos personales ni detalles que identifiquen a participantes.
 
 ### Pendientes por resolver
 
-1. Confirmado: MicoPay es no-custodial. ¿Cuál será el endpoint oficial para consultar el saldo
-   de la dirección Stellar del usuario autenticado?
+1. ~~¿Cuál será el endpoint oficial para consultar el saldo de la dirección Stellar del usuario
+   autenticado?~~ → **Decidido 2026-06-28: Opción B (frontend directo a Horizon).** El frontend
+   consulta `GET horizon/accounts/<stellar_address>` con la llave pública del dispositivo. Sin
+   backend. Issue #193 publicado.
 2. ¿El onboarding oficial debe ofrecer dos caminos desde el inicio ("crear wallet" e "importar
    clave Stellar") o dejamos importar clave solo desde Perfil por ahora?
 3. ~~¿Qué nivel de backup exigimos al crear wallet?~~ → **Decidido 2026-06-27: respaldo escalonado.**
