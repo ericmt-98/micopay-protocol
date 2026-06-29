@@ -1,6 +1,5 @@
 import axios from 'axios';
 import { readJSON } from '../services/secureStorage';
-import { UserData } from '../services/api';
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
@@ -53,24 +52,13 @@ export async function reportClientError(payload: {
   stack?: string;
   context?: Record<string, unknown>;
 }) {
-  try {
-    const stored = await readJSON<UserData>('micopay_users');
-    const token = stored?.token;
+  // Fire and forget — don't let a reporting failure break the UX
+  readJSON<string>('token').then((token) => {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    const redactedPayload = {
-      request_id: payload.request_id,
-      error_code: payload.error_code,
-      message: redactString(payload.message) || '',
-      stack: redactString(payload.stack),
-      context: redactSensitiveData(payload.context),
+    return axios.post(`${BASE_URL}/client-errors`, {
+      ...payload,
       app_version: import.meta.env.VITE_APP_VERSION ?? 'dev',
-    };
-
-    // Fire and forget — don't let a reporting failure break the UX
-    await axios.post(`${BASE_URL}/client-errors`, redactedPayload, { headers });
-  } catch (e) {
-    // Ignore reporting failure
-  }
+    }, { headers });
+  }).catch(() => {});
 }
