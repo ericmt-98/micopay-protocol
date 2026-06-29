@@ -502,6 +502,18 @@ const MerchantInbox = ({ token, onBack }: MerchantInboxProps) => {
                   </span>
                 </div>
                 <p className="font-bold text-lg">${trade.amount_mxn} MXN</p>
+                {trade.status === 'locked' && (
+                  <div className="mt-2 flex items-center gap-1.5 text-sm text-emerald-600">
+                    <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: '"FILL" 1' }}>lock</span>
+                    <span className="font-medium">USDC locked in escrow &middot; ${trade.amount_mxn.toLocaleString('es-MX')} MXN</span>
+                  </div>
+                )}
+                {trade.status === 'pending' && (
+                  <div className="mt-2 flex items-center gap-1.5 text-sm text-amber-600">
+                    <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: '"FILL" 1' }}>hourglass_top</span>
+                    <span className="font-medium">Awaiting escrow lock</span>
+                  </div>
+                )}
               </div>
             ))}
           </div>
