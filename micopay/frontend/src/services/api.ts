@@ -79,6 +79,21 @@ export interface TradeDetailResponse {
   seller_username: string | null;
 }
 
+export interface RampQuote {
+  id: string;
+  amount_in: number;
+  amount_out: number;
+  expires_at: string;
+}
+
+export interface RampOrder {
+  id: string;
+  status: string;
+  withdrawAnchorAccount?: string;
+  withdrawMemo?: string;
+  withdrawMemoType?: string;
+}
+
 export async function fetchTradeDetail(tradeId: string, buyerToken: string): Promise<TradeDetailResponse> {
   const res = await http.get(`/trades/${tradeId}`, authHeaders(buyerToken));
   return res.data;
@@ -89,6 +104,26 @@ export interface CancelTradeResponse {
   status: 'cancelled';
   refund_expected: boolean;
   lock_tx_hash: string | null;
+}
+
+export async function getOfframpQuote(cetesAmount: string, token: string): Promise<RampQuote> {
+  const res = await http.post('/defi/ramp/quote', { type: 'offramp', amount: cetesAmount }, authHeaders(token));
+  return res.data;
+}
+
+export async function createOfframpOrder(quoteId: string, token: string): Promise<RampOrder> {
+  const res = await http.post('/defi/ramp/order', { quote_id: quoteId, useAnchor: true }, authHeaders(token));
+  return res.data;
+}
+
+export async function regenerateOfframpTx(orderId: string, token: string): Promise<RampOrder> {
+  const res = await http.post(`/defi/ramp/order/${orderId}/regenerate_tx`, {}, authHeaders(token));
+  return res.data;
+}
+
+export async function getRampOrder(orderId: string, token: string): Promise<RampOrder> {
+  const res = await http.get(`/defi/ramp/order/${orderId}`, authHeaders(token));
+  return res.data;
 }
 
 export async function cancelTradeRequest(tradeId: string, buyerToken: string): Promise<CancelTradeResponse> {
@@ -432,6 +467,8 @@ export interface UserProfile {
   min_trade_mxn?: number;
   max_trade_mxn?: number;
   daily_cap_mxn?: number;
+  kyc_status?: string;
+  clabe?: string;
 }
 
 export async function getMyProfile(token: string): Promise<UserProfile> {
