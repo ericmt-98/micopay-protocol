@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+
 import {
   fetchTradeDetail,
   completeTrade,
@@ -23,24 +24,27 @@ interface TradeDetailProps {
 }
 
 async function getStoredToken(): Promise<string | null> {
+  // Deprecated: TradeDetail should rely on AppContext-provided tokens,
+  // but keeping a safe fallback avoids breaking existing flows.
   try {
-    const stored = await readJSON<{ buyer?: { token: string }; seller?: { token: string } }>('micopay_users');
+    const stored = await readJSON<{ buyer?: { token: string }; seller?: { token: string } }>('micopay_user');
     return stored?.buyer?.token ?? stored?.seller?.token ?? null;
   } catch {
     return null;
   }
 }
 
-function isCurrentUserBuyer(tradeBuyerId: string): boolean {
-  try {
-    const raw = localStorage.getItem('micopay_users');
-    if (!raw) return false;
-    const parsed = JSON.parse(raw);
-    return parsed?.buyer?.id === tradeBuyerId;
-  } catch {
-    return false;
-  }
-}
+
+// function isCurrentUserBuyer(tradeBuyerId: string): boolean {
+//   try {
+//     const raw = localStorage.getItem('micopay_users');
+//     if (!raw) return false;
+//     const parsed = JSON.parse(raw);
+//     return parsed?.buyer?.id === tradeBuyerId;
+//   } catch {
+//     return false;
+//   }
+// }
 
 const TRADE_POLL_INTERVAL = 5000;
 const SUPPORT_EMAIL = 'support@micopay.io';
@@ -753,7 +757,11 @@ function TradeDetailContent({ buyerToken, sellerToken, onBack }: TradeDetailProp
     return null;
   }
 
-  const isBuyer = isCurrentUserBuyer(trade.buyer_id ?? '');
+  // TODO: derive the current authenticated user from props/AppContext.
+  // This component currently receives buyerToken/sellerToken but not user id.
+  // For now, treat as buyer only when showing buyer-specific actions is safe.
+  const isBuyer = !!buyerToken && trade.buyer_id !== undefined;
+
 
   // Render state-specific view
   const renderStateView = () => {

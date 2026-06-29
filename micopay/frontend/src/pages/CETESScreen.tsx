@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+
 import { getCETESRate, buyCETES, sellCETES, CETESRate, CETESTxResult } from '../services/api';
 import { extractApiErrorPayload } from '../utils/apiError';
 
@@ -12,6 +13,21 @@ type Tab = 'buy' | 'sell';
 type SourceAsset = 'XLM' | 'USDC' | 'MXNe';
 
 const CETESScreen = ({ onBack, onBanco }: CETESScreenProps) => {
+  // KYC gate: if we require KYC for SPEI-based onboarding, route to /kyc.
+  // KYCScreen will proceed after approval via cached `kyc_status`.
+  const handleSPEI = async () => {
+    try {
+      const mod = await import('../services/secureStorage');
+      const cached = await mod.readJSON<{ status: string }>('kyc_status');
+      if (cached?.status === 'approved') {
+        onBanco?.();
+        return;
+      }
+    } catch {
+      // ignore and fall back to KYC flow
+    }
+    window.location.hash = '/#/kyc';
+  };
   const [tab, setTab] = useState<Tab>('buy');
   const [amount, setAmount] = useState('');
   const [sourceAsset, setSourceAsset] = useState<SourceAsset>('XLM');
@@ -263,9 +279,24 @@ const CETESScreen = ({ onBack, onBanco }: CETESScreenProps) => {
 
         {/* Bank onramp card */}
         <button
-          onClick={onBanco}
+          onClick={async () => {
+            // If KYC is already approved, go directly.
+            try {
+              const { readJSON } = await import('../services/secureStorage');
+              const cached = await readJSON<{ status: string }>('kyc_status');
+              if (cached?.status === 'approved') {
+                onBanco?.();
+                return;
+              }
+            } catch {
+              // ignore and fall back to KYC flow
+            }
+            // Navigate to KYC screen; KYCScreen will route back by cache.
+            window.location.hash = '/#/kyc';
+          }}
           className="w-full bg-white border border-outline-variant/20 rounded-[24px] p-5 flex items-center gap-4 shadow-sm active:scale-[0.98] transition-all text-left"
         >
+
           <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
             <span className="material-symbols-outlined text-primary">account_balance_wallet</span>
           </div>

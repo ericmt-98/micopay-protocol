@@ -3,6 +3,7 @@ import { extractApiErrorPayload, toApiError } from '../utils/apiError';
 import { signChallenge, getPublicKey } from '../lib/keystore';
 import { removeKey } from './secureStorage';
 
+
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
 const http = axios.create({ baseURL: BASE_URL });
@@ -10,6 +11,33 @@ const http = axios.create({ baseURL: BASE_URL });
 function authHeaders(token: string) {
   return { headers: { Authorization: `Bearer ${token}` } };
 }
+
+// ─── DeFi: KYC (Etherfuse hosted flow) ─────────────────────────────────────
+
+export type KYCStatus = 'pending' | 'approved' | 'rejected';
+
+export interface KYCStatusResponse {
+  status: KYCStatus;
+  reason?: string | null;
+}
+
+/**
+ * Generates a short-lived (≈15 min) onboarding URL.
+ * URL must be generated at button touch (not earlier).
+ */
+export async function startKYC(): Promise<{ onboardingUrl: string }>{
+  const res = await http.post('/defi/kyc/start', {});
+  return res.data;
+}
+
+/**
+ * Poll KYC verification status.
+ */
+export async function getKYCStatus(): Promise<KYCStatusResponse> {
+  const res = await http.get('/defi/kyc/status');
+  return res.data;
+}
+
 
 export interface UserData {
   id: string;
