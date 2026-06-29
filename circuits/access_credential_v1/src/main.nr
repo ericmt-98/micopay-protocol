@@ -160,6 +160,41 @@ fn test_multi_leaf_tree() {
     std::println(root);
 }
 
+// Emit every value needed to build a real 4-credential pool sharing ONE root.
+// Print order: root, z[2..19], leaves[0..3], n01, n23, nullifiers[0..3].
+// Run: nargo test compute_multi_pool --show-output
+#[test]
+fn compute_multi_pool() {
+    let secrets: [Field; 4] = [5001, 5002, 5003, 5004];
+    let mut leaves: [Field; 4] = [0; 4];
+    for i in 0..4 {
+        leaves[i] = std::hash::pedersen_hash([secrets[i], LEAF_DOMAIN]);
+    }
+    let mut z: [Field; 20] = [0; 20];
+    for k in 1..20 {
+        z[k] = std::hash::pedersen_hash([z[k - 1], z[k - 1]]);
+    }
+    let n01 = std::hash::pedersen_hash([leaves[0], leaves[1]]);
+    let n23 = std::hash::pedersen_hash([leaves[2], leaves[3]]);
+    let n0123 = std::hash::pedersen_hash([n01, n23]);
+    let mut node = n0123;
+    for k in 2..20 {
+        node = std::hash::pedersen_hash([node, z[k]]);
+    }
+    std::println(node); // root
+    for k in 2..20 {
+        std::println(z[k]);
+    }
+    for i in 0..4 {
+        std::println(leaves[i]);
+    }
+    std::println(n01);
+    std::println(n23);
+    for i in 0..4 {
+        std::println(std::hash::pedersen_hash([secrets[i], NULLIFIER_DOMAIN]));
+    }
+}
+
 // Tests
 
 // Valid spend: membership holds + correct nullifier.
