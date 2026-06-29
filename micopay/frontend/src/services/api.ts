@@ -529,6 +529,86 @@ export async function merchantConfirmScan(
   }
 }
 
+// ─── DeFi: SPEI Onramp / Offramp (Etherfuse) ─────────────────────────────
+
+export interface RampQuote {
+  quoteId: string;
+  type: 'onramp' | 'offramp';
+  exchangeRate: string;
+  sourceAmount: string;
+  destinationAmount: string;
+  expiresAt: string;
+}
+
+export interface RampOrder {
+  orderId: string;
+  depositClabe?: string;
+  depositAmount?: string;
+  depositBankName?: string;
+  depositAccountHolder?: string;
+  withdrawAnchorAccount?: string;
+  withdrawMemo?: string;
+  withdrawMemoType?: string;
+}
+
+export interface RampOrderStatus {
+  orderId: string;
+  status: 'pending' | 'funded' | 'completed' | 'failed';
+  type: 'onramp' | 'offramp';
+  stellarTxHash?: string;
+}
+
+export interface BankAccountResult {
+  bankAccountId: string;
+  clabe: string;
+}
+
+export async function getRampQuote(
+  type: 'onramp' | 'offramp',
+  sourceAmount: string,
+  token: string,
+): Promise<RampQuote> {
+  const res = await http.post(
+    '/defi/ramp/quote',
+    { type, sourceAsset: 'MXN', targetAsset: 'CETES', sourceAmount },
+    authHeaders(token),
+  );
+  return res.data as RampQuote;
+}
+
+export async function createRampOrder(
+  quoteId: string,
+  bankAccountId: string,
+  token: string,
+): Promise<RampOrder> {
+  const res = await http.post(
+    '/defi/ramp/order',
+    { quoteId, bankAccountId },
+    authHeaders(token),
+  );
+  return res.data as RampOrder;
+}
+
+export async function getRampOrderStatus(
+  orderId: string,
+  token: string,
+): Promise<RampOrderStatus> {
+  const res = await http.get(`/defi/ramp/order/${orderId}`, authHeaders(token));
+  return res.data as RampOrderStatus;
+}
+
+export async function registerBankAccount(
+  clabe: string,
+  token: string,
+): Promise<BankAccountResult> {
+  try {
+    const res = await http.post('/defi/bank-account', { clabe }, authHeaders(token));
+    return res.data as BankAccountResult;
+  } catch (e: unknown) {
+    throw toApiError(extractApiErrorPayload(e));
+  }
+}
+
 // Global 401 handler: clear the persisted session and bounce to login.
 http.interceptors.response.use(
   (response) => response,
