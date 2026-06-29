@@ -300,6 +300,72 @@ If the entire experience was smooth, secure, and exactly as the platform promise
 
 ---
 
+## Batch 2 — Retail, payroll & the integrated economy (V-16…V-25)
+
+> Published 2026-06-29 (milestone #18). These extend the validation beyond the cash-out wedge into
+> the next two verticals from [`VISION_ECONOMIA_INTEGRADA.md`](./VISION_ECONOMIA_INTEGRADA.md):
+> **retail spending (B)** and **payroll / dollar inflows (C)**, plus the open product questions
+> (key recovery, canonical peso, supply bootstrap). Index & full questions:
+> [`WAVE6_RESEARCH_ISSUES_BATCH2.md`](./WAVE6_RESEARCH_ISSUES_BATCH2.md).
+>
+> Two new claims join the SDF narrative: **Claim 6 — the dollars get spent** (retail) and
+> **Claim 7 — the dollars flow in** (inflows/payroll).
+>
+> Each assignee replaces their `### V-X` placeholder below with their first-person, privacy-safe
+> answer (no names, no amounts, no wallet addresses — region + own experience only).
+
+### V-16 · Spending digital dollars at a store (consumer side)
+**Issue:** [#231](https://github.com/ericmt-98/micopay-protocol/issues/231) · **Validates:** Claim 6 (retail demand) · **Region:** _(to be filled)_
+
+_Awaiting contributor PR._
+
+### V-17 · Accepting "dollars" and receiving pesos (merchant side)
+**Issue:** [#232](https://github.com/ericmt-98/micopay-protocol/issues/232) · **Validates:** Claim 6 (merchant supply) · **Region:** _(to be filled)_
+
+_Awaiting contributor PR._
+
+### V-18 · NFC / contactless tap-to-pay familiarity & trust
+**Issue:** [#233](https://github.com/ericmt-98/micopay-protocol/issues/233) · **Validates:** Claim 4 + 6 (payment UX) · **Region:** _(to be filled)_
+
+_Awaiting contributor PR._
+
+### V-19 · Freelancer / remote worker paid by clients abroad
+**Issue:** [#234](https://github.com/ericmt-98/micopay-protocol/issues/234) · **Validates:** Claim 7 (dollar-inflow demand) · **Region:** _(to be filled)_
+
+_Awaiting contributor PR._
+
+### V-20 · Receiving part of your pay in digital dollars (worker side)
+**Issue:** [#235](https://github.com/ericmt-98/micopay-protocol/issues/235) · **Validates:** Claim 7 (payroll demand) · **Region:** _(to be filled)_
+
+_Awaiting contributor PR._
+
+### V-21 · Small employer paying people in digital dollars
+**Issue:** [#236](https://github.com/ericmt-98/micopay-protocol/issues/236) · **Validates:** Claim 7 (payroll supply) · **Region:** _(to be filled)_
+
+_Awaiting contributor PR._
+
+### V-22 · Key recovery — what makes self-custody trustworthy
+**Issue:** [#237](https://github.com/ericmt-98/micopay-protocol/issues/237) · **Validates:** Claim 4 (passkey recovery) · **Region:** _(to be filled)_
+
+_Awaiting contributor PR._
+
+### V-23 · Peso vs dollar — what you prefer to hold
+**Issue:** [#238](https://github.com/ericmt-98/micopay-protocol/issues/238) · **Validates:** Product (canonical peso / inflation hedge) · **Region:** _(to be filled)_
+
+_Awaiting contributor PR._
+
+### V-24 · Corner shop as a liquidity provider (supply bootstrap)
+**Issue:** [#239](https://github.com/ericmt-98/micopay-protocol/issues/239) · **Validates:** Claim 2 (supply density) · **Region:** _(to be filled)_
+
+_Awaiting contributor PR._
+
+### V-25 · Paying bills & services from a digital wallet
+**Issue:** [#240](https://github.com/ericmt-98/micopay-protocol/issues/240) · **Validates:** Claim 1/5 (digital-economy access, retention) · **Region:** _(to be filled)_
+
+_Awaiting contributor PR._
+
+---
+
 ## How findings feed Wave 6 product work
 
 - Cash-out vs cash-in vs remittance demand → which direction to prioritize first.
