@@ -1,5 +1,5 @@
 import { useState, useEffect, createContext, useContext } from "react";
-import { generateAndStoreKeypair, keypairExists, getPublicKey } from './lib/keystore';
+import { generateAndStoreKeypair, keypairExists, getPublicKey, exportSecretKey } from './lib/keystore';
 import {
   HashRouter,
   Routes,
@@ -47,7 +47,7 @@ import {
   TradeData,
   TradeHistoryItem,
 } from "./services/api";
-import { readJSON, writeJSON, removeKey } from "./services/secureStorage";
+import { readJSON, writeJSON, removeKey, isBackupConfirmed, setBackupConfirmed } from "./services/secureStorage";
 import { mapApiError, type MappedApiError } from "./utils/apiError";
 import { IS_DEMO_MODE } from "./utils/demoMode";
 
@@ -538,6 +538,11 @@ function App() {
   const [authReady, setAuthReady] = useState(false);
   const [devicePublicKey, setDevicePublicKey] = useState<string | null>(null);
 
+  const [showBackupPrompt, setShowBackupPrompt] = useState(false);
+  const [pendingTradeContext, setPendingTradeContext] = useState<{ resolve: (val: boolean) => void, execute: () => Promise<boolean> } | null>(null);
+  const [backupSecret, setBackupSecret] = useState<string>('');
+  const [copiedBackup, setCopiedBackup] = useState(false);
+
   const [startupError, setStartupError] = useState<{ title: string; message: string; details?: string } | null>(null);
   const [backendConnected, setBackendConnected] = useState(false);
   const [backendHealth, setBackendHealth] = useState<any>(null);
@@ -710,9 +715,49 @@ function App() {
     return runTradeFlow(pendingSellerId);
   };
 
-  const handleOfferSelected = async (offerId: string) => runTradeFlow(offerId);
+  const checkBackupGate = async (execute: () => Promise<boolean>): Promise<boolean> => {
+    const confirmed = await isBackupConfirmed();
+    if (confirmed) {
+      return execute();
+    }
+    return new Promise<boolean>((resolve) => {
+      setPendingTradeContext({ resolve, execute });
+      setShowBackupPrompt(true);
+    });
+  };
 
-  const handleDepositOfferSelected = async (offerId: string) => runTradeFlow(offerId);
+  const handleOfferSelected = async (offerId: string) => checkBackupGate(() => runTradeFlow(offerId));
+
+  const handleDepositOfferSelected = async (offerId: string) => checkBackupGate(() => runTradeFlow(offerId));
+
+  useEffect(() => {
+    if (showBackupPrompt) {
+      exportSecretKey().then(setBackupSecret).catch(console.error);
+    }
+  }, [showBackupPrompt]);
+
+  const handleCopyBackup = async () => {
+    navigator.clipboard.writeText(backupSecret);
+    setCopiedBackup(true);
+    await setBackupConfirmed();
+    setTimeout(() => setCopiedBackup(false), 2000);
+  };
+
+  const handleConfirmBackup = () => {
+    setShowBackupPrompt(false);
+    if (pendingTradeContext) {
+      pendingTradeContext.execute().then(pendingTradeContext.resolve);
+      setPendingTradeContext(null);
+    }
+  };
+
+  const handleCancelBackup = () => {
+    setShowBackupPrompt(false);
+    if (pendingTradeContext) {
+      pendingTradeContext.resolve(false);
+      setPendingTradeContext(null);
+    }
+  };
 
   const ctx: AppCtx = {
     buyerUser,
@@ -814,6 +859,49 @@ function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
               <BottomNavAdapter />
+
+              {showBackupPrompt && (
+                <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-6 animate-fade-in">
+                  <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl relative overflow-hidden">
+                    <div className="text-center mb-6">
+                      <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+                        <span className="material-symbols-outlined text-3xl">shield_lock</span>
+                      </div>
+                      <h2 className="text-xl font-extrabold text-[#0B1E26]">Respaldo Requerido</h2>
+                      <p className="text-sm text-[#67808C] mt-2">Antes de iniciar una operación con fondos, debes respaldar tu llave secreta. Sin ella, podrías perder tus fondos.</p>
+                    </div>
+
+                    <div className="bg-red-50 border border-red-100 rounded-2xl p-4 mb-6">
+                      <label className="block text-xs font-bold text-red-800 uppercase tracking-wider mb-2">
+                        Tu Llave Secreta
+                      </label>
+                      <button
+                        onClick={handleCopyBackup}
+                        className="w-full bg-red-100 hover:bg-red-200 text-red-800 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                      >
+                        <span className="material-symbols-outlined text-base">{copiedBackup ? 'check' : 'content_copy'}</span>
+                        {copiedBackup ? '¡Copiada!' : 'Copiar Llave Secreta'}
+                      </button>
+                      <p className="text-[10px] text-red-600 mt-3 text-center leading-relaxed font-medium">NUNCA la compartas. Quien la tenga controla tus fondos.</p>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={handleCancelBackup}
+                        className="flex-1 py-3 text-[#67808C] font-bold rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={handleConfirmBackup}
+                        className="flex-1 py-3 text-white font-bold rounded-xl bg-[#00694C] hover:bg-[#005740] transition-colors"
+                      >
+                        Continuar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </HashRouter>
         </AppContext.Provider>
