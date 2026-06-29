@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useChatMessages } from '../hooks/useChatMessages';
+import { getTrade } from '../services/api';
 
 interface ChatRoomProps {
     tradeId: string;
@@ -8,6 +9,8 @@ interface ChatRoomProps {
     onViewQR: () => void;
     lockTxHash?: string | null;
     apiBaseUrl?: string;
+    token?: string | null;
+    isProvider?: boolean;
 }
 
 const STELLAR_EXPLORER = 'https://stellar.expert/explorer/testnet/tx';
@@ -18,7 +21,9 @@ const ChatRoom = ({
     onBack, 
     onViewQR, 
     lockTxHash,
-    apiBaseUrl = 'http://localhost:3000'
+    apiBaseUrl = 'http://localhost:3000',
+    token,
+    isProvider = false,
 }: ChatRoomProps) => {
     const {
         messages,
@@ -32,11 +37,32 @@ const ChatRoom = ({
 
     const [inputValue, setInputValue] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [escrowStatus, setEscrowStatus] = useState<string | null>(null);
+    const [escrowAmount, setEscrowAmount] = useState<number | null>(null);
     
     // Auto-scroll to bottom when messages change
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
+
+    // Fetch real trade status for the provider to verify escrow lock
+    useEffect(() => {
+        if (!isProvider || !token || !tradeId) return;
+
+        const fetchTradeStatus = async () => {
+            try {
+                const trade = await getTrade(tradeId, token);
+                setEscrowStatus(trade.status);
+                setEscrowAmount(trade.amount_mxn);
+            } catch (e) {
+                console.warn('Failed to fetch trade status', e);
+            }
+        };
+
+        fetchTradeStatus();
+        const interval = setInterval(fetchTradeStatus, 5000);
+        return () => clearInterval(interval);
+    }, [isProvider, token, tradeId]);
 
     const handleSendMessage = async () => {
         if (!inputValue.trim()) return;
@@ -88,29 +114,61 @@ const ChatRoom = ({
 
             {/* Content Area */}
             <main className="flex-1 mt-[72px] mb-24 px-4 max-w-2xl mx-auto w-full flex flex-col">
-                {/* Status Banner */}
-                <div className="my-4 p-4 rounded-xl bg-primary-container/10 border border-primary/10 flex items-start gap-3">
-                    <div className="bg-primary text-white rounded-full p-1 flex items-center justify-center shrink-0 mt-0.5">
-                        <span className="material-symbols-outlined text-sm">check</span>
+                {/* Status Banner - role-specific */}
+                {isProvider ? (
+                    <div className="my-4 p-4 rounded-xl bg-primary-container/10 border border-primary/10 flex items-start gap-3">
+                        <div className={`rounded-full p-1 flex items-center justify-center shrink-0 mt-0.5 text-white ${
+                            escrowStatus === 'locked' ? 'bg-emerald-500' : 'bg-amber-500'
+                        }`}>
+                            <span className="material-symbols-outlined text-sm">
+                                {escrowStatus === 'locked' ? 'lock' : 'hourglass_top'}
+                            </span>
+                        </div>
+                        <div className="flex flex-col gap-1 min-w-0">
+                            {escrowStatus === 'locked' ? (
+                                <>
+                                    <p className="text-sm font-semibold text-emerald-700">USDC locked in escrow</p>
+                                    <p className="text-xs text-emerald-600 font-medium">
+                                        ${escrowAmount?.toLocaleString('es-MX') ?? '...'} MXN
+                                    </p>
+                                </>
+                            ) : escrowStatus === 'pending' ? (
+                                <p className="text-sm font-semibold text-amber-700">
+                                    Waiting for buyer to lock funds in escrow
+                                </p>
+                            ) : escrowStatus ? (
+                                <p className="text-sm font-semibold text-on-surface/60">
+                                    Trade {escrowStatus}
+                                </p>
+                            ) : (
+                                <p className="text-xs text-on-surface/40">Verifying escrow status…</p>
+                            )}
+                        </div>
                     </div>
-                    <div className="flex flex-col gap-1 min-w-0">
-                        <p className="text-sm font-semibold text-primary">✓ Oferta aceptada · Saldo bloqueado en garantía</p>
-                        {lockTxHash ? (
-                            <a
-                                href={`${STELLAR_EXPLORER}/${lockTxHash}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors font-mono truncate"
-                            >
-                                <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-                                Ver en Stellar Testnet
-                                <span className="truncate opacity-60">· {lockTxHash.substring(0, 12)}…</span>
-                            </a>
-                        ) : (
-                            <p className="text-xs text-on-surface/40">Confirmando en blockchain…</p>
-                        )}
+                ) : (
+                    <div className="my-4 p-4 rounded-xl bg-primary-container/10 border border-primary/10 flex items-start gap-3">
+                        <div className="bg-primary text-white rounded-full p-1 flex items-center justify-center shrink-0 mt-0.5">
+                            <span className="material-symbols-outlined text-sm">check</span>
+                        </div>
+                        <div className="flex flex-col gap-1 min-w-0">
+                            <p className="text-sm font-semibold text-primary">✓ Oferta aceptada · Saldo bloqueado en garantía</p>
+                            {lockTxHash ? (
+                                <a
+                                    href={`${STELLAR_EXPLORER}/${lockTxHash}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors font-mono truncate"
+                                >
+                                    <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                                    Ver en Stellar Testnet
+                                    <span className="truncate opacity-60">· {lockTxHash.substring(0, 12)}…</span>
+                                </a>
+                            ) : (
+                                <p className="text-xs text-on-surface/40">Confirmando en blockchain…</p>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Loading State */}
                 {isLoading && (
@@ -189,6 +247,14 @@ const ChatRoom = ({
 
                     {/* Quick Actions Section */}
                     <div className="grid grid-cols-1 gap-3 mt-4">
+                        {isProvider && escrowStatus === 'locked' && (
+                            <button
+                                className="flex items-center justify-center gap-3 w-full h-[46px] rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-600/20"
+                            >
+                                <span className="material-symbols-outlined">payments</span>
+                                <span className="font-body text-sm">Deliver Cash</span>
+                            </button>
+                        )}
                         <button className="flex items-center justify-center gap-3 w-full h-[46px] rounded-lg bg-surface-container-highest text-primary font-semibold hover:bg-surface-variant transition-colors group">
                             <span className="material-symbols-outlined group-hover:scale-110 transition-transform">location_on</span>
                             <span className="font-body text-sm">Compartir ubicación</span>
