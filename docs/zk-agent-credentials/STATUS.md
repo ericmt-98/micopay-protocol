@@ -77,7 +77,7 @@ curl -s -X POST localhost:3000/api/v1/inference -H 'Content-Type: application/js
 | # | Pendiente | Por qué importa | Esfuerzo |
 |---|---|---|---|
 | ~~1~~ | ~~**Árbol multi-usuario**~~ ✅ **HECHO (2026-06-28)** | Pool de 4 credenciales bajo UNA raíz compartida, cada una con su ruta Merkle real; raíz publicada una sola vez → varias credenciales activas a la vez. Verificado e2e: 2 credenciales distintas del mismo árbol gastadas OK. Anonymity set = 4. | — |
-| 2 | **Commitment generado por el cliente** | Hoy el emisor (MicoPay) conoce el secreto → la no-ligabilidad frente al emisor no es total | Medio (proving cliente + el server solo recibe `H(secret)`) |
+| ~~2~~ | ~~**Commitment generado por el cliente**~~ ✅ **HECHO (2026-06-29)** | `/credentials/buy` modo `client_generated`: el cliente genera el secreto y envía SOLO `H(secret)`; el emisor nunca ve el secreto (`issuer_knows_secret:false`). Verificado e2e. Caveat: demo single-leaf (anonimato 1 para esa raíz); multi-user + client-gen = batch-anchor de commitments. | — |
 | 3 | **Saldo privado** ("cuánto le queda", range proof) | La forma más pura de "probar una verdad numérica ocultando el número" | Alto (circuito nuevo) |
 | 4 | **Set = pagos x402** (sin emisor de confianza) | "soy uno de los que pagaron" sin emisor → el escalón que impresiona | Alto |
 | 5 | **Base/Solana** (`BASE_BRIDGE_PLAN.md`) | Llegar a los mercados agénticos | Semanas (post-hackathon) |

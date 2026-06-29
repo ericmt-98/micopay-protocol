@@ -43,6 +43,43 @@ export async function credentialRoutes(fastify: FastifyInstance): Promise<void> 
     "/api/v1/credentials/buy",
     { preHandler: requirePayment({ amount: "0.01", service: "credential_buy" }) },
     async (request, reply) => {
+      // ── Mode A: CLIENT-GENERATED commitment (audit #2, full unlinkability) ──
+      // The client generated the secret locally and sends ONLY the commitment
+      // H(secret) (+ the root of the tree it belongs to). The issuer NEVER sees
+      // the secret -> it can't link this purchase to any future spend.
+      const body = (request.body ?? {}) as {
+        commitment?: string;
+        merkle_root?: string;
+      };
+      if (body.commitment && body.merkle_root) {
+        let tx: string | null = null;
+        try {
+          const current = await fetchReputationRoot();
+          if (current !== body.merkle_root) {
+            tx = await setReputationRoot(body.merkle_root);
+          }
+        } catch (err) {
+          return reply.status(502).send({
+            error: "Failed to anchor the client's credential root",
+            detail: err instanceof Error ? err.message : String(err),
+          });
+        }
+        return reply.send({
+          bought: 1,
+          mode: "client_generated",
+          payer: request.payerAddress,
+          commitment_received: body.commitment,
+          anchored_root_tx: tx,
+          issuer_knows_secret: false,
+          note:
+            "Full unlinkability: the issuer only ever received the commitment " +
+            "H(secret), never the secret. Spend at /api/v1/inference with your " +
+            "own secret + path. (Demo: single-leaf tree the client anchored; " +
+            "multi-user + client-gen together = batch-anchor of collected commitments.)",
+        });
+      }
+
+      // ── Mode B: server-minted pool (shared-root, anonymity set = N) ──
       // Allocate the next unused credential from the shared-root pool.
       const idx = POOL.findIndex((_, i) => !allocated.has(i));
       if (idx === -1) {
