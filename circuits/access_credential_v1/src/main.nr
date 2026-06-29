@@ -195,6 +195,22 @@ fn compute_multi_pool() {
     }
 }
 
+// Client-generated credential (secret never leaves the client). Single-leaf tree.
+// Demonstrates audit #2: the issuer only ever receives the commitment (leaf) + root.
+// Run: nargo test compute_client_6001 --show-output  -> prints leaf, root, nullifier
+#[test]
+fn compute_client_6001() {
+    let secret: Field = 6001;
+    let leaf = std::hash::pedersen_hash([secret, LEAF_DOMAIN]);
+    let mut node = leaf;
+    for _i in 0..20 {
+        node = std::hash::pedersen_hash([node, 0]);
+    }
+    std::println(leaf);
+    std::println(node);
+    std::println(std::hash::pedersen_hash([secret, NULLIFIER_DOMAIN]));
+}
+
 // Tests
 
 // Valid spend: membership holds + correct nullifier.
