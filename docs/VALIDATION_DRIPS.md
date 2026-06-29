@@ -27,13 +27,13 @@ reviews each PR for privacy before merging.
 A funding/grant case for MicoPay on Stellar rests on a few claims. The research issues each
 supply evidence for one of them:
 
-| Claim                    | Backed by                                                        | One-line thesis                                            |
-| ------------------------ | ---------------------------------------------------------------- | ---------------------------------------------------------- |
-| **1. Demand exists**     | V-1 (cash-out), V-2 (cash-in), V-6 (remittances), V-12 (unbanked) | A real, recurring pain converting digital ↔ cash        |
-| **2. Supply exists**     | V-3 (liquidity providers)                                        | Real people/businesses would provide cash for a commission |
-| **3. It can win**        | V-7 (alternatives), V-8 (fair fee)                               | Better than current options, at a fee users accept         |
-| **4. Stellar is usable** | V-4 (non-custodial onboarding)                                   | Mainstream users can handle a self-custodial wallet        |
-| **5. Trust / PMF**       | V-5 (flow trust), V-9 (safety), V-10 (repeat use)               | Users would adopt, feel safe, and come back                |
+| Claim                    | Backed by                                                         | One-line thesis                                            |
+| ------------------------ | ----------------------------------------------------------------- | ---------------------------------------------------------- |
+| **1. Demand exists**     | V-1 (cash-out), V-2 (cash-in), V-6 (remittances), V-12 (unbanked) | A real, recurring pain converting digital ↔ cash           |
+| **2. Supply exists**     | V-3 (liquidity providers)                                         | Real people/businesses would provide cash for a commission |
+| **3. It can win**        | V-7 (alternatives), V-8 (fair fee)                                | Better than current options, at a fee users accept         |
+| **4. Stellar is usable** | V-4 (non-custodial onboarding)                                    | Mainstream users can handle a self-custodial wallet        |
+| **5. Trust / PMF**       | V-5 (flow trust), V-9 (safety), V-10 (repeat use)                 | Users would adopt, feel safe, and come back                |
 
 > Put together: **demand + supply + a winning, affordable, usable, trusted experience = a
 > credible case that a Stellar P2P cash network serves the financially underserved.**
@@ -88,6 +88,7 @@ Fill these in as answers arrive. Keep counts and percentages only.
 ## Aggregate findings (one `### V-X` section per contributor PR)
 
 ### V-1 · Cash-out context
+
 **Contributor:** [@larryjay007](https://github.com/larryjay007) · **PR:** [#155](https://github.com/ericmt-98/micopay-protocol/pull/155) · **Region:** Nigeria (South West)
 
 First-person response (privacy-safe):
@@ -101,6 +102,7 @@ First-person response (privacy-safe):
 **SDF narrative:** Adds Nigeria (South West) to the cash-out demand signal for Claim 1. Weekly frequency + ATM reliability failures + daily withdrawal limits combine into a strong recurring pain that a local P2P agent network directly addresses.
 
 ### V-2 · Cash-in / deposit context
+
 **Contributor:** [@Truphile](https://github.com/Truphile) · **PR:** [#159](https://github.com/ericmt-98/micopay-protocol/pull/159) · **Region:** Nigeria (West Africa)
 
 First-person response (privacy-safe):
@@ -121,9 +123,10 @@ First-person response (privacy-safe):
 - **Main motivation:** Extra income from the commission, plus the convenience of converting digital balances I already hold (stablecoins) back into local currency without going through a bank. If neighbours come to me directly, it also builds goodwill and a small reputation locally.
 - **Perceived risks:** The biggest one for me is non-payment or a fake/reversed digital transfer — receiving what looks like a confirmation and then finding the funds were never real or got clawed back. A close second is physical safety: carrying or handing over cash in public can attract attention. I would also be cautious about regulatory ambiguity (is this treated as money-service activity in my jurisdiction?) and about disputes with no clear resolution path if something goes wrong.
 - **Commission I would expect:** 2–3%. Below 2% does not cover my time and liquidity risk; above 4% would probably push users back to informal channels and I would end up sitting idle.
-- **What would make me trust the system enough to try once:** Seeing the USDC locked in escrow *before* I hand over any cash — that single guarantee removes most of my risk. Beyond that: a verified transaction history for the counterparty, clear in-app instructions for each step, and a visible support/dispute path if something breaks. A successful first trade with a small amount would be enough to convince me to continue.
+- **What would make me trust the system enough to try once:** Seeing the USDC locked in escrow _before_ I hand over any cash — that single guarantee removes most of my risk. Beyond that: a verified transaction history for the counterparty, clear in-app instructions for each step, and a visible support/dispute path if something breaks. A successful first trade with a small amount would be enough to convince me to continue.
 
 ### V-4 · Non-custodial wallet onboarding
+
 **Contributor:** [@Shadow-MMN](https://github.com/Shadow-MMN) · **PR:** [#157](https://github.com/ericmt-98/micopay-protocol/pull/157) · **Region:** —
 
 - **Is it clear to YOU that you hold the key and must back it up?:** Not clear at all. There is no onboarding screen or maybe I am missing something but the keypair was generated (I found out by checking the brower's localStorage).
@@ -133,6 +136,7 @@ First-person response (privacy-safe):
 - **In your view, should backing up the key be mandatory at sign-up, or optional? (and why):** Optional, but the UI should make it trivially easy i.e a single tap to copy the key, accompanied by a visible note telling the user to save the copied text somewhere safe and never share it. Making it mandatory would frustrate users who just want to try the app, but the option should be prominent enough that nobody misses it.
 
 ### V-5 · Trust in the cash-in/cash-out flow
+
 **Contributor:** [@Truphile](https://github.com/Truphile) · **PR:** [#158](https://github.com/ericmt-98/micopay-protocol/pull/158) · **Region:** Nigeria (West Africa)
 
 First-person response (privacy-safe):
@@ -147,6 +151,7 @@ First-person response (privacy-safe):
 **SDF narrative:** Directly maps the trust and abandonment signals for Claim 5 (Trust / PMF). The three-part "minimum info before handing over cash" is a concrete UX checklist — transparent fee, locked rate, online status — that the agent flow must display before cash changes hands.
 
 ### V-6 · Remittances cash-out context
+
 **Contributor:** [@KaruG1999](https://github.com/KaruG1999) · **PR:** [#146](https://github.com/ericmt-98/micopay-protocol/pull/146) · **Region:** Argentina (LATAM)
 
 First-person response (privacy-safe):
@@ -158,22 +163,24 @@ First-person response (privacy-safe):
 **SDF narrative:** Sharpest evidence for Claim 1 (demand exists) — a person who already uses Stellar for cross-border transfers and still lacks a trustworthy last-mile cash-out. MicoPay solves the final delivery step the network already carries.
 
 ### V-7 · Current alternatives & switching
+
 **Contributor:** [@barnabasolutayo-lgtm](https://github.com/barnabasolutayo-lgtm) · **PR:** [#145](https://github.com/ericmt-98/micopay-protocol/pull/145) · **Regions:** Monterrey MX · Bogotá CO · Buenos Aires AR · Caracas VE
 
 Multi-respondent batch (N=4, anonymized):
 
-| Respondent | Current method | Main friction | Would switch for |
-|------------|---------------|---------------|-----------------|
-| Monterrey, MX | OXXO + bank ATM | High convenience fees, queues, downtime | Lower fees, neighborhood exchange points |
-| Bogotá, CO | Nequi / Daviplata + Efecty | App downtime, limits, high cash-out fees | 24/7 reliability, transparent fees, flexible limits |
-| Buenos Aires, AR | Informal exchange houses + Binance P2P | Physical safety risks, P2P counterparty trust | Verified, trust-rated merchant network |
-| Caracas, VE | Binance P2P + Pago Móvil + informal USD | Broker fees >5%, fiat/USD sourcing costs | Direct <2% connection to verified agents with escrow |
+| Respondent       | Current method                          | Main friction                                 | Would switch for                                     |
+| ---------------- | --------------------------------------- | --------------------------------------------- | ---------------------------------------------------- |
+| Monterrey, MX    | OXXO + bank ATM                         | High convenience fees, queues, downtime       | Lower fees, neighborhood exchange points             |
+| Bogotá, CO       | Nequi / Daviplata + Efecty              | App downtime, limits, high cash-out fees      | 24/7 reliability, transparent fees, flexible limits  |
+| Buenos Aires, AR | Informal exchange houses + Binance P2P  | Physical safety risks, P2P counterparty trust | Verified, trust-rated merchant network               |
+| Caracas, VE      | Binance P2P + Pago Móvil + informal USD | Broker fees >5%, fiat/USD sourcing costs      | Direct <2% connection to verified agents with escrow |
 
 Switching dealbreakers across all four: upfront fees before handover · no immediate confirmation receipt · high platform fees · mandatory multi-day KYC · transaction failures.
 
 **SDF narrative:** Validates Claim 3 (MicoPay can win) across four countries. Existing alternatives all fail on at least one of: fees, trust, or reliability — exactly what MicoPay addresses via Stellar escrow and reputation ratings.
 
 ### V-8 · Fair commission / fee tolerance
+
 **Contributor:** [@rosemary21](https://github.com/rosemary21) · **PR:** [#148](https://github.com/ericmt-98/micopay-protocol/pull/148) · **Region:** Nigeria (Lagos area)
 
 First-person response (privacy-safe):
@@ -186,6 +193,7 @@ First-person response (privacy-safe):
 **SDF narrative:** Adds sub-Saharan Africa to the sample and contributes the clearest statement of the "no bank account needed" value proposition. The 1–5% fee band confirmed here matches signals from Venezuela and LATAM, establishing a cross-regional pricing anchor.
 
 ### V-9 · Safety meeting in person
+
 **Contributor:** [@deep-bhikadiya](https://github.com/deep-bhikadiya) · **PR:** [#147](https://github.com/ericmt-98/micopay-protocol/pull/147) · **Region:** India / South Asia
 
 First-person response (privacy-safe):
@@ -235,6 +243,7 @@ Aggregate signal:
 - Recommendation is strongest when the experience feels safe, simple, and easy to explain to a friend.
 
 ### V-11 · Failed transaction / dispute handling
+
 **Contributor:** [@Chigybillionz](https://github.com/Chigybillionz) · **PR:** [#174](https://github.com/ericmt-98/micopay-protocol/pull/174)
 
 - **Country / general region:** Nigeria (West Africa)
@@ -245,6 +254,7 @@ Aggregate signal:
 - **How it changed my behavior:** I no longer have full confidence in my local bank's transfer system, since it can fail at any point, even at the final OTP stage. I haven't stopped using the bank entirely — switching banks isn't simple either — but the trust is dented.
 
 ### V-12 · Living unbanked — everyday context
+
 **Contributor:** [@Oluwasuyi-Timilehin](https://github.com/Oluwasuyi-Timilehin) · **PR:** [#173](https://github.com/ericmt-98/micopay-protocol/pull/173)
 
 - **Country / general region:** Mexico (CDMX metropolitan area)
@@ -255,6 +265,7 @@ Aggregate signal:
 - **If there was a local, trusted person in your neighborhood who could convert your cash to a digital wallet instantly — would that be useful? What would make you trust them enough to use them?:** Yes, it would be extremely useful. It would save me trips to convenience stores or bank branches just to deposit cash. To trust them, I would want them to be a recognized local business (like a corner shop, pharmacy, or local bakery) rather than a random individual. I would also need to see ratings from other users in the app, and a secure escrow mechanism that guarantees the digital funds are locked before I hand over physical cash.
 
 ### V-13 · Remittance sender context — sending money abroad
+
 **Contributor:** [@Jo-anny](https://github.com/Jo-anny) · **PR:** [#171](https://github.com/ericmt-98/micopay-protocol/pull/171)
 
 - **Country / general region:** Europe sending to Latin America.
@@ -266,6 +277,7 @@ Aggregate signal:
 - **What would make me switch?:** A cheaper, faster, and more transparent service with a reliable, immediate local cash-out path. The one thing that would have to be better is certainty: knowing the final amount received and the cash-out option before I send.
 
 ### V-14 · Stablecoin / digital peso mental model
+
 **Contributor:** [@Max-Owolabi](https://github.com/Max-Owolabi) · **PR:** [#175](https://github.com/ericmt-98/micopay-protocol/pull/175)
 
 - **Country / general region:** Nigeria (West Africa)
@@ -276,6 +288,7 @@ Aggregate signal:
 - **What would make a digital peso/stablecoin feel as reliable as cash in your hand?:** It would feel as reliable as cash if there was a guaranteed, instant way to convert it to physical cash at any local corner store without high fees or complex steps, alongside a clear in-app balance showing that the funds are secured by an escrow contract.
 
 ### V-15 · First-time trust threshold
+
 **Contributor:** [@abdullahilateefat03-boop](https://github.com/abdullahilateefat03-boop) · **PR:** [#185](https://github.com/ericmt-98/micopay-protocol/pull/185)
 
 **1. Think of the last time you tried a new financial service or app for the first time. What made you decide to try it?**
@@ -299,6 +312,7 @@ I would immediately walk away if the platform lacked user verification or encour
 If the entire experience was smooth, secure, and exactly as the platform promised, I would gladly recommend it. A simple onboarding process, reliable transaction completion, and the confidence that my issue would be resolved if anything went wrong would make me comfortable suggesting it to friends.
 
 ### V-16 · Spending digital dollars at a store (consumer side)
+
 **Contributor:** [@Emelie-Dev](https://github.com/Emelie-Dev) · **PR:** #274 · **Region:** Mexico (central region)
 
 - **Country / general region:** Mexico (central region)
@@ -315,6 +329,7 @@ If the entire experience was smooth, secure, and exactly as the platform promise
 ---
 
 ### V-17 · Accepting "dollars" and receiving pesos (merchant side)
+
 **Contributor:** [@Danitello123](https://github.com/Danitello123) · **PR:** #285 · **Region:** Mexico
 
 First-person response (privacy-safe):
@@ -328,6 +343,7 @@ First-person response (privacy-safe):
 ---
 
 ### V-18 · NFC / contactless tap-to-pay familiarity & trust
+
 **Contributor:** [@adepoju2006](https://github.com/adepoju2006) · **PR:** _(this PR)_
 
 _Wave 6 · batch 2 (V-16…V-25) · Validates Claim 4 + 6 — payment UX feasibility · Vertical B (Retail)_
@@ -335,13 +351,14 @@ _Wave 6 · batch 2 (V-16…V-25) · Validates Claim 4 + 6 — payment UX feasibi
 - **Country / general region:** West Africa (Nigeria).
 - **Have I used tap-to-pay (NFC) with a phone or card? How often?:** Rarely — "sometimes," and almost always with a contactless card rather than a phone. In daily life here the dominant rails are chip-and-PIN on POS terminals, instant bank transfers from a banking app, and USSD codes. Contactless terminals exist but are not the norm, so I don't reach for tap as a default; I only use it on the few modern terminals that clearly support it.
 - **Do I trust the tap more or less than a PIN, a QR scan, or cash? Why?:** Less than chip-and-PIN and less than a confirmed bank transfer, because both of those have an explicit "I approved this" moment (I enter a PIN, or I confirm an amount on my own screen). Tap completes so fast and so passively that it feels like nothing happened — there's no deliberate confirmation that I controlled. QR feels natural and trustworthy here because scan-to-transfer and USSD are already the everyday mental model. Cash I trust completely; it's just inconvenient and risky to carry.
-- **Has an NFC payment ever failed or felt uncertain?:** Yes. A tap once didn't register cleanly — the terminal gave an ambiguous beep and I couldn't tell if it went through. I was afraid that tapping again would charge me twice, so I just stood there unsure until the cashier checked their side. The core problem was the absence of a clear, immediate confirmation on *my* device.
-- **If a local shop accepted NFC from a "dollars" wallet, would tapping feel natural, or would I prefer QR?:** I would prefer to scan a QR. In this market QR/transfer is the established habit, and for a foreign-currency ("dollars") wallet I'd specifically want to *see* the merchant and confirm the details before approving — a QR flow shows me who I'm paying and lets me review on my own phone first. A blind tap into an unfamiliar dollar wallet would feel novel and a little risky.
+- **Has an NFC payment ever failed or felt uncertain?:** Yes. A tap once didn't register cleanly — the terminal gave an ambiguous beep and I couldn't tell if it went through. I was afraid that tapping again would charge me twice, so I just stood there unsure until the cashier checked their side. The core problem was the absence of a clear, immediate confirmation on _my_ device.
+- **If a local shop accepted NFC from a "dollars" wallet, would tapping feel natural, or would I prefer QR?:** I would prefer to scan a QR. In this market QR/transfer is the established habit, and for a foreign-currency ("dollars") wallet I'd specifically want to _see_ the merchant and confirm the details before approving — a QR flow shows me who I'm paying and lets me review on my own phone first. A blind tap into an unfamiliar dollar wallet would feel novel and a little risky.
 - **The single on-screen signal that would make me confident the payment succeeded:** An immediate, unmistakable success state on my own phone right after the tap: a green checkmark with the merchant's name and the paid amount, ideally accompanied by a short haptic buzz and my updated balance so I can see the funds actually moved. The confirmation has to be on my screen, not only on the merchant's terminal.
 
 ---
 
 ### V-20 · Receiving part of your pay in digital dollars (worker side)
+
 **Contributor:** [@codex-agent](https://github.com/codex-agent) · **PR:** #235 · **Region:** Mexico (central region)
 
 First-person response (privacy-safe):
@@ -356,6 +373,7 @@ First-person response (privacy-safe):
 ---
 
 ### V-22 · Key recovery — what makes self-custody trustworthy
+
 **Contributor:** [@Shalom-margort](https://github.com/Shalom-margort) · **PR:** #281 · **Issue:** [#237](https://github.com/ericmt-98/micopay-protocol/issues/237) · **Region:** Latin America
 
 **Context:** V-4 showed that MicoPay hides the raw key behind a clean onboarding. V-14 named "losing the key with no recovery" as the top fear. This section tests whether passkey-based recovery actually earns trust over the traditional seed-phrase model.
@@ -375,13 +393,14 @@ Safer, for most users. The mental model is familiar: I already trust my phone to
 **4. What would you need to see in the app to trust that your funds are safe if you lose or break your phone?**
 
 Three things, in order of importance:
-- A clear, early explanation of *what* backs up the key and *where* — not buried in a settings menu, shown during onboarding before any funds are added.
+
+- A clear, early explanation of _what_ backs up the key and _where_ — not buried in a settings menu, shown during onboarding before any funds are added.
 - A dry-run recovery test accessible at any time: let me simulate losing my phone and restoring to a new device before real money is at stake. If I can see it work, I believe it works.
 - A visible, persistent indicator (not a nag, just a status) that the backup is active and current — the same way iOS shows "iCloud Backup: On" in settings.
 
 **5. Would knowing MicoPay uses passkey/biometric recovery (instead of a seed phrase) make you more or less likely to try it for the first time?**
 
-More likely. The seed phrase requirement is the single biggest drop-off point for crypto onboarding with non-technical users in this region. Removing it — and replacing it with something that maps to an experience people already have — lowers the psychological cost of trying. The remaining hesitation is not about the mechanism itself but about the education: does the app explain clearly enough what happens if I lose both my phone *and* my Google/Apple account? That edge case needs a plain-language answer somewhere visible.
+More likely. The seed phrase requirement is the single biggest drop-off point for crypto onboarding with non-technical users in this region. Removing it — and replacing it with something that maps to an experience people already have — lowers the psychological cost of trying. The remaining hesitation is not about the mechanism itself but about the education: does the app explain clearly enough what happens if I lose both my phone _and_ my Google/Apple account? That edge case needs a plain-language answer somewhere visible.
 
 **Aggregate signal for Claim 4 (Stellar self-custody usable by normal users):**
 
@@ -393,6 +412,7 @@ More likely. The seed phrase requirement is the single biggest drop-off point fo
 ---
 
 ### V-19 · Freelancer / remote worker paid by clients abroad
+
 **Contributor:** [@Thoni76](https://github.com/Thoni76) · **PR:** #292 · **Issue:** [#234](https://github.com/ericmt-98/micopay-protocol/issues/234) · **Region:** LATAM
 
 First-person response (privacy-safe):
@@ -408,6 +428,7 @@ First-person response (privacy-safe):
 ---
 
 ### V-23 · Peso vs dollar — what you prefer to hold
+
 **Contributor:** [@Danitello123](https://github.com/Danitello123) · **PR:** #286 · **Region:** South America
 
 First-person response (privacy-safe):
@@ -435,51 +456,61 @@ First-person response (privacy-safe):
 > answer (no names, no amounts, no wallet addresses — region + own experience only).
 
 ### V-16 · Spending digital dollars at a store (consumer side)
+
 **Issue:** [#231](https://github.com/ericmt-98/micopay-protocol/issues/231) · **Validates:** Claim 6 (retail demand) · **Region:** _(to be filled)_
 
 _Awaiting contributor PR._
 
 ### V-17 · Accepting "dollars" and receiving pesos (merchant side)
+
 **Issue:** [#232](https://github.com/ericmt-98/micopay-protocol/issues/232) · **Validates:** Claim 6 (merchant supply) · **Region:** _(to be filled)_
 
 _Awaiting contributor PR._
 
 ### V-18 · NFC / contactless tap-to-pay familiarity & trust
+
 **Issue:** [#233](https://github.com/ericmt-98/micopay-protocol/issues/233) · **Validates:** Claim 4 + 6 (payment UX) · **Region:** _(to be filled)_
 
 _Awaiting contributor PR._
 
 ### V-19 · Freelancer / remote worker paid by clients abroad
+
 **Issue:** [#234](https://github.com/ericmt-98/micopay-protocol/issues/234) · **Validates:** Claim 7 (dollar-inflow demand) · **Region:** _(to be filled)_
 
 _Awaiting contributor PR._
 
 ### V-20 · Receiving part of your pay in digital dollars (worker side)
+
 **Issue:** [#235](https://github.com/ericmt-98/micopay-protocol/issues/235) · **Validates:** Claim 7 (payroll demand) · **Region:** _(to be filled)_
 
 _Awaiting contributor PR._
 
 ### V-21 · Small employer paying people in digital dollars
+
 **Issue:** [#236](https://github.com/ericmt-98/micopay-protocol/issues/236) · **Validates:** Claim 7 (payroll supply) · **Region:** _(to be filled)_
 
 _Awaiting contributor PR._
 
 ### V-22 · Key recovery — what makes self-custody trustworthy
+
 **Issue:** [#237](https://github.com/ericmt-98/micopay-protocol/issues/237) · **Validates:** Claim 4 (passkey recovery) · **Region:** _(to be filled)_
 
 _Awaiting contributor PR._
 
 ### V-23 · Peso vs dollar — what you prefer to hold
+
 **Issue:** [#238](https://github.com/ericmt-98/micopay-protocol/issues/238) · **Validates:** Product (canonical peso / inflation hedge) · **Region:** _(to be filled)_
 
 _Awaiting contributor PR._
 
 ### V-24 · Corner shop as a liquidity provider (supply bootstrap)
+
 **Issue:** [#239](https://github.com/ericmt-98/micopay-protocol/issues/239) · **Validates:** Claim 2 (supply density) · **Region:** _(to be filled)_
 
 _Awaiting contributor PR._
 
 ### V-25 · Paying bills & services from a digital wallet
+
 **Issue:** [#240](https://github.com/ericmt-98/micopay-protocol/issues/240) · **Validates:** Claim 1/5 (digital-economy access, retention) · **Region:** _(to be filled)_
 
 _Awaiting contributor PR._
