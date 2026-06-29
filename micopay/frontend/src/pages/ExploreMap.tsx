@@ -58,6 +58,7 @@ function merchantToOffer(m: AvailableMerchant, index: number): Offer {
     tradesCompleted: m.trades_completed ?? 0,
     tier: m.tier ?? undefined,
     isBusiness: (m.seller_type === 'business') || (m.is_business === true) || false,
+    online: true,
   };
 }
 
