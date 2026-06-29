@@ -308,6 +308,16 @@ First-person response (privacy-safe):
 - **Would you want to settle in a stable digital peso or in physical cash — or both? Which would be your default?**: I would want the option for both, but my default would be a stable digital peso. It's safer than keeping physical cash in the register, and I can use the digital balance to pay my suppliers or transfer it to my main bank account.
 - **Would you be interested in also handing out cash to customers (as a paid liquidity provider) using the same app? What commission % would feel fair for that?**: Yes. Since we receive a lot of cash from daily sales, handing it out to customers in exchange for a digital balance (plus a commission) would be a great way to "deposit" our cash without going to the bank. A commission of around 2-3% would feel fair and make it worth the effort.
 
+### V-23 · Peso vs dollar — what you prefer to hold
+
+First-person response (privacy-safe):
+
+- **In your country/region, when you have money you don't need right now, do you prefer to keep it in your local currency, in dollars, or something else? Why?**: In my region (South America), I strongly prefer to keep money in dollars (or USD-pegged stablecoins) for savings, and only keep what I need for the week in local currency. The local currency loses purchasing power too quickly.
+- **Has inflation or devaluation ever changed how you store money? What did you do?**: Yes. After seeing savings lose value over a few months, I shifted my strategy entirely. I started converting my salary to stablecoins or physical dollars immediately upon receiving it.
+- **If an app let you hold "dollars" but spend and cash out in your local currency automatically, would you trust the conversion happening behind the scenes — or would you want to see and control the rate?**: I would want to see and control the rate, or at least have a very clear, transparent exchange rate shown before any transaction. Hidden spreads are a major concern, so trusting an invisible conversion is difficult.
+- **Would you rather the app show your balance in dollars, in your local currency, or let you switch?**: I would strongly prefer the ability to switch, but my default view would be dollars. It helps me know my true purchasing power, while switching to local currency helps when I need to make a specific local purchase.
+- **What would make you distrust a "digital dollar" or "digital peso" — what would make it feel as real as cash?**: I would distrust it if the app frequently went down during high volatility, or if withdrawals were paused. It feels as real as cash when I can instantly and seamlessly convert it to local currency and withdraw it at a local agent or ATM without jumping through hoops.
+
 ---
 
 ## How findings feed Wave 6 product work
