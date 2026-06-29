@@ -27,9 +27,11 @@ on-chain (doble-gasto bloqueado). Eso último es el control que evita el consumo
 |---|---|---|
 | [`STATUS.md`](./STATUS.md) | **Empieza aquí.** Dónde estamos, qué está probado, qué falta, cómo correr el demo. | Vivo |
 | [`HACKATHON.md`](./HACKATHON.md) | One-pager para el hackathon ZK. La idea en 2 minutos. | Listo |
+| [`PITCH_ES.md`](./PITCH_ES.md) | La historia en español llano (para presentar) + nota de custodia. | Listo |
 | [`VALUE_PROP.md`](./VALUE_PROP.md) | Propuesta de valor: por qué escala a muchos negocios + verticales. | Listo |
 | [`SPEC.md`](./SPEC.md) | Spec técnico completo (arquitectura, circuitos, contrato, demos, despliegue). | Listo (framing credencial) |
-| [`BASE_BRIDGE_PLAN.md`](./BASE_BRIDGE_PLAN.md) | Plan para conectarse a los mercados agénticos de **Base + Solana** (x402 + CCTP → Stellar). | **Roadmap, no construido** |
+| [`BASE_BRIDGE_PLAN.md`](./BASE_BRIDGE_PLAN.md) | Estrategia/"por qué" del puente a **Base + Solana** (x402 + CCTP → Stellar). | **Roadmap** |
+| [`BASE_IMPLEMENTATION_PLAN.md`](./BASE_IMPLEMENTATION_PLAN.md) | El **cómo** construir el lado Base desde hoy (WP1-WP6, archivos concretos). | **Roadmap, no construido** |
 | [`AUDIT.md`](./AUDIT.md) | Auditoría honesta: qué está construido, qué no, y el gap narrativa↔código. | Listo |
 
 ---
