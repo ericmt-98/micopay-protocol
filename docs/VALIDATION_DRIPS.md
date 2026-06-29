@@ -298,6 +298,18 @@ I would immediately walk away if the platform lacked user verification or encour
 
 If the entire experience was smooth, secure, and exactly as the platform promised, I would gladly recommend it. A simple onboarding process, reliable transaction completion, and the confidence that my issue would be resolved if anything went wrong would make me comfortable suggesting it to friends.
 
+### V-20 · Receiving part of your pay in digital dollars (worker side)
+**Contributor:** [@codex-agent](https://github.com/codex-agent) · **PR:** #235 · **Region:** Mexico (central region)
+
+First-person response (privacy-safe):
+
+- **How I get paid today:** Mostly bank transfer (SPEI), sometimes mixed with cash in hand for side work.
+- **What is good and bad about it:** Bank transfer is convenient for paying bills and buying online, but local bank rails can be slow or unavailable at the worst times. Cash is flexible for daily spending, but carrying it is inconvenient and risky.
+- **If I already try to hold dollars/stablecoins:** Yes. I sometimes keep part of my savings in digital dollars through a self-custodial wallet because local purchasing power can fluctuate. The hardest part is moving between digital dollars and local cash quickly when needed.
+- **Would I want payroll split into digital dollars:** Yes, as an option. I would use it to keep a portion of income in a more stable unit while still receiving local currency for day-to-day expenses. I would not want it to be mandatory.
+- **What must be true for me to trust it:** Reliable same-day cash-out nearby, clear places to spend directly without extra hops, transparent fees before confirmation, and a recovery path if I lose access to my phone.
+- **What would make me refuse it outright:** Delayed access to funds, unclear or variable fees, no support for failed transactions, forced full-dollar payroll with no local-currency option, or any setup that requires trusting an unverified person without escrow.
+
 ---
 
 ## How findings feed Wave 6 product work
