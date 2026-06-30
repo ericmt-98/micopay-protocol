@@ -298,6 +298,17 @@ I would immediately walk away if the platform lacked user verification or encour
 
 If the entire experience was smooth, secure, and exactly as the platform promised, I would gladly recommend it. A simple onboarding process, reliable transaction completion, and the confidence that my issue would be resolved if anything went wrong would make me comfortable suggesting it to friends.
 
+### V-21 · Small employer paying people in digital dollars
+
+- **Country / general region:** Nigeria
+- **How do I pay people today?:** I use a mix of fiat and stablecoins.
+- **What is the most painful part?:** I do not have a major issue with the payment rails themselves when I use crypto; the annoying part is having to repeat the same payout process manually over time.
+- **Have I paid someone in another country?:** Yes. Using stablecoins made that relatively easy.
+- **Would automated dispersal in digital dollars save real effort?:** Yes. It would save time and reduce the frustration of repeating the same transfer workflow multiple times a year.
+- **What would worry me most?:** Privacy. I would not want to expose my wallet balance in exchange for automation.
+- **Would I want a roster/budget rule before trusting automation?:** Yes. A rule that limits a key to paying only a registered roster and only within a period budget would make the setup feel safer and more controlled.
+- **What would stop me from ever using it?:** Any solution that weakens privacy or makes my wallet holdings too visible.
+
 ---
 
 ## How findings feed Wave 6 product work
