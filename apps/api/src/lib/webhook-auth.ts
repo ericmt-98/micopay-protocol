@@ -1,67 +1,38 @@
 import { createHmac, timingSafeEqual } from "crypto";
-import { config } from "../config.js";
+import canonicalize from "canonicalize";
 
-const SIGNATURE_HEADER = "x-webhook-signature";
-const SIGNED_HEADERS = "x-webhook-timestamp";
-
-export interface WebhookPayload {
-  event: string;
-  orderId: string;
-  amount?: string;
-  currency?: string;
-  [key: string]: unknown;
-}
-
-function generateSignature(payload: string, timestamp: string, secret: string): string {
-  const hmac = createHmac("sha256", secret);
-  hmac.update(`${timestamp}.${payload}`);
-  return hmac.digest("hex");
-}
-
+// Etherfuse signs webhook deliveries by canonicalizing the JSON body (RFC 8785
+// JCS — deterministic key ordering, no extra whitespace), then HMAC-SHA256 over
+// that string with a per-subscription secret (base64), sent as
+// `X-Signature: sha256={hex}`. See docs.etherfuse.com/guides/verifying-webhooks.
 export function verifyWebhookSignature(
   body: unknown,
   signatureHeader: string | undefined,
-  timestampHeader: string | undefined,
+  secret: string | undefined
 ): { valid: boolean; error?: string } {
-  const secret = config.webhookSecret;
-
   if (!secret) {
-    return { valid: false, error: "WEBHOOK_SECRET not configured" };
+    return { valid: false, error: "webhook secret not configured" };
   }
-
   if (!signatureHeader) {
-    return { valid: false, error: `Missing ${SIGNATURE_HEADER} header` };
+    return { valid: false, error: "Missing X-Signature header" };
   }
 
-  if (!timestampHeader) {
-    return { valid: false, error: `Missing ${SIGNED_HEADERS} header` };
+  const canonicalized = canonicalize(body);
+  if (canonicalized === undefined) {
+    return { valid: false, error: "Unable to canonicalize webhook body" };
   }
 
-  const timestamp = parseInt(timestampHeader, 10);
-  if (isNaN(timestamp)) {
-    return { valid: false, error: "Invalid x-webhook-timestamp: must be a Unix timestamp in seconds" };
-  }
+  const key = Buffer.from(secret, "base64");
+  const digest = createHmac("sha256", key).update(canonicalized).digest("hex");
+  const expected = `sha256=${digest}`;
 
-  // Reject timestamps older than 5 minutes (replay protection)
-  const now = Math.floor(Date.now() / 1000);
-  if (Math.abs(now - timestamp) > 300) {
-    return { valid: false, error: "x-webhook-timestamp too old or in the future (max 5 min skew)" };
+  const expectedBuf = Buffer.from(expected);
+  const actualBuf = Buffer.from(signatureHeader);
+  if (expectedBuf.length !== actualBuf.length) {
+    return { valid: false, error: "Signature mismatch" };
   }
-
-  const payload = typeof body === "string" ? body : JSON.stringify(body);
-  const expectedSig = generateSignature(payload, timestampHeader, secret);
-
-  try {
-    const sigBuf = Buffer.from(signatureHeader, "hex");
-    const expectedBuf = Buffer.from(expectedSig, "hex");
-    if (sigBuf.length !== expectedBuf.length) {
-      return { valid: false, error: "Invalid signature length" };
-    }
-    if (!timingSafeEqual(sigBuf, expectedBuf)) {
-      return { valid: false, error: "Signature mismatch" };
-    }
-    return { valid: true };
-  } catch {
-    return { valid: false, error: "Invalid signature format" };
+  if (!timingSafeEqual(expectedBuf, actualBuf)) {
+    return { valid: false, error: "Signature mismatch" };
   }
+  return { valid: true };
 }

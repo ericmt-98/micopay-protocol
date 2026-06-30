@@ -25,12 +25,24 @@ services:
         value: GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
       - key: MOCK_STELLAR
         value: "false"
+      - key: ETHERFUSE_API_URL
+        value: https://api.sand.etherfuse.com   # production: https://api.etherfuse.com
+      - key: DATABASE_URL
+        fromDatabase:
+          name: micopay-db
+          property: connectionString
       # Set these as secret env vars in the Render dashboard:
       - key: PLATFORM_SECRET_KEY
         sync: false
       - key: DEMO_AGENT_SECRET_KEY
         sync: false
       - key: DEMO_AGENT_PUBLIC_KEY
+        sync: false
+      - key: ETHERFUSE_API_KEY
+        sync: false
+      - key: ETHERFUSE_WEBHOOK_SECRET_ORDER
+        sync: false
+      - key: ETHERFUSE_WEBHOOK_SECRET_KYC
         sync: false
 
   # ── MicoPay P2P Backend (mobile app backend) ───────────────────────────────
