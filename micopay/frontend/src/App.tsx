@@ -109,6 +109,7 @@ function HomeRoute() {
           token={buyerUser?.token ?? null}
           merchantToken={sellerUser?.token ?? null}
           onNavigateInbox={() => navigate('/inbox')}
+          username={buyerUser?.username ?? sellerUser?.username ?? null}
       />
   );
 }
@@ -441,7 +442,7 @@ function ExploreRoute() {
       <Explore
           onBack={() => navigate('/')}
           onNavigate={(page) => navigate(navMap[page] ?? '/')}
-          showDefi={!isDemoMode || !isMockStellar}
+          showDefi={true}
       />
   );
 }
@@ -544,6 +545,7 @@ const ROUTE_TO_PAGE: Record<string, string> = {
   "/cashout": "cashout",
   "/inbox": "inbox",
   "/explore": "explore",
+  "/cetes": "cetes",
   "/profile": "profile",
 };
 
@@ -557,7 +559,6 @@ const HIDE_BOTTOMNAV_ROUTES = new Set([
   "/qr-reveal",
   "/qr-deposit",
   "/success",
-  "/cetes",
   "/blend",
   "/privacy",
   "/terms",
@@ -579,6 +580,7 @@ function BottomNavAdapter() {
     cashout: "/cashout",
     inbox: "/inbox",
     explore: "/explore",
+    cetes: "/cetes",
     profile: "/profile",
   };
 

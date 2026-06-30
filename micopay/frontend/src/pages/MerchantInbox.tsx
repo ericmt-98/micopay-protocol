@@ -389,7 +389,7 @@ const MerchantInbox = ({ token, onBack }: MerchantInboxProps) => {
         </button>
       </header>
 
-      <main className="pt-24 px-6 pb-32">
+      <main className="pt-[calc(6rem+env(safe-area-inset-top))] px-6 pb-32">
         {/* Push notification disabled banner with polling fallback */}
         {!pushEnabled && token && (
           <div className="mb-4 rounded-2xl p-4 bg-amber-50 border border-amber-200">

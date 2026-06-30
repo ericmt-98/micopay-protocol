@@ -31,7 +31,7 @@ const CashoutRequest = ({ onBack, onSearch }: CashoutRequestProps) => {
         <div className="bg-outline-variant/30 h-[1px] w-full self-end"></div>
       </header>
 
-      <main className="pt-24 pb-32 px-6 flex flex-col min-h-screen max-w-md mx-auto">
+      <main className="pt-[calc(6rem+env(safe-area-inset-top))] pb-32 px-6 flex flex-col min-h-screen max-w-md mx-auto">
         <TradeStateBadge
           state={state}
           onRecover={() => onSearch(Number(amount) || 500)}

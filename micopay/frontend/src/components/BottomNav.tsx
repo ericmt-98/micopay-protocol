@@ -54,6 +54,23 @@ const BottomNav = ({ currentPage, onNavigate, isMerchant = false }: BottomNavPro
         </button>
       )}
 
+      {/* Invertir en CETES (solo para no-merchants) */}
+      {!isMerchant && (
+        <button
+          onClick={() => onNavigate('cetes')}
+          aria-label="Invertir"
+          aria-current={currentPage === 'cetes' ? 'page' : undefined}
+          className={`flex flex-col items-center justify-center rounded-full px-5 py-2 transition-all active:scale-90 duration-150 focus:outline-none focus:ring-2 focus:ring-primary ${
+            currentPage === 'cetes'
+              ? 'bg-[#E1F5EE] dark:bg-[#00694C]/30 text-[#00694C] dark:text-[#5DCAA5]'
+              : 'text-[#0B1E26] dark:text-slate-400 opacity-70 hover:opacity-100'
+          }`}
+        >
+          <span aria-hidden="true" className="material-symbols-outlined" style={{ fontVariationSettings: currentPage === 'cetes' ? '"FILL" 1' : '"FILL" 0' }}>savings</span>
+          <span className="font-['Manrope'] font-medium text-[10px] tracking-wide">Invertir</span>
+        </button>
+      )}
+
       {/* Explorar */}
       <button
         onClick={() => onNavigate('explore')}

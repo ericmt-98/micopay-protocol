@@ -102,7 +102,7 @@ const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat
                 </button>
             </header>
 
-            <main className="pt-24 pb-12 px-6 max-w-md mx-auto">
+            <main className="pt-[calc(6rem+env(safe-area-inset-top))] pb-12 px-6 max-w-md mx-auto">
                 {/* Status Banner */}
                 <div className="mb-8">
                     <div className="inline-flex items-center gap-2 bg-primary-container/10 border border-primary-container/20 px-4 py-2 rounded-full">

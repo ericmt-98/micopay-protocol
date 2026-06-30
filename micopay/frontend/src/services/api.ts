@@ -54,6 +54,12 @@ export interface CurrentUserProfile {
   deleted_at?: string | null;
   wallet_type?: string | null;
   created_at?: string;
+  /** Completed trades (reputation) — computed by GET /users/me */
+  trades_completed?: number;
+  /** Completion rate (%) over terminal trades, null if no history */
+  completion_rate?: number | null;
+  /** Reputation tier: Nuevo | Bronce | Plata | Oro */
+  reputation_tier?: string;
 }
 
 export interface TradeData {

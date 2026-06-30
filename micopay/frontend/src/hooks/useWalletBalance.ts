@@ -1,25 +1,47 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getPublicKey } from '../lib/keystore';
 
+export interface TokenBalance {
+  code: string;
+  balance: number;
+  issuer?: string;
+}
+
 export interface UseWalletBalanceResult {
-  balance: string | null;
-  xlmBalance: string | null;
+  balance: string | null;       // MXNe formatted (legacy)
+  xlmBalance: string | null;    // XLM formatted (legacy)
   stellarAddress: string | null;
   loading: boolean;
   error: any;
   refresh: () => void;
+  tokens: TokenBalance[];       // all assets
+  usdMxnRate: number | null;
+}
+
+// Peso-pegged assets: treat 1 token = 1 MXN
+const MXN_PEGGED = new Set(['MXNE', 'MXNe', 'CETES', 'GTOKEN', 'MXN']);
+
+async function fetchUsdMxnRate(): Promise<number> {
+  const res = await fetch(
+    'https://api.coingecko.com/api/v3/simple/price?ids=usd-coin&vs_currencies=mxn',
+    { signal: AbortSignal.timeout(8000) }
+  );
+  const data = await res.json();
+  return data['usd-coin']?.mxn ?? 17.5;
 }
 
 export function useWalletBalance(): UseWalletBalanceResult {
-  const [balance, setBalance] = useState<string | null>(null);
-  const [xlmBalance, setXlmBalance] = useState<string | null>(null);
+  const [tokens, setTokens] = useState<TokenBalance[]>([]);
   const [stellarAddress, setStellarAddress] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<any>(null);
+  const [usdMxnRate, setUsdMxnRate] = useState<number | null>(null);
   const [trigger, setTrigger] = useState<number>(0);
 
-  const refresh = useCallback(() => {
-    setTrigger((prev) => prev + 1);
+  const refresh = useCallback(() => setTrigger((p) => p + 1), []);
+
+  useEffect(() => {
+    fetchUsdMxnRate().then(setUsdMxnRate).catch(() => setUsdMxnRate(17.5));
   }, []);
 
   useEffect(() => {
@@ -35,8 +57,7 @@ export function useWalletBalance(): UseWalletBalanceResult {
 
         if (!address) {
           setStellarAddress(null);
-          setBalance("0.00 MXNe");
-          setXlmBalance("0.00");
+          setTokens([]);
           setLoading(false);
           return;
         }
@@ -47,58 +68,45 @@ export function useWalletBalance(): UseWalletBalanceResult {
         if (!active) return;
 
         if (res.status === 404) {
-          setBalance("0.00 MXNe");
-          setXlmBalance("0.00");
+          setTokens([{ code: 'XLM', balance: 0 }]);
         } else if (!res.ok) {
           throw new Error(`Horizon returned status ${res.status}`);
         } else {
           const data = await res.json();
           if (!active) return;
 
-          const issuerAddress = import.meta.env.VITE_MXNE_ISSUER_ADDRESS;
-          const mxneAsset = data.balances?.find(
-            (b: any) => b.asset_code === 'MXNe' && b.asset_issuer === issuerAddress
-          );
-          const mxneVal = mxneAsset ? parseFloat(mxneAsset.balance) : 0;
-
-          const xlmAsset = data.balances?.find(
-            (b: any) => b.asset_type === 'native'
-          );
-          const xlmVal = xlmAsset ? parseFloat(xlmAsset.balance) : 0;
-
-          setBalance(
-            mxneVal.toLocaleString("es-MX", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }) + " MXNe"
-          );
-
-          setXlmBalance(
-            xlmVal.toLocaleString("es-MX", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })
-          );
+          const parsed: TokenBalance[] = (data.balances ?? []).map((b: any) => ({
+            code: b.asset_type === 'native' ? 'XLM' : b.asset_code,
+            balance: parseFloat(b.balance ?? '0'),
+            issuer: b.asset_issuer,
+          }));
+          setTokens(parsed);
         }
       } catch (err) {
         if (active) {
           setError(err);
-          setBalance(null);
-          setXlmBalance(null);
+          setTokens([]);
         }
       } finally {
-        if (active) {
-          setLoading(false);
-        }
+        if (active) setLoading(false);
       }
     }
 
     fetchBalance();
-
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [trigger]);
 
-  return { balance, xlmBalance, stellarAddress, loading, error, refresh };
+  // Legacy fields derived from tokens
+  const xlmToken = tokens.find((t) => t.code === 'XLM');
+  const mxneToken = tokens.find((t) => t.code === 'MXNe' || t.code === 'MXNE');
+
+  const xlmBalance = xlmToken != null
+    ? xlmToken.balance.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : null;
+
+  const balance = mxneToken != null
+    ? mxneToken.balance.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MXNe'
+    : '0.00 MXNe';
+
+  return { balance, xlmBalance, stellarAddress, loading, error, refresh, tokens, usdMxnRate };
 }

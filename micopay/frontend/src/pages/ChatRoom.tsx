@@ -113,7 +113,7 @@ const ChatRoom = ({
             </header>
 
             {/* Content Area */}
-            <main className="flex-1 mt-[72px] mb-24 px-4 max-w-2xl mx-auto w-full flex flex-col">
+            <main className="flex-1 mt-[calc(72px+env(safe-area-inset-top))] mb-24 px-4 max-w-2xl mx-auto w-full flex flex-col">
                 {/* Status Banner - role-specific */}
                 {isProvider ? (
                     <div className="my-4 p-4 rounded-xl bg-primary-container/10 border border-primary/10 flex items-start gap-3">

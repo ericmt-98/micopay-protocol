@@ -265,6 +265,85 @@ async function seedData() {
   app.log.info({ category: 'seed' }, '✅ Seeding complete');
 }
 
+/**
+ * Seed demo merchants with real CDMX coordinates so the discovery map has pins
+ * during a testnet/demo run. Only runs on the ephemeral in-memory store
+ * (ALLOW_IN_MEMORY_DB=true) and is idempotent.
+ */
+async function seedDemoMerchants(): Promise<void> {
+  const db = (await import('./db/schema.js')).default;
+
+  const already = await db
+    .getOne("SELECT id FROM users WHERE username = 'farmacia_guadalupe'")
+    .catch(() => null);
+  if (already) return;
+
+  app.log.info({ category: 'seed' }, '🌱 Seeding demo merchants for the map…');
+
+  // CDMX Zócalo as the demo origin — the testnet app searches from here.
+  const center = { lat: 19.4326, lng: -99.1332 };
+
+  const merchants = [
+    { username: 'farmacia_guadalupe',   rate: 1.0, dlat: 0.004,  dlng: 0.003,  addr: 'Av. Juárez 34, Centro',          completed: 12, cancelled: 0 },
+    { username: 'abarrotes_la_esquina', rate: 1.5, dlat: -0.005, dlng: 0.006,  addr: 'Calle 5 de Mayo 12, Centro',     completed: 8,  cancelled: 1 },
+    { username: 'tienda_don_chendo',    rate: 0.8, dlat: 0.007,  dlng: -0.004, addr: 'Madero 88, Centro Histórico',    completed: 21, cancelled: 1 },
+    { username: 'cafe_lopez',           rate: 2.0, dlat: -0.003, dlng: -0.007, addr: 'Regina 19, Col. Centro',         completed: 5,  cancelled: 0 },
+  ];
+
+  // A shared counterparty so completed trades have a buyer.
+  const buyerAddr = 'GDEMOCLIENTE'.padEnd(56, 'X').slice(0, 56);
+  let buyer = await db.getOne("SELECT id FROM users WHERE username = 'cliente_demo'");
+  if (!buyer) {
+    buyer = await db.getOne(
+      `INSERT INTO users (username, stellar_address, merchant_available) VALUES ('cliente_demo', $1, false) RETURNING id`,
+      [buyerAddr],
+    );
+  }
+
+  for (const m of merchants) {
+    const stellar = ('G' + m.username.toUpperCase().replace(/[^A-Z0-9]/g, 'X')).padEnd(56, 'X').slice(0, 56);
+    const user = await db.getOne(
+      `INSERT INTO users (username, stellar_address, merchant_available) VALUES ($1, $2, true) RETURNING id`,
+      [m.username, stellar],
+    );
+    await db.execute(`INSERT INTO wallets (user_id, stellar_address) VALUES ($1, $2)`, [user.id, stellar]).catch(() => {});
+    await db.execute(
+      `INSERT INTO merchant_configs
+         (user_id, rate_percent, min_trade_mxn, max_trade_mxn, daily_cap_mxn, latitude, longitude, address_text, updated_at)
+       VALUES ($1, $2, 100, 50000, 250000, $3, $4, $5, NOW())`,
+      [user.id, m.rate, center.lat + m.dlat, center.lng + m.dlng, m.addr],
+    );
+
+    const now = Date.now();
+    const rows = [
+      ...Array(m.completed).fill('completed'),
+      ...Array(m.cancelled).fill('cancelled'),
+    ];
+    for (let i = 0; i < rows.length; i++) {
+      const amount = 200 + (i % 8) * 150;
+      const createdAt = new Date(now - i * 86400000);
+      await db.execute(
+        `INSERT INTO trades
+           (seller_id, buyer_id, amount_mxn, amount_stroops, platform_fee_mxn, secret_hash, status, created_at, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          user.id,
+          buyer!.id,
+          amount,
+          (amount * 10000000).toString(),
+          Math.ceil(amount * 0.008),
+          `seed_${m.username}_${i}`,
+          rows[i],
+          createdAt,
+          new Date(createdAt.getTime() + 7200000),
+        ],
+      ).catch(() => {});
+    }
+  }
+
+  app.log.info({ category: 'seed', count: merchants.length }, '✅ Demo merchants seeded');
+}
+
 async function startEventListener(): Promise<void> {
   if (!config.eventListenerEnabled || config.mockStellar || !config.escrowContractId) {
     app.log.info(
@@ -306,6 +385,14 @@ async function start() {
       app.log.info(
         { category: 'seed' },
         'Skipping demo seed (set SEED_DEMO_DATA=true to enable)',
+      );
+    }
+
+    // On the ephemeral in-memory store (testnet/demo) always re-seed the map
+    // merchants so the discovery map isn't empty after a restart.
+    if (config.allowInMemoryDb) {
+      await seedDemoMerchants().catch((err) =>
+        app.log.error({ err, category: 'seed' }, 'Demo merchant seed failed'),
       );
     }
     await app.listen({ port: config.port, host: '0.0.0.0' });

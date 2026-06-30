@@ -183,7 +183,7 @@ const ExploreMap = ({
         </h1>
       </header>
 
-      <main className="pt-24 px-6 max-w-2xl mx-auto">
+      <main className="pt-[calc(6rem+env(safe-area-inset-top))] px-6 max-w-2xl mx-auto">
         {creationError ? (
           <ErrorBanner
             message={creationError}
@@ -445,7 +445,7 @@ function StateShell({
   return (
     <div className="bg-surface-container-lowest text-on-surface font-body min-h-screen pb-24">
       <StateHeader onBack={onBack} />
-      <main className="pt-24 px-6 max-w-2xl mx-auto flex flex-col items-center text-center">
+      <main className="pt-[calc(6rem+env(safe-area-inset-top))] px-6 max-w-2xl mx-auto flex flex-col items-center text-center">
         <div className="w-16 h-16 bg-primary-container/10 rounded-2xl flex items-center justify-center mt-16 mb-6">
           <span className={`material-symbols-outlined text-primary text-4xl ${spin ? 'animate-spin' : ''}`}>
             {icon}

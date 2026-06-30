@@ -211,7 +211,7 @@ const CETESScreen = ({ onBack, onBanco, userToken }: CETESScreenProps) => {
         </div>
       </header>
 
-      <main className="flex-1 mt-20 px-4 pt-4 space-y-5">
+      <main className="flex-1 mt-[calc(5rem+env(safe-area-inset-top))] px-4 pt-4 space-y-5">
         <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-[24px] p-5 border border-primary/10">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">

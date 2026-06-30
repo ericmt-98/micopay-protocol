@@ -3,6 +3,11 @@ import { Capacitor } from '@capacitor/core';
 import { Geolocation } from '@capacitor/geolocation';
 import { getMerchantsAvailable, type AvailableMerchant } from '../services/api';
 
+/** CDMX Zócalo — matches the backend's seeded demo merchants. */
+const DEMO_LOCATION = { lat: 19.4326, lng: -99.1332 };
+/** Testnet builds search from the demo origin so seeded merchants always appear. */
+const USE_DEMO_LOCATION = import.meta.env.VITE_STELLAR_NETWORK === 'TESTNET';
+
 export type MerchantsState =
   | { status: 'idle' }
   | { status: 'loading' }
@@ -49,6 +54,11 @@ export function useMerchantsAvailable(options: Options): {
       let lat: number;
       let lng: number;
 
+      if (USE_DEMO_LOCATION) {
+        // Testnet/demo: search from a fixed CDMX origin so seeded merchants appear.
+        lat = DEMO_LOCATION.lat;
+        lng = DEMO_LOCATION.lng;
+      } else {
       try {
         if (Capacitor.isNativePlatform()) {
           const perm = await Geolocation.checkPermissions();
@@ -108,6 +118,7 @@ export function useMerchantsAvailable(options: Options): {
           });
           return;
         }
+      }
       }
 
       if (cancelled) return;
