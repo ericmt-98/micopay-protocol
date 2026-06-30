@@ -420,6 +420,24 @@ First-person response (privacy-safe):
 
 ---
 
+### V-25 · Paying bills & services from a digital wallet
+**Contributor:** [@samueloyibodevv](https://github.com/samueloyibodevv) · **Issue:** [#240](https://github.com/ericmt-98/micopay-protocol/issues/240) · **Validates:** Claim 1/5 (digital-economy access, retention) · **Region:** West Africa
+
+**Context:** V-2 framed cash-in as "the gateway to the digital economy." This section tests the recurring reason people would keep value in the wallet at all — the everyday digital payments that cash can't reach.
+
+First-person response (privacy-safe):
+
+- **What digital things I regularly need to pay for that are hard or impossible with cash:** Phone airtime and mobile data top-ups, electricity (prepaid meter tokens), streaming subscriptions, app-store and software subscriptions, and occasionally cloud hosting for side projects. None of these accept physical cash directly — they all assume you already have a card or a bank-linked wallet.
+- **How I pay for those today when my money is in cash:** The workaround is a chain of middlemen. I either find a neighborhood agent/kiosk who takes my cash and pays the bill from their own digital balance, or I send cash to a friend with a card and have them pay online for me. Each hop adds a "convenience fee" on top of the real price, and for cross-border digital services (cloud, app stores) there's an extra exchange-rate margin baked in that I never get to see.
+- **Roughly what the workaround costs me:** Between the agent markup and the hidden exchange spread on foreign-currency services, I lose somewhere around 5–10% versus the sticker price — more on small top-ups where a flat fee hits harder, less on larger bills.
+- **If a wallet let me cash-in once and then pay all those digital things directly, how often I'd actually use it:** Very often — realistically several times a week. Airtime and data alone are a near-daily need, and bill pay is monthly-but-unavoidable. Collapsing the agent/friend chain into one direct payment is exactly the friction that would make me keep a balance in the wallet instead of converting back to cash.
+- **Which would keep me coming back — bill pay, cash-out, spending at shops, or saving in dollars:** Bill pay is the hook that creates the habit, because it's recurring and the cash workaround is genuinely painful. But what makes me *keep* a balance rather than cash out each time is saving in dollars — the combination of "my money holds its value" plus "I can pay my bills straight from it" is what earns retention. Cash-out is the safety net I need to *exist* to trust the system, even if I rarely use it.
+- **What would make me stop using it after the first try:** A failed bill payment where the money leaves my wallet but the service (the meter token, the airtime) never arrives, with no clear refund or dispute path. Also: hidden fees revealed only after I confirm, a confusing or scary first top-up, or the app being down exactly when a bill is due.
+
+**SDF narrative:** Confirms Claim 1/5 — the everyday digital payments cash can't reach (top-ups, prepaid utilities, subscriptions, cloud) are the recurring reason to hold value in the wallet. Bill pay drives habit formation; saving in dollars drives retention; reliable cash-out is the trust precondition. The decisive failure mode to engineer against is the "money left, service never arrived" payment with no visible dispute/refund path.
+
+---
+
 ## Batch 2 — Retail, payroll & the integrated economy (V-16…V-25)
 
 > Published 2026-06-29 (milestone #18). These extend the validation beyond the cash-out wedge into
