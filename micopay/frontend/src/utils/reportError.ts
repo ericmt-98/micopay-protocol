@@ -52,13 +52,25 @@ export async function reportClientError(payload: {
   stack?: string;
   context?: Record<string, unknown>;
 }) {
-  // Fire and forget — don't let a reporting failure break the UX
-  readJSON<string>('token').then((token) => {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    return axios.post(`${BASE_URL}/client-errors`, {
-      ...payload,
-      app_version: import.meta.env.VITE_APP_VERSION ?? 'dev',
-    }, { headers });
-  }).catch(() => {});
+  // SEC-27: redact secrets (JWTs, Stellar seeds, auth headers, sensitive keys)
+  // before the report ever leaves the device.
+  const safePayload = {
+    request_id: payload.request_id,
+    error_code: payload.error_code,
+    message: redactString(payload.message) ?? payload.message,
+    stack: redactString(payload.stack),
+    context: payload.context ? redactSensitiveData(payload.context) : undefined,
+    app_version: import.meta.env.VITE_APP_VERSION ?? 'dev',
+  };
+
+  // Fire and forget — don't let a reporting failure break the UX.
+  // The auth token lives nested under `micopay_users` (buyer/seller), not a flat `token` key.
+  readJSON<{ buyer?: { token?: string }; seller?: { token?: string } }>('micopay_users')
+    .then((stored) => {
+      const token = stored?.buyer?.token ?? stored?.seller?.token;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      return axios.post(`${BASE_URL}/client-errors`, safePayload, { headers });
+    })
+    .catch(() => {});
 }
