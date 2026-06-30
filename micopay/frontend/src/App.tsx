@@ -543,6 +543,7 @@ function ProfileRoute() {
   return (
       <Profile
           token={buyerUser?.token ?? null}
+          username={buyerUser?.username ?? null}
           devicePublicKey={devicePublicKey}
           onBack={() => navigate('/')}
           onDeleted={() => {

@@ -169,21 +169,27 @@ export async function getAuthToken(username: string): Promise<string> {
   const stellar_address = (await getPublicKey()) ?? generateFallbackAddress(username);
 
   // Step 1: request a one-time challenge from the server
-  const { challenge } = await fetch(`${BASE_URL}/auth/challenge`, {
+  const challengeRes = await fetch(`${BASE_URL}/auth/challenge`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ stellar_address }),
-  }).then(r => r.json());
+  });
+  const challengeData = await challengeRes.json();
+  const challenge: string | undefined = challengeData.challenge;
+  if (!challenge) throw new Error(`Auth challenge failed (${challengeRes.status}): ${challengeData.error ?? 'no challenge'}`);
 
   // Step 2: sign with the device keypair — private key never leaves the device
   const signature = await signChallenge(challenge);
 
   // Step 3: exchange challenge + signature for a JWT
-  const { token } = await fetch(`${BASE_URL}/auth/token`, {
+  const tokenRes = await fetch(`${BASE_URL}/auth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ stellar_address, challenge, signature }),
-  }).then(r => r.json());
+  });
+  const tokenData = await tokenRes.json();
+  const token: string | undefined = tokenData.token;
+  if (!token) throw new Error(`Token exchange failed (${tokenRes.status}): ${tokenData.error ?? 'no token'}`);
 
   return token;
 }

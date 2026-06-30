@@ -5,9 +5,9 @@ import { exportSecretKey, importKeypair } from '../lib/keystore';
 import {
   deleteAccount,
   getCurrentUser,
+  getAuthToken,
   type CurrentUserProfile,
 } from "../services/api";
-import { resolveErrorMessage } from "../constants/errorMap";
 import { setLanguage } from "../i18n";
 
 /** Deterministic avatar gradient seeded by the Stellar address (no external images). */
@@ -27,6 +27,7 @@ const TIER_STYLE: Record<string, { bg: string; text: string; icon: string }> = {
 
 interface ProfileProps {
   token: string | null;
+  username?: string | null;
   devicePublicKey?: string | null;
   onBack: () => void;
   onDeleted: () => void;
@@ -36,7 +37,7 @@ interface ProfileProps {
   onToggleDebug?: () => void;
 }
 
-const Profile = ({ token, devicePublicKey, onBack, onDeleted, onLogout, onNavigatePrivacy, onNavigateTerms }: ProfileProps) => {
+const Profile = ({ token, username, devicePublicKey, onBack, onDeleted, onLogout, onNavigatePrivacy, onNavigateTerms }: ProfileProps) => {
   const { t, i18n } = useTranslation();
   const [profile, setProfile] = useState<CurrentUserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,43 +48,69 @@ const Profile = ({ token, devicePublicKey, onBack, onDeleted, onLogout, onNaviga
   const [error, setError] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importInput, setImportInput] = useState('');
+  const [activeToken, setActiveToken] = useState<string | null>(token);
+
+  // Keep activeToken in sync with token prop (e.g., after parent refreshes session)
+  useEffect(() => {
+    if (token) setActiveToken(token);
+  }, [token]);
 
   useEffect(() => {
-    if (!token) {
-      setLoading(false);
-      setError(resolveErrorMessage({ response: { status: 401 } }).message);
-      return;
-    }
-
     let cancelled = false;
 
-    const loadProfile = async () => {
+    const load = async (tkn: string) => {
       try {
         setLoading(true);
         setError(null);
-        const currentUser = await getCurrentUser(token);
-        if (!cancelled) {
-          setProfile(currentUser);
-        }
+        const currentUser = await getCurrentUser(tkn);
+        if (!cancelled) setProfile(currentUser);
       } catch (err: any) {
-        if (!cancelled) {
-          setError(
-              err?.response?.data?.message ?? "No se pudo cargar tu perfil",
-          );
+        if (cancelled) return;
+        const status = err?.response?.status;
+        // 401 / 403 → try to get a fresh token with device keypair
+        if ((status === 401 || status === 403) && username) {
+          try {
+            const fresh = await getAuthToken(username);
+            setActiveToken(fresh);
+            const currentUser = await getCurrentUser(fresh);
+            if (!cancelled) setProfile(currentUser);
+          } catch {
+            if (!cancelled) setError('Tu sesión expiró. Vuelve a iniciar sesión.');
+          }
+        } else {
+          setError(err?.response?.data?.message ?? 'No se pudo cargar el perfil. Revisa tu conexión.');
         }
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
     };
 
-    loadProfile();
+    if (activeToken) {
+      load(activeToken);
+    } else if (username) {
+      // No token at all → try to get one with device keypair
+      setLoading(true);
+      getAuthToken(username)
+        .then((fresh) => {
+          if (!cancelled) {
+            setActiveToken(fresh);
+            return load(fresh);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setLoading(false);
+            setError('Tu sesión expiró. Vuelve a iniciar sesión.');
+          }
+        });
+    } else {
+      setLoading(false);
+      setError('Tu sesión expiró. Vuelve a iniciar sesión.');
+    }
 
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
+    return () => { cancelled = true; };
+  }, [activeToken, username]);
+
 
   const openDeleteModal = () => {
     setConfirmation("");
@@ -99,21 +126,21 @@ const Profile = ({ token, devicePublicKey, onBack, onDeleted, onLogout, onNaviga
   };
 
   const handleDelete = async () => {
-    if (!token || !profile || confirmation.trim() !== profile.username) {
+    if (!activeToken || !profile || confirmation.trim() !== profile.username) {
       return;
     }
 
     try {
       setDeleting(true);
       setError(null);
-      await deleteAccount(token, profile.username);
+      await deleteAccount(activeToken, profile.username);
       setSuccess(true);
       setShowDeleteModal(false);
       setTimeout(() => {
         onDeleted();
       }, 800);
     } catch (err: any) {
-      setError(resolveErrorMessage(err).message);
+      setError(err?.response?.data?.message ?? 'No se pudo eliminar la cuenta.');
     } finally {
       setDeleting(false);
     }
@@ -172,8 +199,17 @@ const Profile = ({ token, devicePublicKey, onBack, onDeleted, onLogout, onNaviga
           )}
 
           {!loading && error && (
-              <div className="bg-[#FFECEF] border border-[#F5B6C0] rounded-2xl px-4 py-3">
-                <p className="text-sm text-[#C62828] font-medium">{error}</p>
+              <div className="bg-[#FFECEF] border border-[#F5B6C0] rounded-2xl px-5 py-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-[#C62828] text-xl mt-0.5" style={{ fontVariationSettings: '"FILL" 1' }}>error</span>
+                  <p className="text-sm text-[#C62828] font-medium leading-snug">{error}</p>
+                </div>
+                <button
+                  onClick={onLogout}
+                  className="w-full h-10 text-sm font-bold bg-[#C62828] text-white rounded-xl active:scale-95 transition-all"
+                >
+                  Iniciar sesión de nuevo
+                </button>
               </div>
           )}
 
