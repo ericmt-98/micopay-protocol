@@ -420,6 +420,23 @@ First-person response (privacy-safe):
 
 ---
 
+### V-24 · Corner shop as a liquidity provider (supply bootstrap)
+**Contributor:** [@samueloyibodevv](https://github.com/samueloyibodevv) · **Issue:** [#239](https://github.com/ericmt-98/micopay-protocol/issues/239) · **Validates:** Claim 2 (supply density / chicken-and-egg of the moat) · **Region:** West Africa
+
+**Context:** V-3 validated an individual provider. The vision needs density — established local businesses (shops, pharmacies, bakeries) doubling as cash-out points. This section tests the established-business angle and the open question: how do the first providers join before there's cash-out volume?
+
+First-person response (privacy-safe):
+
+- **What kind of local business, and does it already handle a lot of cash day to day:** I help run a neighborhood convenience shop — the kind of place that also sells airtime, data, and takes the occasional bill payment for regulars. Cash is the lifeblood of it; a large share of daily sales is still physical cash, and we keep a working float on hand to make change and to settle with suppliers. Handling and counting cash is already part of the daily routine.
+- **Would earning a commission for handing out cash to app users (with the customer's dollars locked in escrow first) be attractive, or more hassle than it's worth:** Genuinely attractive, *if* the escrow part is real and obvious. We already act as an informal cash point — people ask us to break large notes or do small transfers all the time, mostly as a favor. Turning that into a paid, structured service is appealing because the cash is just sitting in the till anyway. The hassle only appears if the app is slow, the confirmation is ambiguous, or I have to argue with a customer about whether their funds "really" cleared. With clean escrow and an instant, unambiguous release, it's barely more work than a normal sale.
+- **What commission percentage would make it worth my time and cash-on-hand:** Around 2–4% per cash-out would make it clearly worth it for me. Below ~1.5% it competes with just selling goods off the same float and isn't worth tying up cash; above ~4% I'd worry customers feel gouged and stop coming. The sweet spot has to beat what I'd earn rotating that cash through normal stock.
+- **What I'd need before handing over any cash — what proof the customer's funds are really locked:** A clear in-app state on *my* device (not just the customer's phone) showing the customer's dollars are held in escrow and earmarked for this specific payout, with a unique reference code I can match. Ideally I tap to release and the escrow settles to me on confirmation — so the money is locked the moment they request, and I only hand over physical cash after my own screen says "funds secured / ready to release." I will not trust a screenshot or the customer's word; the proof has to come from the system to me directly.
+- **Without many customers at the start, what would make me sign up anyway:** Three things. First, **foot traffic** — being listed as a cash-out point pulls new people into the shop who then also buy something while they're here, so even a few app users a week is upside. Second, **convenience for my own digital dollars** — if I can also cash my *own* digital balance in and out through the same system, it's useful to me from day one regardless of customer volume. Third, **reputation/being early** — being one of the first trusted points in the neighborhood is good standing, and the bar to start is low because the cash is already in my till.
+
+**SDF narrative:** Confirms Claim 2 from the established-business angle — a cash-heavy corner shop already plays an informal cash-point role and would formalize it for a **2–4%** commission, contingent on *merchant-side* proof that the customer's dollars are escrowed (a system-to-merchant locked state with a matchable reference, release-on-confirm). The chicken-and-egg is bridged by non-volume incentives: foot traffic into the shop, the merchant cashing their *own* digital dollars through the same rails, and early-mover reputation — all of which make signing up rational before cash-out demand materializes.
+
+---
+
 ## Batch 2 — Retail, payroll & the integrated economy (V-16…V-25)
 
 > Published 2026-06-29 (milestone #18). These extend the validation beyond the cash-out wedge into
