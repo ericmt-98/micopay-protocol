@@ -247,25 +247,25 @@ const ExploreMap = ({
                         )}
                       </div>
                       <div className="flex items-start justify-between mb-6">
-                        <div className="flex gap-4">
-                          <div className="w-14 h-14 bg-primary-container/10 rounded-2xl flex items-center justify-center">
+                        <div className="flex gap-4 min-w-0">
+                          <div className="w-14 h-14 bg-primary-container/10 rounded-2xl flex items-center justify-center flex-shrink-0">
                             <span className="material-symbols-outlined text-primary text-3xl">{offer.icon}</span>
                           </div>
-                          <div>
-                            <h3 className="font-headline font-bold text-lg text-on-surface">{offer.name}</h3>
+                          <div className="min-w-0">
+                            <h3 className="font-headline font-bold text-lg text-on-surface truncate">{offer.name}</h3>
                             <p className="text-sm text-outline font-medium flex items-center gap-1">
                               <span className="material-symbols-outlined text-sm">directions_walk</span>
                               {offer.distance} · {offer.walkMinutes} min
                             </p>
-                            <div className="mt-2 flex items-center gap-2">
+                            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
                               <span className="text-[12px] text-on-surface-variant">{offer.completionRate ? `${Math.round(offer.completionRate)}% completitud` : 'Sin historial'}</span>
                               <span className="text-[12px] text-on-surface-variant">·</span>
                               <span className="text-[12px] text-on-surface-variant">{offer.tradesCompleted ?? 0} ops</span>
                               {offer.tier && (
-                                <span className="ml-2 px-2 py-0.5 text-[11px] font-bold rounded-md bg-surface-container-high text-primary">{offer.tier}</span>
+                                <span className="px-2 py-0.5 text-[11px] font-bold rounded-md bg-surface-container-high text-primary">{offer.tier}</span>
                               )}
-                              <span className={`ml-2 px-2 py-0.5 text-[11px] font-bold rounded-md ${offer.isBusiness ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>
-                                {offer.isBusiness ? 'Negocio establecido' : 'Individuo'}
+                              <span className={`px-2 py-0.5 text-[11px] font-bold rounded-md ${offer.isBusiness ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>
+                                {offer.isBusiness ? 'Negocio' : 'Individuo'}
                               </span>
                             </div>
                           </div>
@@ -329,37 +329,37 @@ const ExploreMap = ({
                     ref={isSelected ? selectedOfferRef : null}
                     className={`bg-surface-container-low/30 p-5 rounded-[24px] border transition-all ${isSelected ? 'border-primary ring-2 ring-primary/30 bg-primary/5' : 'border-transparent hover:border-surface-container-high'}`}
                   >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center border border-surface-container-high">
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-11 h-11 bg-white rounded-full flex items-center justify-center border border-surface-container-high flex-shrink-0">
                           <span className="material-symbols-outlined text-outline">{offer.icon}</span>
                         </div>
-                        <div>
-                          <h3 className="font-headline font-bold text-on-surface">{offer.name}</h3>
+                        <div className="min-w-0">
+                          <h3 className="font-headline font-bold text-on-surface truncate">{offer.name}</h3>
                             {offer.badge && (
                             <span className="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
                               {offer.badge}
                             </span>
                           )}
-                            <div className="mt-1 text-sm text-on-surface-variant flex items-center gap-2">
+                            <div className="mt-1 text-sm text-on-surface-variant flex flex-wrap items-center gap-x-2 gap-y-1">
                               <span>{offer.completionRate ? `${Math.round(offer.completionRate)}%` : 'Sin historial'}</span>
                               <span>·</span>
                               <span>{offer.tradesCompleted ?? 0} ops</span>
-                              {offer.tier && <span className="ml-2 px-2 py-0.5 text-[10px] rounded-md bg-surface-container-high text-primary">{offer.tier}</span>}
-                              <span className={`ml-2 px-2 py-0.5 text-[10px] rounded-md ${offer.isBusiness ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>
+                              {offer.tier && <span className="px-2 py-0.5 text-[10px] rounded-md bg-surface-container-high text-primary">{offer.tier}</span>}
+                              <span className={`px-2 py-0.5 text-[10px] rounded-md ${offer.isBusiness ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>
                                 {offer.isBusiness ? 'Negocio' : 'Individuo'}
                               </span>
                             </div>
                           {isSelected && (
-                            <span className="ml-2 text-[11px] font-bold text-primary bg-white px-2 py-0.5 rounded-md">
+                            <span className="inline-block mt-1 text-[11px] font-bold text-primary bg-white px-2 py-0.5 rounded-md">
                               Seleccionado en mapa
                             </span>
                           )}
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex-shrink-0">
                         <p className="text-[10px] font-bold text-outline uppercase tracking-wider">Oferta</p>
-                        <p className="text-lg font-headline font-bold text-on-surface">
+                        <p className="text-lg font-headline font-bold text-on-surface whitespace-nowrap">
                           ${offer.receiveMxn.toFixed(2)} MXN
                         </p>
                       </div>

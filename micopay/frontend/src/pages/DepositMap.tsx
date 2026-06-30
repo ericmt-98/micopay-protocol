@@ -251,9 +251,9 @@ function MerchantOfferCard({
           </span>
         </div>
         <div className="bg-surface-container-lowest rounded-xl p-6 shadow-[0px_32px_32px_rgba(11,30,38,0.04)] ring-1 ring-outline-variant/10 flex flex-col gap-5 transition-transform hover:scale-[1.01] duration-300">
-          <div className="flex justify-between items-start">
-            <div className="flex gap-4">
-              <div className="w-12 h-12 bg-primary-fixed rounded-xl flex items-center justify-center text-primary">
+          <div className="flex justify-between items-start gap-3">
+            <div className="flex gap-4 min-w-0">
+              <div className="w-12 h-12 bg-primary-fixed rounded-xl flex items-center justify-center text-primary flex-shrink-0">
                 <span
                   className="material-symbols-outlined"
                   style={{ fontVariationSettings: '"FILL" 1' }}
@@ -261,23 +261,23 @@ function MerchantOfferCard({
                   storefront
                 </span>
               </div>
-              <div>
-                <div className="flex items-center gap-1">
-                  <h3 className="font-bold text-lg">{merchant.username}</h3>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1 min-w-0">
+                  <h3 className="font-bold text-lg truncate">{merchant.username}</h3>
                   <span
-                    className="material-symbols-outlined text-accent text-sm"
+                    className="material-symbols-outlined text-accent text-sm flex-shrink-0"
                     style={{ fontVariationSettings: '"FILL" 1' }}
                   >
                     verified
                   </span>
                 </div>
-                <div className="mt-1 text-sm text-on-surface-variant flex items-center gap-2">
+                <div className="mt-1 text-sm text-on-surface-variant flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span>{merchant.completion_rate ? `${Math.round(merchant.completion_rate)}% completitud` : 'Sin historial'}</span>
                   <span>·</span>
                   <span>{merchant.trades_completed ?? 0} ops</span>
-                  {merchant.tier && <span className="ml-2 px-2 py-0.5 text-[11px] font-bold rounded-md bg-surface-container-high text-primary">{merchant.tier}</span>}
-                  <span className={`ml-2 px-2 py-0.5 text-[11px] font-bold rounded-md ${((merchant.seller_type === 'business') || merchant.is_business) ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>
-                    {((merchant.seller_type === 'business') || merchant.is_business) ? 'Negocio establecido' : 'Individuo'}
+                  {merchant.tier && <span className="px-2 py-0.5 text-[11px] font-bold rounded-md bg-surface-container-high text-primary">{merchant.tier}</span>}
+                  <span className={`px-2 py-0.5 text-[11px] font-bold rounded-md ${((merchant.seller_type === 'business') || merchant.is_business) ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>
+                    {((merchant.seller_type === 'business') || merchant.is_business) ? 'Negocio' : 'Individuo'}
                   </span>
                 </div>
                 <div className="flex items-center gap-1 text-on-surface-variant text-xs">
@@ -291,9 +291,9 @@ function MerchantOfferCard({
                 )}
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-right flex-shrink-0">
               <span className="block text-xs text-on-surface-variant font-label uppercase">Comisión</span>
-              <span className="text-primary font-bold">${commissionMxn} MXN</span>
+              <span className="text-primary font-bold whitespace-nowrap">${commissionMxn} MXN</span>
             </div>
           </div>
 
@@ -329,19 +329,19 @@ function MerchantOfferCard({
 
   return (
     <div className="bg-surface-container rounded-xl p-6 ring-1 ring-outline-variant/5 flex flex-col gap-4">
-      <div className="flex justify-between items-start">
-        <div className="flex gap-4">
-          <div className="w-12 h-12 bg-surface-container-highest rounded-xl flex items-center justify-center text-outline">
+      <div className="flex justify-between items-start gap-3">
+        <div className="flex gap-4 min-w-0">
+          <div className="w-12 h-12 bg-surface-container-highest rounded-xl flex items-center justify-center text-outline flex-shrink-0">
             <span className="material-symbols-outlined">storefront</span>
           </div>
-          <div>
-            <h3 className="font-bold text-lg">{merchant.username}</h3>
-            <div className="mt-1 text-sm text-on-surface-variant flex items-center gap-2">
+          <div className="min-w-0">
+            <h3 className="font-bold text-lg truncate">{merchant.username}</h3>
+            <div className="mt-1 text-sm text-on-surface-variant flex flex-wrap items-center gap-x-2 gap-y-1">
               <span>{merchant.completion_rate ? `${Math.round(merchant.completion_rate)}%` : 'Sin historial'}</span>
               <span>·</span>
               <span>{merchant.trades_completed ?? 0} ops</span>
-              {merchant.tier && <span className="ml-2 px-2 py-0.5 text-[10px] rounded-md bg-surface-container-high text-primary">{merchant.tier}</span>}
-              <span className={`ml-2 px-2 py-0.5 text-[10px] rounded-md ${((merchant.seller_type === 'business') || merchant.is_business) ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>
+              {merchant.tier && <span className="px-2 py-0.5 text-[10px] rounded-md bg-surface-container-high text-primary">{merchant.tier}</span>}
+              <span className={`px-2 py-0.5 text-[10px] rounded-md ${((merchant.seller_type === 'business') || merchant.is_business) ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>
                 {((merchant.seller_type === 'business') || merchant.is_business) ? 'Negocio' : 'Individuo'}
               </span>
             </div>
@@ -351,9 +351,9 @@ function MerchantOfferCard({
             </div>
           </div>
         </div>
-        <div className="text-right">
+        <div className="text-right flex-shrink-0">
           <span className="block text-xs text-on-surface-variant font-label uppercase">Recibes</span>
-          <span className="text-on-surface font-bold">${merchant.payout_mxn.toFixed(2)} MXN</span>
+          <span className="text-on-surface font-bold whitespace-nowrap">${merchant.payout_mxn.toFixed(2)} MXN</span>
         </div>
       </div>
       <EffectiveFeeNote

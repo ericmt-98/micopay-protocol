@@ -1,13 +1,9 @@
 import type { FastifyInstance } from 'fastify';
-import { UpstreamError } from '../utils/errors.js';
 
-const COINGECKO_URL = 'https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=mxn';
 const CACHE_TTL_MS = 60_000;
-// CoinGecko's free API is frequently rate-limited from shared cloud IPs.
-// When it's unavailable and we have no cached value, degrade gracefully to a
-// conservative configurable estimate instead of failing — a 503 makes the
-// wallet fabricate a balance. Override with XLM_MXN_FALLBACK.
-const FALLBACK_RATE = Number(process.env.XLM_MXN_FALLBACK ?? 2.5);
+const TIMEOUT_MS = 5_000;
+// Last-resort estimate only if every live source fails AND there's no cache.
+const FALLBACK_RATE = Number(process.env.XLM_MXN_FALLBACK ?? 3.2);
 
 interface CacheEntry {
   rate: number;
@@ -22,52 +18,63 @@ export function __resetCache(): void {
   cache = null;
 }
 
-async function fetchRateFromCoinGecko(): Promise<CacheEntry> {
-  const res = await fetch(COINGECKO_URL, {
-    signal: AbortSignal.timeout(5000),
-    headers: { Accept: 'application/json', 'User-Agent': 'micopay/1.0 (+https://micopay.app)' },
-  });
-  if (!res.ok) {
-    throw new UpstreamError(
-      'RATE_FETCH_FAILED',
-      'No se pudo obtener la tasa de cambio en este momento.',
-      `CoinGecko responded ${res.status}`,
-      503,
-    );
+const round = (n: number) => Math.round(n * 1e6) / 1e6;
+
+/**
+ * Real XLM→MXN composed from XLM/USD (Binance) × USD/MXN (er-api). Both are
+ * reachable from cloud IPs (unlike CoinGecko, which 429s from shared egress).
+ */
+async function fetchFromBinanceErapi(): Promise<CacheEntry> {
+  const [xlmUsd, usdMxn] = await Promise.all([
+    fetch('https://api.binance.com/api/v3/ticker/price?symbol=XLMUSDT', {
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    })
+      .then((r) => r.json())
+      .then((d: any) => parseFloat(d?.price)),
+    fetch('https://open.er-api.com/v6/latest/USD', { signal: AbortSignal.timeout(TIMEOUT_MS) })
+      .then((r) => r.json())
+      .then((d: any) => Number(d?.rates?.MXN)),
+  ]);
+  if (!(xlmUsd > 0) || !(usdMxn > 0)) {
+    throw new Error(`bad binance/erapi payload: xlmUsd=${xlmUsd} usdMxn=${usdMxn}`);
   }
+  return { rate: round(xlmUsd * usdMxn), source: 'binance+erapi', fetchedAt: new Date().toISOString() };
+}
+
+/** Secondary: CoinGecko direct XLM/MXN (works when not rate-limited). */
+async function fetchFromCoinGecko(): Promise<CacheEntry> {
+  const res = await fetch(
+    'https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=mxn',
+    { signal: AbortSignal.timeout(TIMEOUT_MS), headers: { Accept: 'application/json', 'User-Agent': 'micopay/1.0' } },
+  );
+  if (!res.ok) throw new Error(`CoinGecko ${res.status}`);
   const data = (await res.json()) as { stellar?: { mxn?: number } };
   const rate = data?.stellar?.mxn;
-  if (typeof rate !== 'number' || rate <= 0) {
-    throw new UpstreamError(
-      'RATE_FETCH_FAILED',
-      'No se pudo obtener la tasa de cambio en este momento.',
-      `Unexpected CoinGecko payload: ${JSON.stringify(data)}`,
-      503,
-    );
-  }
+  if (!(typeof rate === 'number' && rate > 0)) throw new Error('bad coingecko payload');
   return { rate, source: 'coingecko', fetchedAt: new Date().toISOString() };
 }
 
 export async function rateRoutes(app: FastifyInstance) {
-  app.get('/rate/xlm-mxn', async (_request, _reply) => {
+  app.get('/rate/xlm-mxn', async (request) => {
     const now = Date.now();
 
     if (cache && now - new Date(cache.fetchedAt).getTime() < CACHE_TTL_MS) {
       return cache;
     }
 
-    try {
-      const fresh = await fetchRateFromCoinGecko();
-      cache = fresh;
-      return fresh;
-    } catch (err) {
-      if (cache) {
-        return { ...cache, stale: true };
+    // Try real sources in order of reliability-from-cloud.
+    for (const source of [fetchFromBinanceErapi, fetchFromCoinGecko]) {
+      try {
+        const fresh = await source();
+        cache = fresh;
+        return fresh;
+      } catch (err) {
+        request.log.warn({ err: err instanceof Error ? err.message : err, category: 'rate' }, '[rate] source failed, trying next');
       }
-      // No cache and upstream is down: serve a conservative estimate so the
-      // wallet shows an approximate (~) value rather than fabricating one.
-      _request.log.warn({ err, category: 'rate' }, '[rate] CoinGecko unavailable — serving fallback estimate');
-      return { rate: FALLBACK_RATE, source: 'fallback', fetchedAt: new Date().toISOString(), stale: true };
     }
+
+    // Everything failed: serve last-known cache if any, else a marked estimate.
+    if (cache) return { ...cache, stale: true };
+    return { rate: FALLBACK_RATE, source: 'fallback', fetchedAt: new Date().toISOString(), stale: true };
   });
 }
