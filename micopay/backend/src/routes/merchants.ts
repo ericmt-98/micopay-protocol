@@ -5,6 +5,7 @@ import {
   updateMerchantConfig,
   getAvailableMerchants,
 } from '../services/merchant.service.js';
+import db from '../db/schema.js';
 
 export async function merchantRoutes(app: FastifyInstance) {
   /**
