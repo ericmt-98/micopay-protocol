@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { config } from '../config.js';
 import { UpstreamError, ValidationError } from '../utils/errors.js';
+import { getRampAssets } from '../services/etherfuse.service.js';
 
 const CETES_APY = 11.45;
 const HORIZON_TESTNET = 'https://horizon-testnet.stellar.org';
@@ -10,6 +11,39 @@ export async function defiRoutes(app: FastifyInstance) {
   const horizonBase = config.stellarNetwork === 'TESTNET' ? HORIZON_TESTNET : HORIZON_MAINNET;
 
   // ─── CETES ───────────────────────────────────────────────────────────────
+
+  /**
+   * GET /defi/ramp/assets
+   * Real Stellar asset identifiers (CODE:ISSUER) supported by the Etherfuse
+   * ramp — the CETES issuer differs between sandbox and production, so it
+   * must always be read from here instead of hardcoded.
+   */
+  app.get('/defi/ramp/assets', async (request, reply) => {
+    if (!process.env.ETHERFUSE_API_KEY) {
+      throw new UpstreamError(
+        'ETHERFUSE_NOT_CONFIGURED',
+        'El servicio de rampa SPEI no está disponible por el momento.',
+        'ETHERFUSE_API_KEY not configured',
+        503,
+      );
+    }
+
+    const { wallet, currency } = request.query as { wallet?: string; currency?: string };
+    if (!wallet) {
+      throw new ValidationError('wallet querystring es requerido');
+    }
+
+    try {
+      const assets = await getRampAssets(wallet, currency);
+      return assets;
+    } catch (err: any) {
+      throw new UpstreamError(
+        'ETHERFUSE_ASSETS_FAILED',
+        'No se pudieron obtener los activos disponibles.',
+        err.message || 'Failed to fetch Etherfuse ramp assets',
+      );
+    }
+  });
 
   /**
    * GET /defi/cetes/rate

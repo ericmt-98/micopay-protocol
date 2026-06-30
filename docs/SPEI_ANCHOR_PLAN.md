@@ -2,6 +2,14 @@
 
 > Fuente: documentación de Etherfuse (`docs.etherfuse.com`), investigada 2026-06-28.
 
+> ⚠️ **Corrección de ubicación (2026-06-30):** todo este plan y los issues #220-225 apuntan a `apps/api/src/routes/{kyc,ramp,cetes}.ts`. Eso es un error — **`apps/api` no es lo que corre en producción.** El servicio real detrás de `https://micopay-api.onrender.com` (el que usa la app móvil) ejecuta el código de **`micopay/backend`**, confirmado comparando las respuestas reales de `/defi/cetes/rate` y `/health` contra ambos repos. La implementación real y verificada vive en:
+> - `micopay/backend/src/routes/kyc.ts`, `ramp.ts`, y la sección nueva en `defi.ts` (`GET /defi/ramp/assets`)
+> - `micopay/backend/src/services/etherfuse.service.ts`
+> - `micopay/backend/src/lib/webhook-auth.ts`
+> - `micopay/sql/migrations/20260630220000_etherfuse_ramp.up.sql`
+>
+> La copia en `apps/api` (commits `ceb2f3b`/`8caea7d`) sigue ahí pero **no se despliega — es código muerto para este propósito.** No la uses como referencia de qué está realmente en producción.
+
 ## Estado de los issues
 
 | Issue | GitHub | Responsable | Notas |
