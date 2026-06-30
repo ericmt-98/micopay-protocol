@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { registerUser, getAuthToken, getCurrentUser, UserData } from '../services/api';
+import { registerUser, UserData } from '../services/api';
 import { generateAndStoreKeypair, getPublicKey, exportSecretKey, keypairExists } from '../lib/keystore';
 import { setBackupConfirmed, writeJSON } from '../services/secureStorage';
 
@@ -41,20 +41,7 @@ export default function Register({ onLoginSuccess }: RegisterProps) {
       const sec = await exportSecretKey();
       if (!pub || !sec) throw new Error('No se pudo generar tu identidad Stellar');
 
-      let userData: UserData;
-      try {
-        userData = await registerUser(username.trim());
-      } catch (regErr: any) {
-        if (regErr?.response?.status === 409) {
-          // Username or address already in DB — try to auth with current device keypair.
-          // This handles the case where the user registered before (same keypair in DB).
-          const token = await getAuthToken(username.trim());
-          const profile = await getCurrentUser(token);
-          userData = { ...(profile as any), token } as UserData;
-        } else {
-          throw regErr;
-        }
-      }
+      const userData = await registerUser(username.trim());
 
       // Persist session immediately so the user is logged in after onboarding.
       await writeJSON('micopay_user', userData);
@@ -64,9 +51,13 @@ export default function Register({ onLoginSuccess }: RegisterProps) {
       setShowOnboarding(true);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Error al registrarse';
-      setError(msg.includes('409') || msg.toLowerCase().includes('exists')
-        ? 'Ese nombre de usuario ya está en uso. Elige otro.'
-        : `No se pudo conectar: ${msg}`);
+      if (msg.includes('409') || msg.toLowerCase().includes('exists') || msg.toLowerCase().includes('already')) {
+        setError('Ese nombre de usuario ya está registrado. Elige otro o inicia sesión si es tu cuenta.');
+      } else if (msg.includes('Network') || msg.includes('fetch')) {
+        setError('Sin conexión al servidor. Intenta en unos segundos.');
+      } else {
+        setError(`Error: ${msg}`);
+      }
     } finally {
       setLoading(false);
     }
