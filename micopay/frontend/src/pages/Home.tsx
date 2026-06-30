@@ -120,7 +120,7 @@ const Home = ({
   }, []);
 
   const MXN_PEGGED = new Set(['MXNE', 'MXNe', 'CETES', 'GTOKEN', 'MXN']);
-  const xlmRate = xlmMxnRate ?? 20;
+  const xlmRate = xlmMxnRate ?? 2.5;
   const usdRate = usdMxnRate ?? 17.5;
 
   const totalMxn = tokens.reduce((sum, t) => {
