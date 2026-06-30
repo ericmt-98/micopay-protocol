@@ -134,6 +134,12 @@ const Home = ({
     ? "—"
     : `$${totalMxn.toLocaleString("es-MX", { maximumFractionDigits: 2 })} MXN`;
 
+  // Per-asset MXN value for the XLM row (its own value, not the grand total).
+  const rawXlm = tokens.find((t) => t.code === 'XLM')?.balance ?? 0;
+  const xlmMxnValue = balanceLoading || rateLoading
+    ? "—"
+    : `$${(rawXlm * xlmRate).toLocaleString("es-MX", { maximumFractionDigits: 2 })} MXN`;
+
   const today = new Date().toLocaleDateString("es-MX", {
     weekday: "long",
     day: "numeric",
@@ -324,7 +330,7 @@ const Home = ({
                 <p className="font-bold text-on-surface text-sm">
                   {xlmBalance ?? "—"} XLM
                 </p>
-                <p className="text-[11px] text-outline">${mxnBalance} MXN</p>
+                <p className="text-[11px] text-outline">{xlmMxnValue}</p>
               </div>
             </div>
             {/* MXNE */}

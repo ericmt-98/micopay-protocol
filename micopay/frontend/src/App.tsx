@@ -32,6 +32,9 @@ import BlendScreen from "./pages/BlendScreen";
 import KYCScreen from "./pages/KYCScreen";
 
 import MerchantInbox from "./pages/MerchantInbox";
+import PayHub from "./pages/PayHub";
+import SendPayment from "./pages/SendPayment";
+import ReceivePayment from "./pages/ReceivePayment";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Profile from "./pages/Profile";
@@ -44,6 +47,8 @@ import DebugOverlay from "./components/DebugOverlay";
 
 import {
   registerUser,
+  getAuthToken,
+  getCurrentUser,
   createTrade,
   fetchTradeDetail,
   UserData,
@@ -55,6 +60,25 @@ import { mapApiError, type MappedApiError } from "./utils/apiError";
 import { IS_DEMO_MODE } from "./utils/demoMode";
 
 const USERS_STORAGE_KEY = "micopay_user";
+
+/**
+ * Re-authenticate using the device keypair when a stored session is orphaned
+ * (e.g. the backend DB was reset). The device key is the identity, so we can
+ * re-register (fresh DB) or re-auth (user still exists) without user friction.
+ */
+async function recoverSession(username: string): Promise<UserData> {
+  try {
+    return await registerUser(username);
+  } catch (e: any) {
+    if (e?.response?.status === 409) {
+      // User already exists — refresh the token via challenge/response.
+      const token = await getAuthToken(username);
+      const profile = await getCurrentUser(token);
+      return { ...(profile as any), token } as UserData;
+    }
+    throw e;
+  }
+}
 
 
 type Flow = "cashout" | "deposit" | null;
@@ -159,6 +183,37 @@ function CashoutRoute() {
             setActiveAmount(amount);
             navigate('/map');
           }}
+      />
+  );
+}
+
+function PayHubRoute() {
+  const navigate = useNavigate();
+  return (
+      <PayHub
+          onSend={() => navigate('/pay/send')}
+          onReceive={() => navigate('/pay/receive')}
+      />
+  );
+}
+
+function SendPaymentRoute() {
+  const navigate = useNavigate();
+  return (
+      <SendPayment
+          onBack={() => navigate('/pay')}
+          onDone={() => navigate('/')}
+      />
+  );
+}
+
+function ReceivePaymentRoute() {
+  const navigate = useNavigate();
+  const { devicePublicKey } = useAppCtx();
+  return (
+      <ReceivePayment
+          address={devicePublicKey}
+          onBack={() => navigate('/pay')}
       />
   );
 }
@@ -542,7 +597,7 @@ function ProtectedRoute({ children }: { children: React.ReactElement }) {
 
 const ROUTE_TO_PAGE: Record<string, string> = {
   "/": "home",
-  "/cashout": "cashout",
+  "/pay": "pay",
   "/inbox": "inbox",
   "/explore": "explore",
   "/cetes": "cetes",
@@ -559,6 +614,9 @@ const HIDE_BOTTOMNAV_ROUTES = new Set([
   "/qr-reveal",
   "/qr-deposit",
   "/success",
+  "/cashout",
+  "/pay/send",
+  "/pay/receive",
   "/blend",
   "/privacy",
   "/terms",
@@ -577,7 +635,7 @@ function BottomNavAdapter() {
 
   const navMap: Record<string, string> = {
     home: "/",
-    cashout: "/cashout",
+    pay: "/pay",
     inbox: "/inbox",
     explore: "/explore",
     cetes: "/cetes",
@@ -702,10 +760,34 @@ function App() {
         setDevicePublicKey(pubKey);
 
         const stored = await readJSON<UserData>(USERS_STORAGE_KEY);
-        if (stored?.id) {
-          setBuyerUser(stored);
-          setSellerUser(stored);
-          return;
+        if (stored?.id && stored.token) {
+          // Validate the stored session; self-heal if the backend no longer
+          // knows this user (e.g. its DB was recreated → orphaned token → 401).
+          try {
+            await getCurrentUser(stored.token);
+            setBuyerUser(stored);
+            setSellerUser(stored);
+            return;
+          } catch (err: any) {
+            const status = err?.response?.status;
+            if (status !== 401 && status !== 403) {
+              // Transient/network error — keep the cached session optimistically.
+              setBuyerUser(stored);
+              setSellerUser(stored);
+              return;
+            }
+            try {
+              const recovered = await recoverSession(stored.username);
+              await writeJSON(USERS_STORAGE_KEY, recovered);
+              setBuyerUser(recovered);
+              setSellerUser(recovered);
+              return;
+            } catch (re) {
+              console.warn("Session recovery failed; clearing stale session", re);
+              await removeKey(USERS_STORAGE_KEY);
+              // fall through → empty session → ProtectedRoute redirects to login
+            }
+          }
         }
 
         // Demo builds auto-provision one throwaway user. In real mode we
@@ -913,6 +995,9 @@ function App() {
                 <Route path="/merchant-settings" element={<ProtectedRoute><MerchantSettingsRoute /></ProtectedRoute>} />
                 <Route path="/inbox" element={<ProtectedRoute><InboxRoute /></ProtectedRoute>} />
                 <Route path="/cashout" element={<ProtectedRoute><CashoutRoute /></ProtectedRoute>} />
+                <Route path="/pay" element={<ProtectedRoute><PayHubRoute /></ProtectedRoute>} />
+                <Route path="/pay/send" element={<ProtectedRoute><SendPaymentRoute /></ProtectedRoute>} />
+                <Route path="/pay/receive" element={<ProtectedRoute><ReceivePaymentRoute /></ProtectedRoute>} />
                 <Route path="/deposit" element={<ProtectedRoute><DepositRoute /></ProtectedRoute>} />
                 <Route path="/map" element={<ProtectedRoute><MapRoute /></ProtectedRoute>} />
                 <Route path="/confirm" element={<ProtectedRoute><ConfirmRoute /></ProtectedRoute>} />

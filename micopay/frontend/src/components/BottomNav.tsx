@@ -22,18 +22,18 @@ const BottomNav = ({ currentPage, onNavigate, isMerchant = false }: BottomNavPro
         <span className="font-['Manrope'] font-medium text-[10px] tracking-wide">Inicio</span>
       </button>
 
-      {/* Pagar / Convertir */}
+      {/* Pagar — enviar / recibir */}
       <button
-        onClick={() => onNavigate('cashout')}
+        onClick={() => onNavigate('pay')}
         aria-label="Pagar"
-        aria-current={currentPage === 'cashout' ? 'page' : undefined}
+        aria-current={currentPage === 'pay' ? 'page' : undefined}
         className={`flex flex-col items-center justify-center rounded-full px-5 py-2 transition-all active:scale-90 duration-150 focus:outline-none focus:ring-2 focus:ring-primary ${
-          currentPage === 'cashout'
+          currentPage === 'pay'
             ? 'bg-[#E1F5EE] dark:bg-[#00694C]/30 text-[#00694C] dark:text-[#5DCAA5]'
             : 'text-[#0B1E26] dark:text-slate-400 opacity-70 hover:opacity-100'
         }`}
       >
-        <span aria-hidden="true" className="material-symbols-outlined" style={{ fontVariationSettings: currentPage === 'cashout' ? '"FILL" 1' : '"FILL" 0' }}>payments</span>
+        <span aria-hidden="true" className="material-symbols-outlined" style={{ fontVariationSettings: currentPage === 'pay' ? '"FILL" 1' : '"FILL" 0' }}>swap_horiz</span>
         <span className="font-['Manrope'] font-medium text-[10px] tracking-wide">Pagar</span>
       </button>
 
