@@ -258,9 +258,9 @@ const ExploreMap = ({
                               {offer.distance} · {offer.walkMinutes} min
                             </p>
                             <div className="mt-2 flex items-center gap-2">
-                              <span className="text-[12px] text-on-surface-variant">{offer.completionRate !== undefined ? `${Math.round(offer.completionRate * 100)}% completitud` : '— completitud'}</span>
+                              <span className="text-[12px] text-on-surface-variant">{offer.completionRate ? `${Math.round(offer.completionRate)}% completitud` : 'Sin historial'}</span>
                               <span className="text-[12px] text-on-surface-variant">·</span>
-                              <span className="text-[12px] text-on-surface-variant">{offer.tradesCompleted ?? 0} trades</span>
+                              <span className="text-[12px] text-on-surface-variant">{offer.tradesCompleted ?? 0} ops</span>
                               {offer.tier && (
                                 <span className="ml-2 px-2 py-0.5 text-[11px] font-bold rounded-md bg-surface-container-high text-primary">{offer.tier}</span>
                               )}
@@ -342,9 +342,9 @@ const ExploreMap = ({
                             </span>
                           )}
                             <div className="mt-1 text-sm text-on-surface-variant flex items-center gap-2">
-                              <span>{offer.completionRate !== undefined ? `${Math.round(offer.completionRate * 100)}%` : '—'}</span>
+                              <span>{offer.completionRate ? `${Math.round(offer.completionRate)}%` : 'Sin historial'}</span>
                               <span>·</span>
-                              <span>{offer.tradesCompleted ?? 0} trades</span>
+                              <span>{offer.tradesCompleted ?? 0} ops</span>
                               {offer.tier && <span className="ml-2 px-2 py-0.5 text-[10px] rounded-md bg-surface-container-high text-primary">{offer.tier}</span>}
                               <span className={`ml-2 px-2 py-0.5 text-[10px] rounded-md ${offer.isBusiness ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>
                                 {offer.isBusiness ? 'Negocio' : 'Individuo'}

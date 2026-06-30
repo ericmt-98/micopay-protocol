@@ -272,9 +272,9 @@ function MerchantOfferCard({
                   </span>
                 </div>
                 <div className="mt-1 text-sm text-on-surface-variant flex items-center gap-2">
-                  <span>{merchant.completion_rate !== undefined ? `${Math.round(merchant.completion_rate * 100)}% completitud` : '— completitud'}</span>
+                  <span>{merchant.completion_rate ? `${Math.round(merchant.completion_rate)}% completitud` : 'Sin historial'}</span>
                   <span>·</span>
-                  <span>{merchant.trades_completed ?? 0} trades</span>
+                  <span>{merchant.trades_completed ?? 0} ops</span>
                   {merchant.tier && <span className="ml-2 px-2 py-0.5 text-[11px] font-bold rounded-md bg-surface-container-high text-primary">{merchant.tier}</span>}
                   <span className={`ml-2 px-2 py-0.5 text-[11px] font-bold rounded-md ${((merchant.seller_type === 'business') || merchant.is_business) ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>
                     {((merchant.seller_type === 'business') || merchant.is_business) ? 'Negocio establecido' : 'Individuo'}
@@ -337,9 +337,9 @@ function MerchantOfferCard({
           <div>
             <h3 className="font-bold text-lg">{merchant.username}</h3>
             <div className="mt-1 text-sm text-on-surface-variant flex items-center gap-2">
-              <span>{merchant.completion_rate !== undefined ? `${Math.round(merchant.completion_rate * 100)}%` : '—'}</span>
+              <span>{merchant.completion_rate ? `${Math.round(merchant.completion_rate)}%` : 'Sin historial'}</span>
               <span>·</span>
-              <span>{merchant.trades_completed ?? 0} trades</span>
+              <span>{merchant.trades_completed ?? 0} ops</span>
               {merchant.tier && <span className="ml-2 px-2 py-0.5 text-[10px] rounded-md bg-surface-container-high text-primary">{merchant.tier}</span>}
               <span className={`ml-2 px-2 py-0.5 text-[10px] rounded-md ${((merchant.seller_type === 'business') || merchant.is_business) ? 'bg-primary/10 text-primary' : 'bg-surface-container-high text-on-surface-variant'}`}>
                 {((merchant.seller_type === 'business') || merchant.is_business) ? 'Negocio' : 'Individuo'}

@@ -274,15 +274,13 @@ async function seedData() {
 async function seedDemoMerchants(): Promise<void> {
   const db = (await import('./db/schema.js')).default;
 
-  const already = await db
-    .getOne("SELECT id FROM users WHERE username = 'farmacia_guadalupe'")
-    .catch(() => null);
-  if (already) return;
-
-  app.log.info({ category: 'seed' }, '🌱 Seeding demo merchants for the map…');
-
-  // CDMX Zócalo as the demo origin — the testnet app searches from here.
-  const center = { lat: 19.4326, lng: -99.1332 };
+  // Demo origin for seeded merchants. Override per-deployment with
+  // SEED_ORIGIN_LAT / SEED_ORIGIN_LNG so the discovery map shows agents near
+  // wherever the demo is run. Default: northern CDMX metro.
+  const center = {
+    lat: Number(process.env.SEED_ORIGIN_LAT ?? 19.689),
+    lng: Number(process.env.SEED_ORIGIN_LNG ?? -99.179),
+  };
 
   const merchants = [
     { username: 'farmacia_guadalupe',   rate: 1.0, dlat: 0.004,  dlng: 0.003,  addr: 'Av. Juárez 34, Centro',          completed: 12, cancelled: 0 },
@@ -290,6 +288,25 @@ async function seedDemoMerchants(): Promise<void> {
     { username: 'tienda_don_chendo',    rate: 0.8, dlat: 0.007,  dlng: -0.004, addr: 'Madero 88, Centro Histórico',    completed: 21, cancelled: 1 },
     { username: 'cafe_lopez',           rate: 2.0, dlat: -0.003, dlng: -0.007, addr: 'Regina 19, Col. Centro',         completed: 5,  cancelled: 0 },
   ];
+
+  // If already seeded, just reposition the configs to the current origin (the
+  // demo origin env may have changed) and stop — keeps trade history intact.
+  const already = await db
+    .getOne("SELECT id FROM users WHERE username = 'farmacia_guadalupe'")
+    .catch(() => null);
+  if (already) {
+    for (const m of merchants) {
+      await db.execute(
+        `UPDATE merchant_configs SET latitude = $2, longitude = $3, updated_at = NOW()
+         WHERE user_id = (SELECT id FROM users WHERE username = $1)`,
+        [m.username, center.lat + m.dlat, center.lng + m.dlng],
+      ).catch(() => {});
+    }
+    app.log.info({ category: 'seed' }, '📍 Demo merchants repositioned to current origin');
+    return;
+  }
+
+  app.log.info({ category: 'seed' }, '🌱 Seeding demo merchants for the map…');
 
   // A shared counterparty so completed trades have a buyer.
   const buyerAddr = 'GDEMOCLIENTE'.padEnd(56, 'X').slice(0, 56);
