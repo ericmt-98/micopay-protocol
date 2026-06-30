@@ -3,13 +3,13 @@ import { Logo } from '../components/Logo';
 import ErrorBanner from '../components/ErrorBanner';
 import {
   getTradeHistory,
-  getAccountBalance,
   getMerchantTrades,
   getXlmMxnRate,
   TradeHistoryItem,
   getCurrentUser,
 } from '../services/api';
 import { mapApiError, type MappedApiError } from '../utils/apiError';
+import { useWalletBalance } from '../hooks/useWalletBalance';
 
 const EXPLORER = "https://stellar.expert/explorer/testnet/tx";
 
@@ -29,6 +29,7 @@ interface HomeProps {
   token: string | null;
   merchantToken: string | null;
   onNavigateInbox: () => void;
+  username?: string | null;
 }
 
 const Home = ({
@@ -38,29 +39,38 @@ const Home = ({
   token,
   merchantToken,
   onNavigateInbox,
+  username: usernameProp,
 }: HomeProps) => {
   const [trades, setTrades] = useState<TradeHistoryItem[]>([]);
-  const [xlmBalance, setXlmBalance] = useState<string | null>(null);
-  const [stellarAddress, setStellarAddress] = useState<string>("");
   const [pendingCount, setPendingCount] = useState(0);
   const [xlmMxnRate, setXlmMxnRate] = useState<number | null>(null);
   const [rateLoading, setRateLoading] = useState(true);
   const [rateError, setRateError] = useState(false);
-  const [balanceError, setBalanceError] = useState<MappedApiError | null>(null);
   const [historyError, setHistoryError] = useState<MappedApiError | null>(null);
   const [pendingError, setPendingError] = useState<MappedApiError | null>(null);
 
-  const loadBalance = useCallback(() => {
-    setBalanceError(null);
-    getAccountBalance()
-      .then(({ xlm, address }) => {
-        setXlmBalance(
-          parseFloat(xlm).toLocaleString("es-MX", { maximumFractionDigits: 2 }),
-        );
-        setStellarAddress(address);
-      })
-      .catch((e) => setBalanceError(mapApiError(e)));
-  }, []);
+  const {
+    balance: mxneBalance,
+    xlmBalance,
+    stellarAddress: rawStellarAddress,
+    loading: balanceLoading,
+    error: walletBalanceError,
+    refresh: loadBalance,
+    tokens,
+    usdMxnRate,
+  } = useWalletBalance();
+
+  const stellarAddress = rawStellarAddress || "";
+
+  const [showBalanceError, setShowBalanceError] = useState(false);
+
+  useEffect(() => {
+    if (walletBalanceError) {
+      setShowBalanceError(true);
+    } else {
+      setShowBalanceError(false);
+    }
+  }, [walletBalanceError]);
 
   const loadHistory = useCallback(() => {
     if (!token) return;
@@ -80,10 +90,6 @@ const Home = ({
       .then((items) => setPendingCount(items.length))
       .catch((e) => setPendingError(mapApiError(e)));
   }, [merchantToken]);
-
-  useEffect(() => {
-    loadBalance();
-  }, [loadBalance]);
 
   useEffect(() => {
     loadHistory();
@@ -113,14 +119,20 @@ const Home = ({
     return () => { cancelled = true; };
   }, []);
 
-  const rawXlm = xlmBalance ? parseFloat(xlmBalance.replace(/,/g, "")) : 0;
-  const mxnBalance = !xlmBalance
+  const MXN_PEGGED = new Set(['MXNE', 'MXNe', 'CETES', 'GTOKEN', 'MXN']);
+  const xlmRate = xlmMxnRate ?? 2.5;
+  const usdRate = usdMxnRate ?? 17.5;
+
+  const totalMxn = tokens.reduce((sum, t) => {
+    if (t.code === 'XLM') return sum + t.balance * xlmRate;
+    if (t.code === 'USDC') return sum + t.balance * usdRate;
+    if (MXN_PEGGED.has(t.code)) return sum + t.balance;
+    return sum;
+  }, 0);
+
+  const mxnBalance = balanceLoading || rateLoading
     ? "—"
-    : rateLoading
-      ? "—"
-      : rateError
-        ? `~${(rawXlm * 20).toLocaleString("es-MX", { maximumFractionDigits: 2 })}`
-        : (rawXlm * (xlmMxnRate ?? 0)).toLocaleString("es-MX", { maximumFractionDigits: 2 });
+    : `$${totalMxn.toLocaleString("es-MX", { maximumFractionDigits: 2 })} MXN`;
 
   const today = new Date().toLocaleDateString("es-MX", {
     weekday: "long",
@@ -131,6 +143,8 @@ const Home = ({
   const [availability, setAvailabilityState] = useState<
     "online" | "offline" | "paused"
   >("online");
+
+  const username = usernameProp || '';
 
   useEffect(() => {
     if (!merchantToken) return;
@@ -191,7 +205,7 @@ const Home = ({
         </div>
       </header>
 
-      <main className="flex-1 mt-20 px-6 pb-32">
+      <main className="flex-1 mt-[5.5rem] px-6 pb-32" style={{ paddingTop: 'max(0px, env(safe-area-inset-top))' }}>
         {availability === "paused" && (
           <div className="mb-6 bg-error/10 border border-error/20 rounded-2xl p-4 flex items-center gap-3">
             <span className="material-symbols-outlined text-error">
@@ -210,26 +224,26 @@ const Home = ({
         {/* Saludo */}
         <section className="mb-8">
           <h1 className="font-headline font-extrabold text-3xl text-on-surface leading-tight mb-1">
-            Hola, Juan 👋
+            Hola, {username || '...'} 👋
           </h1>
           <p className="text-on-surface-variant font-medium opacity-70 capitalize">
             {today}
           </p>
         </section>
 
-        {balanceError ? (
+        {showBalanceError && walletBalanceError ? (
           <ErrorBanner
-            message={balanceError.message}
-            action={balanceError.action}
+            message={walletBalanceError.message || "Error al cargar el balance"}
+            action="retry"
             onRetry={loadBalance}
-            onDismiss={() => setBalanceError(null)}
+            onDismiss={() => setShowBalanceError(false)}
             supportState="HOME_BALANCE"
             className="mb-4"
           />
         ) : null}
 
         {/* Balance Card */}
-        <div className="bg-primary rounded-[24px] p-6 relative overflow-hidden mb-8 shadow-xl shadow-primary/20">
+        <div onClick={loadBalance} className="bg-primary rounded-[24px] p-6 relative overflow-hidden mb-8 shadow-xl shadow-primary/20 active:opacity-80 cursor-pointer">
           <div className="absolute -right-8 -bottom-8 opacity-20 pointer-events-none text-white">
             <svg
               fill="none"
@@ -257,7 +271,7 @@ const Home = ({
           </div>
           <div className="flex justify-between items-start relative z-10 mb-6">
             <p className="text-[10px] font-bold tracking-[0.15em] text-white/70 uppercase">
-              SALDO MXN · STELLAR TESTNET
+              VALOR TOTAL · STELLAR TESTNET
             </p>
             <div className="flex items-center justify-center bg-white/10 rounded-full p-1">
               <span
@@ -270,16 +284,16 @@ const Home = ({
           </div>
           <div className="relative z-10 mb-4">
             <h2 className="text-[36px] font-headline font-extrabold text-white tracking-tight">
-              ${mxnBalance} MXN
+              {balanceLoading ? "Cargando…" : walletBalanceError ? "--" : mxnBalance}
             </h2>
             <div className="flex items-center gap-2 mt-1">
               <span className="w-2.5 h-2.5 rounded-full bg-[#5DCAA5] animate-pulse shadow-[0_0_8px_#5DCAA5]"></span>
               <p className="text-[#5DCAA5] text-sm font-bold">
-                {balanceError
+                {walletBalanceError
                   ? 'No disponible'
-                  : xlmBalance
-                    ? `${xlmBalance} XLM · Testnet`
-                    : 'Cargando balance…'}
+                  : balanceLoading
+                    ? 'Cargando balance…'
+                    : 'Stellar Testnet'}
               </p>
             </div>
           </div>
@@ -313,21 +327,25 @@ const Home = ({
                 <p className="text-[11px] text-outline">${mxnBalance} MXN</p>
               </div>
             </div>
-            {/* MXNE placeholder */}
-            <div className="flex items-center gap-4 p-4 opacity-40">
+            {/* MXNE */}
+            <div className={`flex items-center gap-4 p-4 ${balanceLoading ? 'opacity-40' : ''}`}>
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <span className="text-primary font-black text-xs">MXNE</span>
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="font-bold text-on-surface text-sm">
                   Peso Digital (MXNE)
                 </p>
-                <p className="text-[11px] text-outline">
-                  Mainnet · próximamente
+                <p className="text-[11px] text-outline truncate font-mono">
+                  {stellarAddress
+                    ? `${stellarAddress.substring(0, 8)}…${stellarAddress.slice(-6)}`
+                    : "—"}
                 </p>
               </div>
               <div className="text-right">
-                <p className="font-bold text-on-surface text-sm">— MXN</p>
+                <p className="font-bold text-on-surface text-sm">
+                  {balanceLoading ? "—" : walletBalanceError ? "--" : mxneBalance}
+                </p>
               </div>
             </div>
           </div>

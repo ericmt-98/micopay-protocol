@@ -29,6 +29,8 @@ import History from "./pages/History";
 import TradeDetail from "./pages/TradeDetail";
 import CETESScreen from "./pages/CETESScreen";
 import BlendScreen from "./pages/BlendScreen";
+import KYCScreen from "./pages/KYCScreen";
+
 import MerchantInbox from "./pages/MerchantInbox";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
@@ -107,6 +109,7 @@ function HomeRoute() {
           token={buyerUser?.token ?? null}
           merchantToken={sellerUser?.token ?? null}
           onNavigateInbox={() => navigate('/inbox')}
+          username={buyerUser?.username ?? sellerUser?.username ?? null}
       />
   );
 }
@@ -412,7 +415,7 @@ function SuccessRoute() {
             seller_id: sellerUser?.id ?? '',
             buyer_id: buyerUser?.id ?? '',
           }}
-          agentName={flow === 'cashout' ? 'Farmacia Guadalupe' : 'Tienda Don Pepe'}
+          agentName={sellerUsername ?? (flow === 'cashout' ? 'Farmacia Guadalupe' : 'Tienda Don Pepe')}
           onHome={() => {
             resetTradeFlow();
             navigate('/');
@@ -439,7 +442,7 @@ function ExploreRoute() {
       <Explore
           onBack={() => navigate('/')}
           onNavigate={(page) => navigate(navMap[page] ?? '/')}
-          showDefi={!isDemoMode || !isMockStellar}
+          showDefi={true}
       />
   );
 }
@@ -455,6 +458,16 @@ function CetesRoute() {
       />
   );
 }
+
+function KYCApprovedNextRoute() {
+  const navigate = useNavigate();
+  // After approved, continue to CETES + deposit flow.
+  useEffect(() => {
+    navigate('/cetes');
+  }, [navigate]);
+  return null;
+}
+
 
 function BlendRoute() {
   const navigate = useNavigate();
@@ -532,6 +545,7 @@ const ROUTE_TO_PAGE: Record<string, string> = {
   "/cashout": "cashout",
   "/inbox": "inbox",
   "/explore": "explore",
+  "/cetes": "cetes",
   "/profile": "profile",
 };
 
@@ -545,7 +559,6 @@ const HIDE_BOTTOMNAV_ROUTES = new Set([
   "/qr-reveal",
   "/qr-deposit",
   "/success",
-  "/cetes",
   "/blend",
   "/privacy",
   "/terms",
@@ -567,6 +580,7 @@ function BottomNavAdapter() {
     cashout: "/cashout",
     inbox: "/inbox",
     explore: "/explore",
+    cetes: "/cetes",
     profile: "/profile",
   };
 
@@ -910,6 +924,12 @@ function App() {
                 <Route path="/success" element={<ProtectedRoute><SuccessRoute /></ProtectedRoute>} />
                 <Route path="/explore" element={<ProtectedRoute><ExploreRoute /></ProtectedRoute>} />
                 <Route path="/cetes" element={<ProtectedRoute><CetesRoute /></ProtectedRoute>} />
+                <Route path="/kyc" element={<ProtectedRoute><KYCScreen onApproved={() => {
+                  // Cache hit will redirect into CETES screen; this matches the acceptance criteria.
+                  window.location.hash = '/#/cetes';
+                }} /></ProtectedRoute>} />
+                <Route path="/kyc-approved" element={<ProtectedRoute><KYCApprovedNextRoute /></ProtectedRoute>} />
+
                 <Route path="/blend" element={<ProtectedRoute><BlendRoute /></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><ProfileRoute /></ProtectedRoute>} />
                 <Route path="/privacy" element={<ProtectedRoute><PrivacyRoute /></ProtectedRoute>} />

@@ -3,6 +3,7 @@ import fastifyJwt from '@fastify/jwt';
 import fastifyCors from '@fastify/cors';
 import { config, validateConfig } from './config.js';
 import { pingDb } from './db/schema.js';
+import { runMigrations } from './db/migrate.js';
 import { authRoutes } from './routes/auth.js';
 import { userRoutes } from './routes/users.js';
 import { tradeRoutes } from './routes/trades.js';
@@ -265,6 +266,102 @@ async function seedData() {
   app.log.info({ category: 'seed' }, '✅ Seeding complete');
 }
 
+/**
+ * Seed demo merchants with real CDMX coordinates so the discovery map has pins
+ * during a testnet/demo run. Only runs on the ephemeral in-memory store
+ * (ALLOW_IN_MEMORY_DB=true) and is idempotent.
+ */
+async function seedDemoMerchants(): Promise<void> {
+  const db = (await import('./db/schema.js')).default;
+
+  // Demo origin for seeded merchants. Override per-deployment with
+  // SEED_ORIGIN_LAT / SEED_ORIGIN_LNG so the discovery map shows agents near
+  // wherever the demo is run. Default: northern CDMX metro.
+  const center = {
+    lat: Number(process.env.SEED_ORIGIN_LAT ?? 19.689),
+    lng: Number(process.env.SEED_ORIGIN_LNG ?? -99.179),
+  };
+
+  const merchants = [
+    { username: 'farmacia_guadalupe',   rate: 1.0, dlat: 0.004,  dlng: 0.003,  addr: 'Av. Juárez 34, Centro',          completed: 12, cancelled: 0 },
+    { username: 'abarrotes_la_esquina', rate: 1.5, dlat: -0.005, dlng: 0.006,  addr: 'Calle 5 de Mayo 12, Centro',     completed: 8,  cancelled: 1 },
+    { username: 'tienda_don_chendo',    rate: 0.8, dlat: 0.007,  dlng: -0.004, addr: 'Madero 88, Centro Histórico',    completed: 21, cancelled: 1 },
+    { username: 'cafe_lopez',           rate: 2.0, dlat: -0.003, dlng: -0.007, addr: 'Regina 19, Col. Centro',         completed: 5,  cancelled: 0 },
+  ];
+
+  // If already seeded, just reposition the configs to the current origin (the
+  // demo origin env may have changed) and stop — keeps trade history intact.
+  const already = await db
+    .getOne("SELECT id FROM users WHERE username = 'farmacia_guadalupe'")
+    .catch(() => null);
+  if (already) {
+    for (const m of merchants) {
+      await db.execute(
+        `UPDATE merchant_configs SET latitude = $2, longitude = $3, updated_at = NOW()
+         WHERE user_id = (SELECT id FROM users WHERE username = $1)`,
+        [m.username, center.lat + m.dlat, center.lng + m.dlng],
+      ).catch(() => {});
+    }
+    app.log.info({ category: 'seed' }, '📍 Demo merchants repositioned to current origin');
+    return;
+  }
+
+  app.log.info({ category: 'seed' }, '🌱 Seeding demo merchants for the map…');
+
+  // A shared counterparty so completed trades have a buyer.
+  const buyerAddr = 'GDEMOCLIENTE'.padEnd(56, 'X').slice(0, 56);
+  let buyer = await db.getOne("SELECT id FROM users WHERE username = 'cliente_demo'");
+  if (!buyer) {
+    buyer = await db.getOne(
+      `INSERT INTO users (username, stellar_address, merchant_available) VALUES ('cliente_demo', $1, false) RETURNING id`,
+      [buyerAddr],
+    );
+  }
+
+  for (const m of merchants) {
+    const stellar = ('G' + m.username.toUpperCase().replace(/[^A-Z0-9]/g, 'X')).padEnd(56, 'X').slice(0, 56);
+    const user = await db.getOne(
+      `INSERT INTO users (username, stellar_address, merchant_available) VALUES ($1, $2, true) RETURNING id`,
+      [m.username, stellar],
+    );
+    await db.execute(`INSERT INTO wallets (user_id, stellar_address) VALUES ($1, $2)`, [user.id, stellar]).catch(() => {});
+    await db.execute(
+      `INSERT INTO merchant_configs
+         (user_id, rate_percent, min_trade_mxn, max_trade_mxn, daily_cap_mxn, latitude, longitude, address_text, updated_at)
+       VALUES ($1, $2, 100, 50000, 250000, $3, $4, $5, NOW())`,
+      [user.id, m.rate, center.lat + m.dlat, center.lng + m.dlng, m.addr],
+    );
+
+    const now = Date.now();
+    const rows = [
+      ...Array(m.completed).fill('completed'),
+      ...Array(m.cancelled).fill('cancelled'),
+    ];
+    for (let i = 0; i < rows.length; i++) {
+      const amount = 200 + (i % 8) * 150;
+      const createdAt = new Date(now - i * 86400000);
+      await db.execute(
+        `INSERT INTO trades
+           (seller_id, buyer_id, amount_mxn, amount_stroops, platform_fee_mxn, secret_hash, status, created_at, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          user.id,
+          buyer!.id,
+          amount,
+          (amount * 10000000).toString(),
+          Math.ceil(amount * 0.008),
+          `seed_${m.username}_${i}`,
+          rows[i],
+          createdAt,
+          new Date(createdAt.getTime() + 7200000),
+        ],
+      ).catch(() => {});
+    }
+  }
+
+  app.log.info({ category: 'seed', count: merchants.length }, '✅ Demo merchants seeded');
+}
+
 async function startEventListener(): Promise<void> {
   if (!config.eventListenerEnabled || config.mockStellar || !config.escrowContractId) {
     app.log.info(
@@ -299,9 +396,23 @@ async function start() {
     // Validate config at startup. Will throw and crash if critical config is missing.
     validateConfig();
 
+    // Ensure the schema exists before seeding/serving. Idempotent; only runs
+    // against a real PostgreSQL connection (the in-memory store needs no migrations).
+    if (await pingDb()) {
+      try {
+        await runMigrations();
+      } catch (err) {
+        app.log.error({ err, category: 'db' }, '[db] Boot migrations failed');
+      }
+    }
+
     // B-4: only seed demo data when explicitly enabled — never in a fresh prod DB.
     if (config.seedDemoData) {
       await seedData();
+      // Demo merchants with CDMX coordinates so the discovery map has pins.
+      await seedDemoMerchants().catch((err) =>
+        app.log.error({ err, category: 'seed' }, 'Demo merchant seed failed'),
+      );
     } else {
       app.log.info(
         { category: 'seed' },

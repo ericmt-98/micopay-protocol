@@ -101,8 +101,36 @@ export async function userRoutes(app: FastifyInstance) {
         [userId],
       );
 
+      // Reputation stats derived from the trades table (buyer or seller side).
+      const stats = await db.getOne<{
+        trades_completed: string;
+        trades_total: string;
+      }>(
+        `SELECT
+           COUNT(*) FILTER (WHERE status = 'completed')                           AS trades_completed,
+           COUNT(*) FILTER (WHERE status IN ('completed', 'cancelled', 'refunded')) AS trades_total
+         FROM trades
+         WHERE buyer_id = $1 OR seller_id = $1`,
+        [userId],
+      ).catch(() => null);
+
+      const completed = stats ? parseInt(stats.trades_completed, 10) || 0 : 0;
+      const total = stats ? parseInt(stats.trades_total, 10) || 0 : 0;
+      const completionRate = total > 0 ? Math.round((completed / total) * 100) : null;
+
+      // Reputation tier from completed-trade volume.
+      const tier =
+        completed >= 50 ? 'Oro' : completed >= 10 ? 'Plata' : completed >= 1 ? 'Bronce' : 'Nuevo';
+
       request.log.info({ user_id: userId, category: 'auth' }, '[auth] Profile fetched');
-      return { user };
+      return {
+        user: {
+          ...user,
+          trades_completed: completed,
+          completion_rate: completionRate,
+          reputation_tier: tier,
+        },
+      };
     },
   );
 

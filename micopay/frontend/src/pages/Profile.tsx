@@ -8,6 +8,21 @@ import {
 } from "../services/api";
 import { resolveErrorMessage } from "../constants/errorMap";
 
+/** Deterministic avatar gradient seeded by the Stellar address (no external images). */
+function avatarGradient(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  return `linear-gradient(135deg, hsl(${hue} 55% 45%), hsl(${(hue + 40) % 360} 60% 35%))`;
+}
+
+const TIER_STYLE: Record<string, { bg: string; text: string; icon: string }> = {
+  Oro: { bg: "#FFF6DB", text: "#9A7B12", icon: "workspace_premium" },
+  Plata: { bg: "#EEF1F4", text: "#5A6B78", icon: "military_tech" },
+  Bronce: { bg: "#F6E8DE", text: "#9A5B2E", icon: "verified" },
+  Nuevo: { bg: "#E1F5EE", text: "#00694C", icon: "spa" },
+};
+
 interface ProfileProps {
   token: string | null;
   devicePublicKey?: string | null;
@@ -143,7 +158,7 @@ const Profile = ({ token, devicePublicKey, onBack, onDeleted, onLogout, onNaviga
           </div>
         </header>
 
-        <main className="flex-1 mt-20 px-4 pt-4 space-y-5">
+        <main className="flex-1 mt-[calc(5rem+env(safe-area-inset-top))] px-4 pt-4 space-y-5">
           {loading && (
               <div className="bg-white rounded-[24px] p-6 border border-[#D7E3EA]/60 shadow-sm text-center">
             <span className="material-symbols-outlined animate-spin text-[#00694C] text-3xl">
@@ -163,21 +178,59 @@ const Profile = ({ token, devicePublicKey, onBack, onDeleted, onLogout, onNaviga
               <>
                 <section className="bg-gradient-to-br from-[#E1F5EE] to-[#F0FBF7] rounded-[28px] p-5 border border-[#BFE7D9]/70 shadow-sm">
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[#00694C] text-3xl">
-                    person
-                  </span>
+                    <div
+                      className="w-16 h-16 rounded-2xl shadow-sm flex items-center justify-center text-white font-extrabold text-2xl flex-shrink-0"
+                      style={{ background: avatarGradient(profile.stellar_address) }}
+                    >
+                      {profile.username.slice(0, 2).toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#00694C]">
-                        Cuenta activa
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#00694C]">
+                          Cuenta activa
+                        </p>
+                        {(() => {
+                          const tier = profile.reputation_tier ?? "Nuevo";
+                          const s = TIER_STYLE[tier] ?? TIER_STYLE.Nuevo;
+                          return (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                              style={{ backgroundColor: s.bg, color: s.text }}
+                            >
+                              <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: '"FILL" 1' }}>{s.icon}</span>
+                              {tier}
+                            </span>
+                          );
+                        })()}
+                      </div>
                       <h2 className="text-2xl font-extrabold text-[#0B1E26] truncate">
                         @{profile.username}
                       </h2>
                       <p className="text-xs text-[#67808C] truncate font-mono">
                         {profile.stellar_address}
                       </p>
+                    </div>
+                  </div>
+
+                  {/* Reputation stats */}
+                  <div className="grid grid-cols-3 gap-2 mt-5">
+                    <div className="bg-white/70 rounded-2xl p-3 text-center">
+                      <p className="text-xl font-extrabold text-[#0B1E26]">{profile.trades_completed ?? 0}</p>
+                      <p className="text-[10px] text-[#67808C] mt-0.5 leading-tight">Operaciones</p>
+                    </div>
+                    <div className="bg-white/70 rounded-2xl p-3 text-center">
+                      <p className="text-xl font-extrabold text-[#0B1E26]">
+                        {profile.completion_rate != null ? `${profile.completion_rate}%` : '—'}
+                      </p>
+                      <p className="text-[10px] text-[#67808C] mt-0.5 leading-tight">Completadas</p>
+                    </div>
+                    <div className="bg-white/70 rounded-2xl p-3 text-center">
+                      <p className="text-xl font-extrabold text-[#0B1E26]">
+                        {profile.created_at
+                          ? new Date(profile.created_at).toLocaleDateString('es-MX', { month: 'short', year: '2-digit' })
+                          : '—'}
+                      </p>
+                      <p className="text-[10px] text-[#67808C] mt-0.5 leading-tight">Miembro desde</p>
                     </div>
                   </div>
                 </section>
