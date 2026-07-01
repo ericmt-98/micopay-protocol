@@ -42,7 +42,7 @@ const Explore = ({ onBack, onNavigate, showDefi = true }: ExploreProps) => {
                                 </div>
                                 <div>
                                     <h2 className="font-headline font-bold text-xl text-on-surface">Invierte en CETES</h2>
-                                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest">~11.45% anual · Respaldo gobierno MX</p>
+                                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest">~5.6% anual · Respaldo gobierno MX</p>
                                 </div>
                             </div>
                             <p className="text-sm text-on-surface-variant leading-relaxed mb-6">

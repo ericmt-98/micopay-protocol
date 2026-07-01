@@ -207,7 +207,7 @@ const CETESScreen = ({ onBack, onBanco, userToken }: CETESScreenProps) => {
           <p className="text-[11px] text-on-surface-variant">Bonos del Gobierno de México · Etherfuse</p>
         </div>
         <div className="ml-auto bg-primary/10 border border-primary/20 rounded-full px-3 py-1">
-          <span className="text-primary font-bold text-sm">{rate?.apy ?? 11.45}% anual</span>
+          <span className="text-primary font-bold text-sm">{rate?.apy ?? 5.6}% anual</span>
         </div>
       </header>
 
@@ -228,12 +228,12 @@ const CETESScreen = ({ onBack, onBanco, userToken }: CETESScreenProps) => {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-white/60 rounded-2xl p-3 text-center">
-              <p className="text-2xl font-extrabold text-primary">{rate?.apy ?? 11.45}%</p>
+              <p className="text-2xl font-extrabold text-primary">{rate?.apy ?? 5.6}%</p>
               <p className="text-xs text-on-surface-variant mt-1">Rendimiento anual</p>
             </div>
             <div className="bg-white/60 rounded-2xl p-3 text-center">
               <p className="text-2xl font-extrabold text-on-surface">
-                {rateLoading ? '…' : `${(rate?.apy ?? 11.45) / 12}`.slice(0, 4)}%
+                {rateLoading ? '…' : `${(rate?.apy ?? 5.6) / 12}`.slice(0, 4)}%
               </p>
               <p className="text-xs text-on-surface-variant mt-1">Rendimiento mensual</p>
             </div>

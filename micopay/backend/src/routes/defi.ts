@@ -3,7 +3,7 @@ import { config } from '../config.js';
 import { UpstreamError, ValidationError } from '../utils/errors.js';
 import { getRampAssets } from '../services/etherfuse.service.js';
 
-const CETES_APY = 11.45;
+const CETES_APY = 5.6;
 const HORIZON_TESTNET = 'https://horizon-testnet.stellar.org';
 const HORIZON_MAINNET = 'https://horizon.stellar.org';
 
