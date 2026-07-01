@@ -339,6 +339,8 @@ function ChatRoute() {
       <ChatRoom
           tradeId={activeTrade?.id ?? ''}
           userId={buyerUser?.id ?? ''}
+          token={buyerUser?.token}
+          apiBaseUrl={import.meta.env.VITE_API_URL}
           lockTxHash={lockTxHash}
           onBack={() => navigate('/map')}
           onViewQR={() => navigate('/qr-reveal')}
@@ -353,6 +355,8 @@ function ChatDepositRoute() {
       <DepositChat
           tradeId={activeTrade?.id ?? ''}
           userId={buyerUser?.id ?? ''}
+          token={buyerUser?.token}
+          apiBaseUrl={import.meta.env.VITE_API_URL}
           lockTxHash={lockTxHash}
           onBack={() => navigate('/map-deposit')}
           onViewQR={() => navigate('/qr-deposit')}
@@ -765,9 +769,13 @@ function App() {
           // Validate the stored session; self-heal if the backend no longer
           // knows this user (e.g. its DB was recreated → orphaned token → 401).
           try {
-            await getCurrentUser(stored.token);
-            setBuyerUser(stored);
-            setSellerUser(stored);
+            const profile = await getCurrentUser(stored.token);
+            // Self-heal stale sessions cached with the wrong id (older builds
+            // stored the username as `id` instead of the real backend user id).
+            const fresh: UserData = { id: profile.id, username: profile.username, token: stored.token };
+            if (fresh.id !== stored.id) await writeJSON(USERS_STORAGE_KEY, fresh);
+            setBuyerUser(fresh);
+            setSellerUser(fresh);
             return;
           } catch (err: any) {
             const status = err?.response?.status;

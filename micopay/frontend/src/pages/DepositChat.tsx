@@ -9,15 +9,17 @@ interface DepositChatProps {
     onViewQR: () => void;
     lockTxHash?: string | null;
     apiBaseUrl?: string;
+    token?: string | null;
 }
 
 const DepositChat = ({ 
     tradeId,
     userId,
-    onBack, 
-    onViewQR, 
+    onBack,
+    onViewQR,
     lockTxHash,
-    apiBaseUrl = 'http://localhost:3000'
+    apiBaseUrl = 'http://localhost:3000',
+    token,
 }: DepositChatProps) => {
     const {
         messages,
@@ -27,7 +29,7 @@ const DepositChat = ({
         isSending,
         sendError,
         retryLoad,
-    } = useChatMessages({ tradeId, userId, apiBaseUrl });
+    } = useChatMessages({ tradeId, userId, token, apiBaseUrl });
 
     const [inputValue, setInputValue] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);

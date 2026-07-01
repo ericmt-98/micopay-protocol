@@ -148,7 +148,7 @@ const ExploreMap = ({
   const { state, refetch } = useMerchantsAvailable({
     amount_mxn: amount,
     flow: 'cashout',
-    radius_km: 5,
+    radius_km: 50,
   });
 
   useEffect(() => {

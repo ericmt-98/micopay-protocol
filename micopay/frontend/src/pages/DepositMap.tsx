@@ -391,7 +391,7 @@ const DepositMap = ({
   const { state, refetch } = useMerchantsAvailable({
     amount_mxn: amount,
     flow: 'deposit',
-    radius_km: 5,
+    radius_km: 50,
   });
 
   if (state.status === 'loading' || state.status === 'idle') {

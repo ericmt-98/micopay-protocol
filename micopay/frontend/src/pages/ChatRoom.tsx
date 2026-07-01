@@ -32,7 +32,7 @@ const ChatRoom = ({
         isSending,
         sendError,
         retryLoad,
-    } = useChatMessages({ tradeId, userId, apiBaseUrl });
+    } = useChatMessages({ tradeId, userId, token, apiBaseUrl });
 
     const [inputValue, setInputValue] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);

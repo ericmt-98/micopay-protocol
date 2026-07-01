@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { UserData, getAuthToken } from '../services/api';
+import { UserData, getAuthToken, getCurrentUser } from '../services/api';
 import { writeJSON } from '../services/secureStorage';
 import { generateAndStoreKeypair, keypairExists, importKeypair } from '../lib/keystore';
 
@@ -33,7 +33,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
         await generateAndStoreKeypair();
       }
       const token = await getAuthToken(username.trim());
-      const user: UserData = { id: username.trim(), username: username.trim(), token };
+      const profile = await getCurrentUser(token);
+      const user: UserData = { id: profile.id, username: profile.username, token };
       await writeJSON(USERS_STORAGE_KEY, user);
       onLoginSuccess(user, null);
       navigate(from, { replace: true });
@@ -65,7 +66,8 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     try {
       await importKeypair(secretKey.trim());
       const token = await getAuthToken(username.trim());
-      const user: UserData = { id: username.trim(), username: username.trim(), token };
+      const profile = await getCurrentUser(token);
+      const user: UserData = { id: profile.id, username: profile.username, token };
       await writeJSON(USERS_STORAGE_KEY, user);
       onLoginSuccess(user, null);
       navigate(from, { replace: true });
