@@ -279,11 +279,16 @@ export async function getTradeDetailForParticipant(tradeId: string, userId: stri
   const trade = await getTradeById(tradeId, userId);
   const seller = await getSellerMerchantRow(trade.seller_id);
   const merchant_unavailable = isMerchantUnavailableForTrade(trade, seller);
+  const buyer = await db.getOne<{ username: string | null }>(
+    'SELECT username FROM users WHERE id = $1',
+    [trade.buyer_id],
+  );
 
   return {
     trade,
     merchant_unavailable,
     seller_username: seller?.username ?? null,
+    buyer_username: buyer?.username ?? null,
   };
 }
 

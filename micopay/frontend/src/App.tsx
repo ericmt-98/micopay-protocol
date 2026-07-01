@@ -367,12 +367,28 @@ function ChatDepositRoute() {
 function QRRevealRoute() {
   const navigate = useNavigate();
   const { activeTrade, sellerUser, buyerUser, activeAmount, setReleaseTxHash } = useAppCtx();
+  const [counterpartyName, setCounterpartyName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!activeTrade || !buyerUser?.token) return;
+    fetchTradeDetail(activeTrade.id, buyerUser.token)
+      .then(({ trade, seller_username, buyer_username }) => {
+        // Show whichever participant isn't this device — the counterparty
+        // the seller is physically meeting to hand off cash for crypto.
+        const isMeTheSeller = trade.seller_id === buyerUser.id;
+        setCounterpartyName(isMeTheSeller ? buyer_username : seller_username);
+      })
+      .catch(() => {});
+  }, [activeTrade, buyerUser?.token, buyerUser?.id]);
+
   return (
       <QRReveal
           activeTrade={activeTrade}
           sellerToken={sellerUser?.token ?? null}
           buyerToken={buyerUser?.token ?? null}
           amount={activeAmount}
+          counterpartyName={counterpartyName}
+          ownName={buyerUser?.username ?? null}
           onBack={() => navigate('/chat')}
           onChat={() => navigate('/chat')}
           onSuccess={() => navigate('/success')}

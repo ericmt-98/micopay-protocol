@@ -292,7 +292,10 @@
     "htlcTestnet": "Soroban HTLC · Testnet",
     "receivedCash": "Ya recibí el efectivo",
     "confirming": "Confirmando operación…",
-    "autoCancelNotice": "Si no se confirma en 30 min, la operación se cancelará automáticamente y tus fondos serán liberados."
+    "autoCancelNotice": "Si no se confirma en 30 min, la operación se cancelará automáticamente y tus fondos serán liberados.",
+    "viewLockOnExplorer": "Ver bloqueo en Stellar Testnet",
+    "waitingForBuyer": "Esperando que el comprador confirme y libere los fondos…",
+    "released": "¡Fondos liberados!"
   },
   "errors": {
     "network": {

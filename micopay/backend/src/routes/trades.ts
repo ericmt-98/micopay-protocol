@@ -93,11 +93,11 @@ export async function tradeRoutes(app: FastifyInstance) {
    */
   app.get('/trades/:id', async (request) => {
     const { id } = request.params as { id: string };
-    const { trade, merchant_unavailable, seller_username } =
+    const { trade, merchant_unavailable, seller_username, buyer_username } =
       await tradeService.getTradeDetailForParticipant(id, request.user.id);
 
     const { secret_enc, secret_nonce, ...safeTrade } = trade;
-    return { trade: safeTrade, merchant_unavailable, seller_username };
+    return { trade: safeTrade, merchant_unavailable, seller_username, buyer_username };
   });
 
   /**

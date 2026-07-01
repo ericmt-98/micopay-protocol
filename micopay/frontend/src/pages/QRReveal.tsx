@@ -1,32 +1,38 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { QRCodeSVG } from 'qrcode.react';
-import { getSecret, completeTrade, revealTrade, lockTrade, TradeData } from '../services/api';
+import { getSecret, revealTrade, lockTrade, getTrade, TradeData } from '../services/api';
 import { ensureTrustline } from '../services/payment';
 import { getTradeStateDebugOverride, normalizeTradeState, TradeState } from '../components/TradeStateBadge';
 import ErrorBanner from '../components/ErrorBanner';
 import SupportLink from '../components/SupportLink';
 import { mapApiError, type MappedApiError } from '../utils/apiError';
 import { getDemoQrPayload, IS_DEMO_MODE } from '../utils/demoMode';
+import { buildTxUrl } from '../utils/stellarExplorer';
 
 interface QRRevealProps {
     activeTrade: TradeData | null;
     sellerToken: string | null;
     buyerToken: string | null;
     amount: number;
+    /** Counterparty shown in the header — who the seller is meeting. */
+    counterpartyName?: string | null;
+    /** The current (seller) device's own username, shown on the QR card so
+     * the counterparty can visually confirm they're scanning the right person's code. */
+    ownName?: string | null;
     onBack: () => void;
     onChat: () => void;
     onSuccess: (releaseTxHash: string) => void;
 }
 
-const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat, onSuccess }: QRRevealProps) => {
+const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, counterpartyName, ownName, onBack, onChat, onSuccess }: QRRevealProps) => {
     const { t } = useTranslation();
-    const [isConfirming, setIsConfirming] = useState(false);
     const [qrPayload, setQrPayload] = useState<string | null>(null);
     const [secretLoaded, setSecretLoaded] = useState(false);
     const [secretLoading, setSecretLoading] = useState(false);
     const [secretError, setSecretError] = useState<MappedApiError | null>(null);
-    const [completeError, setCompleteError] = useState<MappedApiError | null>(null);
+    const [lockTxHash, setLockTxHash] = useState<string | null>(null);
+    const [completedTxHash, setCompletedTxHash] = useState<string | null>(null);
     const [tradeState, setTradeState] = useState<TradeState>('locked');
 
     const loadSecret = useCallback(async () => {
@@ -50,6 +56,9 @@ const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat
             const { qr_payload } = await getSecret(activeTrade.id, sellerToken);
             setQrPayload(qr_payload);
             setSecretLoaded(true);
+
+            const fresh = await getTrade(activeTrade.id, sellerToken).catch(() => null);
+            if (fresh?.lock_tx_hash) setLockTxHash(fresh.lock_tx_hash);
         } catch (e) {
             if (IS_DEMO_MODE) {
                 setQrPayload(getDemoQrPayload());
@@ -68,6 +77,34 @@ const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat
         loadSecret();
     }, [loadSecret]);
 
+    // Only the buyer can call release() — this device is the seller, so poll
+    // until the counterparty completes it instead of trying to do it here.
+    useEffect(() => {
+        if (!activeTrade || !sellerToken || !secretLoaded) return;
+
+        const poll = async () => {
+            try {
+                const fresh = await getTrade(activeTrade.id, sellerToken);
+                if (fresh.status === 'completed' && fresh.release_tx_hash) {
+                    setCompletedTxHash(fresh.release_tx_hash);
+                }
+            } catch {
+                // keep polling
+            }
+        };
+
+        poll();
+        const interval = setInterval(poll, 4000);
+        return () => clearInterval(interval);
+    }, [activeTrade, sellerToken, secretLoaded]);
+
+    useEffect(() => {
+        if (completedTxHash) {
+            const timer = setTimeout(() => onSuccess(completedTxHash), 1500);
+            return () => clearTimeout(timer);
+        }
+    }, [completedTxHash, onSuccess]);
+
     useEffect(() => {
         const fallbackState: TradeState = secretLoaded ? 'revealed' : 'locked';
         const backendState = normalizeTradeState(activeTrade?.status, fallbackState);
@@ -75,24 +112,6 @@ const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat
     }, [activeTrade?.status, secretLoaded]);
 
 
-
-    const completePurchase = async () => {
-        if (isConfirming || !secretLoaded || secretError) return;
-        if (!activeTrade || !buyerToken) return;
-        setIsConfirming(true);
-        setCompleteError(null);
-        setTradeState('pending_cash');
-        try {
-            const result = await completeTrade(activeTrade.id, buyerToken);
-            setTradeState('completed');
-            setTimeout(() => onSuccess(result.release_tx_hash), 1500);
-        } catch (e) {
-            setCompleteError(mapApiError(e));
-            setTradeState('revealed');
-        } finally {
-            setIsConfirming(false);
-        }
-    };
 
     const showQr = secretLoaded && qrPayload && !secretError;
 
@@ -106,7 +125,7 @@ const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat
                     </button>
                     <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                            <h1 className="font-headline font-bold text-lg text-on-surface">Farmacia Guadalupe</h1>
+                            <h1 className="font-headline font-bold text-lg text-on-surface">{counterpartyName ?? '—'}</h1>
                             <span className="bg-secondary-container text-secondary text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">{t('qrReveal.verified')}</span>
                         </div>
                     </div>
@@ -140,7 +159,7 @@ const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat
                             </div>
                             <div>
                                 <p className="text-sm font-medium text-on-surface-variant">
-                                    <span className="font-bold text-on-surface">Farmacia:</span>&nbsp;Estamos en Av. Juárez 34, a un costado del banco.
+                                    <span className="font-bold text-on-surface">{counterpartyName ?? '—'}:</span>&nbsp;Estamos en Av. Juárez 34, a un costado del banco.
                                 </p>
                             </div>
                         </div>
@@ -193,53 +212,57 @@ const QRReveal = ({ activeTrade, sellerToken, buyerToken, amount, onBack, onChat
                                 style={{ borderRadius: '12px' }}
                             />
                             <div className="mt-6">
-                                <h3 className="font-headline font-extrabold text-xl text-on-surface">Juan Pérez</h3>
-                                <p className="text-primary font-bold text-sm">@juanp</p>
+                                <h3 className="font-headline font-extrabold text-xl text-on-surface">{ownName ?? '—'}</h3>
                                 <p className="mt-2 font-headline font-black text-2xl text-on-surface">${amount} MXN</p>
                                 {secretLoaded && (
                                     <p className="text-[10px] text-primary mt-1 font-mono opacity-70">
                                         {t('qrReveal.htlcTestnet')}
                                     </p>
                                 )}
+                                {lockTxHash && (
+                                    <a
+                                        href={buildTxUrl(lockTxHash)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="mt-2 flex items-center justify-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors font-mono"
+                                    >
+                                        <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                                        {t('qrReveal.viewLockOnExplorer')}
+                                    </a>
+                                )}
                             </div>
                         </div>
                     ) : null}
                 </section>
 
-                {completeError ? (
-                    <ErrorBanner
-                        message={completeError.message}
-                        action={completeError.action}
-                        onRetry={completePurchase}
-                        onDismiss={() => setCompleteError(null)}
-                        supportTradeId={activeTrade?.id}
-                        supportState="QR_REVEAL_COMPLETE"
-                        className="mb-6"
-                    />
-                ) : null}
-
-                {/* Confirm Section */}
-                <section className="mb-10 text-center">
-                    {!isConfirming ? (
-                        <button
-                            onClick={completePurchase}
-                            disabled={!showQr || !!secretError || secretLoading}
-                            aria-label="Confirmar recepción de efectivo"
-                            className="w-full py-4 rounded-2xl bg-primary text-on-primary font-bold text-base flex items-center justify-center gap-2 active:scale-95 transition-transform focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:pointer-events-none"
-                        >
-                            <span aria-hidden="true" className="material-symbols-outlined" style={{ fontVariationSettings: '"FILL" 1' }}>check_circle</span>
-                            {t('qrReveal.receivedCash')}
-                        </button>
-                    ) : (
-                        <div className="flex flex-col items-center gap-3 py-4">
-                            <div className="relative w-8 h-8">
-                                <div className="absolute inset-0 border-4 border-surface-container-high rounded-full"></div>
-                                <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                {/* Buyer completion status — this device (seller) can only wait */}
+                {showQr && (
+                    <section className="mb-10 text-center">
+                        {completedTxHash ? (
+                            <div className="flex flex-col items-center gap-3 py-4">
+                                <span aria-hidden="true" className="material-symbols-outlined text-primary text-4xl" style={{ fontVariationSettings: '"FILL" 1' }}>check_circle</span>
+                                <p className="text-sm font-semibold text-primary">{t('qrReveal.released')}</p>
+                                <a
+                                    href={buildTxUrl(completedTxHash)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors font-mono"
+                                >
+                                    <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                                    {t('chatRoom.viewOnStellarTestnet')}
+                                </a>
                             </div>
-                            <p className="text-sm font-medium text-outline">{t('qrReveal.confirming')}</p>
-                        </div>
-                    )}
-                </section>
+                        ) : (
+                            <div className="flex flex-col items-center gap-3 py-4">
+                                <div className="relative w-8 h-8">
+                                    <div className="absolute inset-0 border-4 border-surface-container-high rounded-full"></div>
+                                    <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                                </div>
+                                <p className="text-sm font-medium text-outline">{t('qrReveal.waitingForBuyer')}</p>
+                            </div>
+                        )}
+                    </section>
+                )}
 
                 <footer className="mt-12 text-center pb-10 space-y-3">
                     <p className="text-[12px] text-outline leading-relaxed px-6 font-medium">

@@ -68,6 +68,7 @@ export interface TradeData {
   secret_hash: string;
   amount_mxn: number;
   lock_tx_hash?: string | null;
+  release_tx_hash?: string | null;
 }
 
 export interface TradeDetailResponse {
@@ -83,6 +84,7 @@ export interface TradeDetailResponse {
   };
   merchant_unavailable: boolean;
   seller_username: string | null;
+  buyer_username: string | null;
 }
 
 export interface RampQuote {
