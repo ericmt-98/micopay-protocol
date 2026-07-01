@@ -11,6 +11,22 @@
 
 ---
 
+## Executive summary
+
+| Metric | Result |
+|--------|--------|
+| **Validation topics answered** | **25 / 25** (V-1 → V-25) — full coverage of the Wave 6 research plan |
+| **Individual perspectives collected** | **31** (23 single-respondent interviews + 2 anonymized batches of 4 interviews each — V-7, V-10) |
+| **Unique community contributors** | **22**, sourced via Stellar Drips Wave 6 |
+| **SDF funding claims covered** | **7 / 7** — no open gaps |
+| **Geographic spread** | **7+ countries / 3 continents** — Nigeria, Mexico, Colombia, Argentina, Venezuela, Peru, India, plus Europe (sender-side) |
+
+**Read this as:** every open question in the funding narrative — demand, supply, competitive edge,
+Stellar usability, trust/PMF, retail spend, and dollar inflows — now has direct, first-person
+evidence from the target market, not assumptions.
+
+---
+
 ## Contributor overview
 
 | PR | GitHub user | Issue closed | Validation topic | Region | Status |
@@ -41,14 +57,14 @@
 | [#309](https://github.com/ericmt-98/micopay-protocol/pull/309) | [@samueloyibodevv](https://github.com/samueloyibodevv) | #239 | V-24 · Corner shop as liquidity provider | West Africa | ✅ Integrated |
 | [#308](https://github.com/ericmt-98/micopay-protocol/pull/308) | [@samueloyibodevv](https://github.com/samueloyibodevv) | #240 | V-25 · Paying bills & services from a wallet | West Africa | ✅ Integrated |
 
-**Total responses: N=28** (V-1 through V-25, minus V-7/V-10 which are multi-respondent batches counted separately above)
-**Regions represented:** Nigeria (×9), Mexico (×5), Colombia, Argentina, Venezuela, India, Europe, South America, Latin America (general)
+**25 validation topics · 31 individual perspectives · 22 unique contributors** (V-7 and V-10 are anonymized batches of 4 interviews each; every other topic is one first-person respondent)
+**Regions represented:** Nigeria (×9), Mexico (×5), Colombia, Argentina, Venezuela, Peru, India, Europe, South America, Latin America (general)
 
 ---
 
 ## SDF claims coverage
 
-Each contribution advances one or more of the five claims in our funding narrative.
+Each contribution advances one or more of the seven claims in our funding narrative.
 
 | SDF Claim | Issues that back it | Responses in so far | Gap |
 |-----------|--------------------|--------------------|-----|
@@ -611,7 +627,7 @@ issues remain as of this update.
 - **First-person** entries reflect each contributor's own lived experience — not a survey of others.
 - **Convenience sample**, self-selected via Stellar Drips Wave 6. Directional and qualitative, not statistically representative.
 - **Privacy-first:** no names, no contact information, no transaction amounts, no wallet addresses.
-- Current sample size: **N=28 individual perspectives** across **7+ countries / 3 regions**.
+- Current sample size: **N=31 individual perspectives** (25 validation topics, 22 unique contributors) across **7+ countries / 3 continents**.
 - Report `N` plainly. Let the cross-regional consistency of the patterns speak for itself.
 
 ---
