@@ -357,6 +357,31 @@ const Home = ({
                 </p>
               </div>
             </div>
+            {/* USDC */}
+            <div className={`flex items-center gap-4 p-4 ${balanceLoading ? 'opacity-40' : ''}`}>
+              <div className="w-10 h-10 rounded-full bg-[#2775CA]/10 flex items-center justify-center flex-shrink-0">
+                <span className="text-[#2775CA] font-black text-xs">USDC</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-on-surface text-sm">
+                  USD Coin
+                </p>
+                <p className="text-[11px] text-outline truncate font-mono">
+                  {stellarAddress
+                    ? `${stellarAddress.substring(0, 8)}…${stellarAddress.slice(-6)}`
+                    : "—"}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-on-surface text-sm">
+                  {balanceLoading
+                    ? "—"
+                    : walletBalanceError
+                      ? "--"
+                      : `${(tokens.find((t) => t.code === 'USDC')?.balance ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC`}
+                </p>
+              </div>
+            </div>
           </div>
         </section>
 
