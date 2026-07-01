@@ -1,6 +1,7 @@
 import { Keypair, TransactionBuilder, Operation, Memo, Networks, Asset, Horizon } from '@stellar/stellar-sdk';
 import { exportSecretKey } from '../lib/keystore';
 import { getAsset } from '../constants/assets';
+import { buildTxUrl } from '../utils/stellarExplorer';
 
 const HORIZON_URL = import.meta.env.VITE_HORIZON_URL || 'https://horizon-testnet.stellar.org';
 const NETWORK_PASSPHRASE = import.meta.env.VITE_NETWORK_PASSPHRASE || Networks.TESTNET;
@@ -37,6 +38,70 @@ function toAsset(code: string): Asset {
   if (def.native) return Asset.native();
   if (!def.issuer) throw new PaymentError('ASSET_NO_ISSUER', `Falta el emisor configurado para ${code}.`);
   return new Asset(def.code, def.issuer);
+}
+
+/**
+ * Returns true if the device's account already holds a trustline (and is
+ * funded on-chain) for the given asset code. Native XLM is always trusted.
+ */
+export async function hasTrustline(assetCode: string): Promise<boolean> {
+  if (assetCode.toUpperCase() === 'XLM') return true;
+  const secret = await exportSecretKey();
+  if (!secret) throw new PaymentError('NO_KEY', 'No se encontró la llave de tu dispositivo.');
+  const keypair = Keypair.fromSecret(secret);
+
+  let account;
+  try {
+    account = await server.loadAccount(keypair.publicKey());
+  } catch {
+    return false; // account not yet funded on-chain
+  }
+  const asset = toAsset(assetCode);
+  return account.balances.some(
+    (b: any) => b.asset_code === asset.code && b.asset_issuer === asset.issuer,
+  );
+}
+
+/**
+ * Build, sign (with the device key) and submit a ChangeTrust operation so
+ * the device's account can hold the given asset. Required once per asset
+ * before it can send/receive it (e.g. before participating in a USDC escrow).
+ * The private key never leaves the device.
+ */
+export async function ensureTrustline(assetCode: string): Promise<SendResult | null> {
+  if (await hasTrustline(assetCode)) return null;
+
+  const secret = await exportSecretKey();
+  if (!secret) throw new PaymentError('NO_KEY', 'No se encontró la llave de tu dispositivo.');
+  const keypair = Keypair.fromSecret(secret);
+  const asset = toAsset(assetCode);
+
+  let account;
+  try {
+    account = await server.loadAccount(keypair.publicKey());
+  } catch {
+    throw new PaymentError('ACCOUNT_NOT_FOUND', 'Tu cuenta aún no está activada en la red (necesita XLM).');
+  }
+
+  const tx = new TransactionBuilder(account, {
+    fee: '10000',
+    networkPassphrase: NETWORK_PASSPHRASE,
+  })
+    .addOperation(Operation.changeTrust({ asset }))
+    .setTimeout(120)
+    .build();
+  tx.sign(keypair);
+
+  try {
+    const res = await server.submitTransaction(tx);
+    return { hash: res.hash, explorerUrl: buildTxUrl(res.hash) };
+  } catch (e: any) {
+    const codes = e?.response?.data?.extras?.result_codes;
+    if (codes?.transaction === 'tx_insufficient_balance') {
+      throw new PaymentError('UNDERFUNDED', 'Saldo insuficiente para la reserva de la línea de confianza (~0.5 XLM).');
+    }
+    throw new PaymentError('TRUSTLINE_FAILED', `No se pudo crear la línea de confianza para ${assetCode}.`);
+  }
 }
 
 /**
@@ -96,7 +161,7 @@ export async function sendPayment(params: {
     const res = await server.submitTransaction(tx);
     return {
       hash: res.hash,
-      explorerUrl: `https://stellar.expert/explorer/testnet/tx/${res.hash}`,
+      explorerUrl: buildTxUrl(res.hash),
     };
   } catch (e: any) {
     const codes = e?.response?.data?.extras?.result_codes;

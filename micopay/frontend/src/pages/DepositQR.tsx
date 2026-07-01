@@ -23,7 +23,6 @@ const DepositQR = ({ activeTrade, buyerToken, onBack, onChat, onSuccess }: Depos
         } catch (e) {
             console.error('Deposit completion failed', e);
             setIsConfirming(false);
-            setPin('');
             setError('No se pudo completar el depósito. Intenta de nuevo.');
         }
     };

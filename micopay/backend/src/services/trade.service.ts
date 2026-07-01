@@ -4,7 +4,7 @@ import pino from 'pino';
 import { generateTradeSecret, encryptSecret, decryptSecret } from './secret.service.js';
 import { createHash } from 'crypto';
 import type { FastifyRequest } from 'fastify';
-import { callLockOnChain, callReleaseOnChain, callRefundOnChain, verifyLockOnChain, assertNotReplayed } from './stellar.service.js';
+import { prepareLockTx, submitLockTx, prepareReleaseTx, submitReleaseTx, callRefundOnChain, verifyLockOnChain, assertNotReplayed } from './stellar.service.js';
 import {
   NotFoundError,
   ForbiddenError,
@@ -339,10 +339,46 @@ export async function getTradeHistory(userId: string, status?: string, page = 1,
   return mapped.slice(offset, offset + limit);
 }
 
+/**
+ * Build the unsigned lock() transaction for the seller to sign with their own key.
+ * Backend never holds or needs the seller's secret key.
+ */
+export async function prepareLockTrade(
+  request: FastifyRequest,
+  tradeId: string,
+  userId: string,
+) {
+  const trade = await db.getOne('SELECT * FROM trades WHERE id = $1', [tradeId]);
+  if (!trade) throw new NotFoundError('Trade not found');
+  if (trade.seller_id !== userId) throw new ForbiddenError('Only the seller can lock');
+  if (trade.status !== 'pending') throw new ConflictError(`Trade is ${trade.status}, expected pending`);
+
+  if (config.mockStellar) {
+    return { mock: true as const };
+  }
+
+  const seller = await db.getOne('SELECT stellar_address FROM users WHERE id = $1', [userId]);
+  const buyer = await db.getOne('SELECT stellar_address FROM users WHERE id = $1', [trade.buyer_id]);
+  if (!seller) throw new NotFoundError('Seller not found');
+  if (!buyer) throw new NotFoundError('Buyer not found');
+
+  const { xdr, networkPassphrase } = await prepareLockTx({
+    request,
+    sellerAddress: seller.stellar_address,
+    buyerAddress: buyer.stellar_address,
+    amountStroops: BigInt(trade.amount_stroops),
+    platformFeeMxn: trade.platform_fee_mxn,
+    secretHash: trade.secret_hash,
+  });
+
+  return { xdr, network_passphrase: networkPassphrase };
+}
+
 export async function lockTrade(
   request: FastifyRequest,
   tradeId: string,
   userId: string,
+  signedXdr?: string,
 ) {
   request.log.info({ trade_id: tradeId, user_id: userId, category: 'trade.lifecycle' }, '[trade] Locking trade');
   let fromState = UNKNOWN_STATE;
@@ -355,18 +391,24 @@ export async function lockTrade(
     if (trade.seller_id !== userId) throw new ForbiddenError('Only the seller can lock');
     if (trade.status !== 'pending') throw new ConflictError(`Trade is ${trade.status}, expected pending`);
 
-    // Fetch buyer's Stellar address
-    const buyer = await db.getOne('SELECT stellar_address FROM users WHERE id = $1', [trade.buyer_id]);
-    if (!buyer) throw new NotFoundError('Buyer not found');
-
     let lockTxHash: string;
     let stellarTradeId: string;
 
     if (!config.mockStellar) {
-      // Real on-chain lock via Soroban
-      const result = await callLockOnChain({
+      // Real on-chain lock — the seller already signed the XDR client-side.
+      if (!signedXdr) {
+        throw new BadRequestError('SIGNED_XDR_REQUIRED', 'Falta la transacción firmada.', 'signed_xdr is required when MOCK_STELLAR=false');
+      }
+      const seller = await db.getOne('SELECT stellar_address FROM users WHERE id = $1', [userId]);
+      const buyer = await db.getOne('SELECT stellar_address FROM users WHERE id = $1', [trade.buyer_id]);
+      if (!seller) throw new NotFoundError('Seller not found');
+      if (!buyer) throw new NotFoundError('Buyer not found');
+
+      const result = await submitLockTx({
         request,
-        buyerStellarAddress: buyer.stellar_address,
+        signedXdr,
+        sellerAddress: seller.stellar_address,
+        buyerAddress: buyer.stellar_address,
         amountStroops: BigInt(trade.amount_stroops),
         platformFeeMxn: trade.platform_fee_mxn,
         secretHash: trade.secret_hash,
@@ -504,7 +546,41 @@ export async function getTradeSecret(request: FastifyRequest, tradeId: string, u
   return { secret, qr_payload: qrPayload, expires_in: 120 };
 }
 
-export async function completeTrade(request: FastifyRequest, tradeId: string, userId: string) {
+/**
+ * Build the unsigned release() transaction for the buyer to sign with their own key.
+ * Backend never holds or needs the buyer's secret key.
+ */
+export async function prepareReleaseTrade(request: FastifyRequest, tradeId: string, userId: string) {
+  const trade = await db.getOne('SELECT * FROM trades WHERE id = $1', [tradeId]);
+  if (!trade) throw new NotFoundError('Trade not found');
+  if (trade.buyer_id !== userId) throw new ForbiddenError('Only the buyer can complete');
+  if (trade.status !== 'revealing') {
+    throw new ConflictError(`Trade is ${trade.status}, expected revealing`);
+  }
+
+  if (config.mockStellar) {
+    return { mock: true as const };
+  }
+
+  const buyer = await db.getOne('SELECT stellar_address FROM users WHERE id = $1', [userId]);
+  if (!buyer) throw new NotFoundError('Buyer not found');
+
+  const secret = decryptSecret(trade.secret_enc, trade.secret_nonce);
+  const secretHashBytes = Buffer.from(trade.secret_hash, 'hex');
+  const tradeIdBytes = createHash('sha256').update(secretHashBytes).digest();
+  const secretBytes = Buffer.from(secret, 'hex');
+
+  const { xdr, networkPassphrase } = await prepareReleaseTx({
+    request,
+    buyerAddress: buyer.stellar_address,
+    tradeIdBytes,
+    secretBytes,
+  });
+
+  return { xdr, network_passphrase: networkPassphrase };
+}
+
+export async function completeTrade(request: FastifyRequest, tradeId: string, userId: string, signedXdr?: string) {
   request.log.info({ trade_id: tradeId, user_id: userId, category: 'trade.lifecycle' }, '[trade] Completing trade');
   let fromState = UNKNOWN_STATE;
 
@@ -518,18 +594,19 @@ export async function completeTrade(request: FastifyRequest, tradeId: string, us
       throw new ConflictError(`Trade is ${trade.status}, expected revealing`);
     }
 
-    // Decrypt the HTLC secret stored at lock time
-    const secret = decryptSecret(trade.secret_enc, trade.secret_nonce);
-
     let releaseTxHash: string;
 
     if (!config.mockStellar) {
-      // Compute trade_id as the contract does: sha256(secret_hash_bytes)
+      // Real on-chain release — the buyer already signed the XDR client-side.
+      if (!signedXdr) {
+        throw new BadRequestError('SIGNED_XDR_REQUIRED', 'Falta la transacción firmada.', 'signed_xdr is required when MOCK_STELLAR=false');
+      }
+      const secret = decryptSecret(trade.secret_enc, trade.secret_nonce);
       const secretHashBytes = Buffer.from(trade.secret_hash, 'hex');
       const tradeIdBytes = createHash('sha256').update(secretHashBytes).digest();
       const secretBytes = Buffer.from(secret, 'hex');
 
-      const result = await callReleaseOnChain({ request, tradeIdBytes, secretBytes });
+      const result = await submitReleaseTx({ request, signedXdr, tradeIdBytes, secretBytes });
       releaseTxHash = result.txHash;
     } else {
       releaseTxHash = `mock_release_${Date.now()}`;

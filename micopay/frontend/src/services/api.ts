@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { extractApiErrorPayload, toApiError } from '../utils/apiError';
-import { signChallenge, getPublicKey } from '../lib/keystore';
+import { signChallenge, getPublicKey, signTransactionXdr } from '../lib/keystore';
 import { removeKey } from './secureStorage';
 import { PLATFORM_FEE_PERCENT } from '../constants/trade';
 
@@ -219,13 +219,26 @@ export async function getTrade(
   return res.data.trade;
 }
 
+/**
+ * Locks the trade on-chain. The seller's own device key signs the lock()
+ * call locally (the contract requires seller.require_auth()) — the backend
+ * only ever sees the already-signed transaction.
+ */
 export async function lockTrade(
     tradeId: string,
     sellerToken: string,
 ): Promise<{ lock_tx_hash: string }> {
+  const prepareRes = await http.post(
+      `/trades/${tradeId}/lock/prepare`,
+      {},
+      authHeaders(sellerToken),
+  );
+  const prepared = prepareRes.data as { mock: true } | { xdr: string; network_passphrase: string };
+  const signedXdr = 'mock' in prepared ? undefined : await signTransactionXdr(prepared.xdr, prepared.network_passphrase);
+
   const res = await http.post(
       `/trades/${tradeId}/lock`,
-      {},
+      signedXdr ? { signed_xdr: signedXdr } : {},
       authHeaders(sellerToken),
   );
   return { lock_tx_hash: res.data.lock_tx_hash };
@@ -258,11 +271,20 @@ export interface CompleteTradeResponse {
   release_tx_hash: string;
 }
 
+/**
+ * Releases the trade on-chain. The buyer's own device key signs the release()
+ * call locally (the contract requires buyer.require_auth()) — the backend
+ * only ever sees the already-signed transaction.
+ */
 export async function completeTrade(
     tradeId: string,
     buyerToken: string,
 ): Promise<CompleteTradeResponse> {
-  const res = await http.post(`/trades/${tradeId}/complete`, {}, authHeaders(buyerToken));
+  const prepareRes = await http.post(`/trades/${tradeId}/complete/prepare`, {}, authHeaders(buyerToken));
+  const prepared = prepareRes.data as { mock: true } | { xdr: string; network_passphrase: string };
+  const signedXdr = 'mock' in prepared ? undefined : await signTransactionXdr(prepared.xdr, prepared.network_passphrase);
+
+  const res = await http.post(`/trades/${tradeId}/complete`, signedXdr ? { signed_xdr: signedXdr } : {}, authHeaders(buyerToken));
   return res.data;
 }
 

@@ -118,6 +118,33 @@
     "accountDeleted": "Cuenta eliminada correctamente.",
     "noKeyGenerated": "Sin clave generada"
   },
+  "cashout": {
+    "title": "Convertir a efectivo",
+    "amountLabel": "¿CUÁNTO QUIERES EN EFECTIVO?",
+    "info": "Ingresa el monto que deseas recibir. Buscaremos a los comerciantes verificados más cercanos con liquidez inmediata.",
+    "location": "UBICACIÓN",
+    "locationValue": "Cerca de ti",
+    "time": "TIEMPO",
+    "timeValue": "< 15 min",
+    "search": "Buscar opciones de efectivo",
+    "recoverLabel": "Buscar nueva oferta"
+  },
+  "deposit": {
+    "title": "Comprar con efectivo",
+    "amountLabel": "¿CUÁNTO EFECTIVO TIENES PARA USAR?",
+    "info": "Encontraremos agentes cercanos que te darán activos digitales a cambio de tu efectivo. Los fondos quedan en garantía hasta que completes el encuentro.",
+    "search": "Buscar agentes",
+    "recoverLabel": "Buscar nueva opción"
+  },
+  "inbox": {
+    "title": "Bandeja de entrada",
+    "scan": "Escanear",
+    "noTrades": "No hay operaciones",
+    "locked": "Activos en garantía · ${{amount}} MXN",
+    "pending": "Esperando bloqueo en garantía",
+    "pollBanner": "Las notificaciones están deshabilitadas. La bandeja se actualiza cada 30 segundos.",
+    "enableNotif": "Habilitar notificaciones"
+  },
   "tier": {
     "Nuevo": "Nuevo",
     "Bronce": "Bronce",

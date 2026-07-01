@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQRScanner } from '../hooks/useQRScanner';
-import { usePushNotifications } from '../hooks/usePushNotifications';
 import {
   getMerchantTrades,
   merchantConfirmScan,
@@ -266,19 +266,16 @@ interface MerchantInboxProps {
 // ── Main component ─────────────────────────────────────────────────────────
 
 const MerchantInbox = ({ token, onBack }: MerchantInboxProps) => {
+  const { t } = useTranslation();
   const [trades, setTrades] = useState<MerchantTrade[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [scanView, setScanView] = useState<ScanView>({ type: 'idle' });
   const { scan } = useQRScanner();
 
-  // Initialize push notifications for merchant
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-  const { isEnabled: pushEnabled } = usePushNotifications({
-    isMerchant: !!token,
-    userToken: token,
-    apiUrl,
-  });
+  // Push notifications require Firebase/FCM setup — disabled until configured.
+  // The polling fallback below (every 30s) covers trade updates in the meantime.
+  const pushEnabled = false;
 
   const handleScan = useCallback(async () => {
     if (!token) return;
@@ -376,7 +373,7 @@ const MerchantInbox = ({ token, onBack }: MerchantInboxProps) => {
         <button onClick={onBack} className="material-symbols-outlined text-primary">
           arrow_back
         </button>
-        <h1 className="font-headline font-bold text-lg flex-1">Bandeja de entrada</h1>
+        <h1 className="font-headline font-bold text-lg flex-1">{t('inbox.title')}</h1>
         <button
           onClick={handleScan}
           aria-label="Escanear QR del cliente"
@@ -385,7 +382,7 @@ const MerchantInbox = ({ token, onBack }: MerchantInboxProps) => {
           <span aria-hidden="true" className="material-symbols-outlined text-sm">
             qr_code_scanner
           </span>
-          Escanear
+          {t('inbox.scan')}
         </button>
       </header>
 
@@ -397,11 +394,11 @@ const MerchantInbox = ({ token, onBack }: MerchantInboxProps) => {
               <span className="material-symbols-outlined text-amber-600">notifications_off</span>
               <div className="flex-1">
                 <p className="text-sm text-amber-900 font-medium">
-                  Las notificaciones están deshabilitadas. La bandeja se actualiza automáticamente cada 30 segundos.
+                  {t('inbox.pollBanner')}
                 </p>
                 <p className="text-xs text-amber-800 mt-1">
                   <a href="#" onClick={(e) => { e.preventDefault(); }} className="underline">
-                    Habilitar notificaciones
+                    {t('inbox.enableNotif')}
                   </a>
                 </p>
               </div>
@@ -480,7 +477,7 @@ const MerchantInbox = ({ token, onBack }: MerchantInboxProps) => {
         ) : trades.length === 0 ? (
           <div className="text-center py-12">
             <span className="material-symbols-outlined text-6xl text-gray-300 mb-4">inbox</span>
-            <p className="text-gray-500">No hay operaciones {activeFilter !== 'all' ? `con estado "${STATUS_LABELS[activeFilter]}"` : ''}</p>
+            <p className="text-gray-500">{t('inbox.noTrades')}{activeFilter !== 'all' ? ` con estado "${STATUS_LABELS[activeFilter]}"` : ''}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -505,13 +502,13 @@ const MerchantInbox = ({ token, onBack }: MerchantInboxProps) => {
                 {trade.status === 'locked' && (
                   <div className="mt-2 flex items-center gap-1.5 text-sm text-emerald-600">
                     <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: '"FILL" 1' }}>lock</span>
-                    <span className="font-medium">USDC locked in escrow &middot; ${trade.amount_mxn.toLocaleString('es-MX')} MXN</span>
+                    <span className="font-medium">{t('inbox.locked', { amount: trade.amount_mxn.toLocaleString('es-MX') })}</span>
                   </div>
                 )}
                 {trade.status === 'pending' && (
                   <div className="mt-2 flex items-center gap-1.5 text-sm text-amber-600">
                     <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: '"FILL" 1' }}>hourglass_top</span>
-                    <span className="font-medium">Awaiting escrow lock</span>
+                    <span className="font-medium">{t('inbox.pending')}</span>
                   </div>
                 )}
               </div>

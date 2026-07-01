@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import TradeStateBadge, { getTradeStateDebugOverride, TradeState } from '../components/TradeStateBadge';
 
 export interface DepositRequestProps {
@@ -7,6 +8,7 @@ export interface DepositRequestProps {
 }
 
 const DepositRequest = ({ onBack, onSearch }: DepositRequestProps) => {
+  const { t } = useTranslation();
   const [amount, setAmount] = useState('500');
   const state: TradeState = getTradeStateDebugOverride('pending_cash');
 
@@ -24,7 +26,7 @@ const DepositRequest = ({ onBack, onSearch }: DepositRequestProps) => {
             </button>
             <div className="flex flex-col">
               <span className="font-headline font-extrabold text-[#00694C] tracking-tight text-xs uppercase opacity-60">MicoPay</span>
-              <h1 className="font-headline font-bold text-xl text-[#00694C]">Comprar con efectivo</h1>
+              <h1 className="font-headline font-bold text-xl text-[#00694C]">{t('deposit.title')}</h1>
             </div>
           </div>
         </div>
@@ -35,12 +37,12 @@ const DepositRequest = ({ onBack, onSearch }: DepositRequestProps) => {
           <TradeStateBadge
             state={state}
             onRecover={() => onSearch(amount || '500')}
-            recoverLabel="Buscar nueva opción"
+            recoverLabel={t('deposit.recoverLabel')}
           />
 
           <div className="space-y-6">
             <label htmlFor="deposit-amount" className="font-medium text-[10px] tracking-wide uppercase text-on-surface-variant/70">
-              ¿CUÁNTO EFECTIVO TIENES PARA USAR?
+              {t('deposit.amountLabel')}
             </label>
             <div className="relative group">
               <div className="flex items-baseline space-x-2 border-b border-outline-variant/20 group-focus-within:border-primary transition-all duration-300 pb-2">
@@ -66,7 +68,7 @@ const DepositRequest = ({ onBack, onSearch }: DepositRequestProps) => {
               </div>
               <div className="flex-1">
                 <p className="text-on-surface font-medium leading-relaxed">
-                  Encontraremos agentes cercanos que te darán activos digitales a cambio de tu efectivo. Los fondos quedan en garantía hasta que completes el encuentro.
+                  {t('deposit.info')}
                 </p>
               </div>
             </div>
@@ -78,7 +80,7 @@ const DepositRequest = ({ onBack, onSearch }: DepositRequestProps) => {
               aria-label="Buscar agentes"
               className="w-full bg-[linear-gradient(135deg,#00694c_0%,#008560_100%)] text-white h-[56px] rounded-xl font-headline font-bold text-lg shadow-lg shadow-primary/20 active:scale-95 transition-all duration-200 flex items-center justify-center space-x-2 focus:outline-none focus:ring-2 focus:ring-primary"
             >
-              <span>Buscar agentes</span>
+              <span>{t('deposit.search')}</span>
               <span aria-hidden="true" className="material-symbols-outlined text-xl">chevron_right</span>
             </button>
           </div>

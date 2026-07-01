@@ -118,6 +118,33 @@
     "accountDeleted": "Account deleted successfully.",
     "noKeyGenerated": "No key generated"
   },
+  "cashout": {
+    "title": "Convert to cash",
+    "amountLabel": "HOW MUCH CASH DO YOU WANT?",
+    "info": "Enter the amount you want to receive. We'll find verified merchants nearby with immediate liquidity.",
+    "location": "LOCATION",
+    "locationValue": "Near you",
+    "time": "TIME",
+    "timeValue": "< 15 min",
+    "search": "Find cash offers",
+    "recoverLabel": "Find a new offer"
+  },
+  "deposit": {
+    "title": "Buy with cash",
+    "amountLabel": "HOW MUCH CASH DO YOU HAVE?",
+    "info": "We'll find agents nearby who will give you digital assets in exchange for your cash. Funds are held in escrow until you complete the meetup.",
+    "search": "Find agents",
+    "recoverLabel": "Find a new option"
+  },
+  "inbox": {
+    "title": "Inbox",
+    "scan": "Scan",
+    "noTrades": "No transactions",
+    "locked": "Assets in escrow · ${{amount}} MXN",
+    "pending": "Awaiting escrow lock",
+    "pollBanner": "Notifications are disabled. Inbox updates every 30 seconds.",
+    "enableNotif": "Enable notifications"
+  },
   "tier": {
     "Nuevo": "New",
     "Bronce": "Bronze",

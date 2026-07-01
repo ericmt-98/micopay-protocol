@@ -88,12 +88,33 @@ export async function tradeRoutes(app: FastifyInstance) {
   });
 
   /**
-   * POST /trades/:id/lock
-   * Backend calls Soroban contract lock() and returns the tx hash.
+   * POST /trades/:id/lock/prepare
+   * Seller-only. Returns an unsigned lock() XDR for the seller to sign
+   * client-side with their own key (the contract requires seller.require_auth()).
    */
-  app.post('/trades/:id/lock', async (request) => {
+  app.post('/trades/:id/lock/prepare', async (request) => {
     const { id } = request.params as { id: string };
-    return tradeService.lockTrade(request, id, request.user.id);
+    return tradeService.prepareLockTrade(request, id, request.user.id);
+  });
+
+  /**
+   * POST /trades/:id/lock
+   * Seller-only. Submits the seller-signed lock() XDR and returns the tx hash.
+   */
+  app.post('/trades/:id/lock', {
+    schema: {
+      body: {
+        type: 'object',
+        properties: {
+          signed_xdr: { type: 'string' },
+        },
+        additionalProperties: false,
+      },
+    },
+  }, async (request) => {
+    const { id } = request.params as { id: string };
+    const { signed_xdr } = (request.body as { signed_xdr?: string } | undefined) ?? {};
+    return tradeService.lockTrade(request, id, request.user.id, signed_xdr);
   });
 
   /**
@@ -122,12 +143,33 @@ export async function tradeRoutes(app: FastifyInstance) {
   });
 
   /**
-   * POST /trades/:id/complete
-   * Buyer confirms cash received. Backend calls release() on Soroban and returns the tx hash.
+   * POST /trades/:id/complete/prepare
+   * Buyer-only. Returns an unsigned release() XDR for the buyer to sign
+   * client-side with their own key (the contract requires buyer.require_auth()).
    */
-  app.post('/trades/:id/complete', async (request) => {
+  app.post('/trades/:id/complete/prepare', async (request) => {
     const { id } = request.params as { id: string };
-    return tradeService.completeTrade(request, id, request.user.id);
+    return tradeService.prepareReleaseTrade(request, id, request.user.id);
+  });
+
+  /**
+   * POST /trades/:id/complete
+   * Buyer confirms cash received. Submits the buyer-signed release() XDR and returns the tx hash.
+   */
+  app.post('/trades/:id/complete', {
+    schema: {
+      body: {
+        type: 'object',
+        properties: {
+          signed_xdr: { type: 'string' },
+        },
+        additionalProperties: false,
+      },
+    },
+  }, async (request) => {
+    const { id } = request.params as { id: string };
+    const { signed_xdr } = (request.body as { signed_xdr?: string } | undefined) ?? {};
+    return tradeService.completeTrade(request, id, request.user.id, signed_xdr);
   });
 
   /**

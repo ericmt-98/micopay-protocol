@@ -17,6 +17,9 @@ target/
 .env
 .env.local
 
+# Agent demo wallet (Juanita Tienda) — local keypair + session token, never commit
+.agent-wallet/
+
 # OS
 .DS_Store
 Thumbs.db

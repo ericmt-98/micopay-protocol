@@ -481,6 +481,14 @@ const Home = ({
           )}
         </section>
 
+        {/* Network indicator */}
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <span className="text-base" style={{ filter: 'grayscale(1) sepia(1) saturate(5) hue-rotate(-50deg) brightness(0.9)' }} aria-hidden="true">🍄</span>
+          <span className="text-xs font-semibold text-on-surface-variant tracking-wide">
+            Red Micopay
+          </span>
+        </div>
+
         {/* CTAs */}
         <div className="flex flex-col items-center gap-4">
           <button

@@ -200,7 +200,10 @@ app.get('/account/balance', async (request) => {
     }
     const keypair = Keypair.fromSecret(config.platformSecretKey);
     const address = keypair.publicKey();
-    const res = await fetch(`https://horizon-testnet.stellar.org/accounts/${address}`);
+    const horizonUrl = config.stellarNetwork === 'TESTNET'
+      ? 'https://horizon-testnet.stellar.org'
+      : 'https://horizon.stellar.org';
+    const res = await fetch(`${horizonUrl}/accounts/${address}`);
     if (!res.ok) return { xlm: '0', address, status: 'not_found_on_chain' };
     const data = await res.json() as { balances: { asset_type: string; balance: string }[] };
     const xlm = data.balances.find((b) => b.asset_type === 'native')?.balance ?? '0';
