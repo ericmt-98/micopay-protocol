@@ -16,28 +16,41 @@ export async function tradeRoutes(app: FastifyInstance) {
 
   /**
    * POST /trades
-   * Buyer creates a new trade. Generates HTLC secret and returns secret_hash.
+   * Creates a trade between the caller and a counterparty. The caller is the
+   * buyer by default (matches "buy crypto with cash" / deposit flow, where the
+   * counterparty-merchant locks funds as seller). Pass `role: 'seller'` for
+   * the reverse direction ("convert crypto to cash" / cashout flow), where the
+   * caller is the one giving up crypto — the escrow contract only lets the
+   * seller side lock funds and reveal the HTLC secret, so the caller must be
+   * seller_id there, not buyer_id.
    */
   app.post('/trades', {
     preHandler: [tradeRateLimit],
     schema: {
       body: {
         type: 'object',
-        required: ['seller_id', 'amount_mxn'],
+        required: ['counterparty_id', 'amount_mxn'],
         properties: {
-          seller_id: { type: 'string', format: 'uuid' },
+          counterparty_id: { type: 'string', format: 'uuid' },
           amount_mxn: { type: 'integer', minimum: 100, maximum: 50000 },
+          role: { type: 'string', enum: ['buyer', 'seller'], default: 'buyer' },
         },
         additionalProperties: false,
       },
     },
   }, async (request, reply) => {
-    const { seller_id, amount_mxn } = request.body as { seller_id: string; amount_mxn: number };
-    const buyerId = request.user.id;
+    const { counterparty_id, amount_mxn, role = 'buyer' } = request.body as {
+      counterparty_id: string;
+      amount_mxn: number;
+      role?: 'buyer' | 'seller';
+    };
+    const callerId = request.user.id;
+    const sellerId = role === 'seller' ? callerId : counterparty_id;
+    const buyerId = role === 'seller' ? counterparty_id : callerId;
 
     const trade = await tradeService.createTrade({
       request,
-      sellerId: seller_id,
+      sellerId,
       buyerId,
       amountMxn: amount_mxn,
     });

@@ -194,16 +194,24 @@ export async function getAuthToken(username: string): Promise<string> {
   return token;
 }
 
+/**
+ * Creates a trade between the caller and a counterparty.
+ * `role` is the caller's role in the escrow: 'buyer' (default — the caller
+ * receives crypto, e.g. depositing cash for crypto) or 'seller' (the caller
+ * gives up crypto, e.g. cashing out — the escrow contract requires the
+ * seller to be the one who locks funds and reveals the HTLC secret).
+ */
 export async function createTrade(
-    sellerId: string,
+    counterpartyId: string,
     amountMxn: number,
-    buyerToken: string,
+    callerToken: string,
+    role: 'buyer' | 'seller' = 'buyer',
 ): Promise<TradeData> {
   try {
     const res = await http.post(
         '/trades',
-        { seller_id: sellerId, amount_mxn: amountMxn },
-        authHeaders(buyerToken),
+        { counterparty_id: counterpartyId, amount_mxn: amountMxn, role },
+        authHeaders(callerToken),
     );
     return res.data.trade;
   } catch (e: unknown) {
