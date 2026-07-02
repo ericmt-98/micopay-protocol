@@ -103,7 +103,7 @@ async function assertInvocationMatches(
  * Shared by every prepare/submit pair below.
  */
 async function pollForConfirmation(
-  request: FastifyRequest,
+  request: Pick<FastifyRequest, 'log'>,
   txHash: string,
   label: string,
   failedCode: string,
@@ -330,9 +330,13 @@ export async function submitReleaseTx(params: {
  * Call the escrow contract's refund() function.
  * No require_auth() in the contract for refund — anyone may call it
  * after timeout, so the platform key remains a valid signer here.
+ *
+ * `request` only needs `.log` — narrowed to `Pick<FastifyRequest, 'log'>` (not
+ * the full `FastifyRequest`) so the background refund sweep in index.ts, which
+ * has no HTTP request, can call this with a plain `{ log: app.log }` shim.
  */
 export async function callRefundOnChain(params: {
-  request: FastifyRequest;
+  request: Pick<FastifyRequest, 'log'>;
   tradeIdBytes: Buffer;
 }): Promise<{ txHash: string }> {
   const {

@@ -26,16 +26,16 @@ export interface KYCStatusResponse {
  * Generates a short-lived (≈15 min) onboarding URL.
  * URL must be generated at button touch (not earlier).
  */
-export async function startKYC(): Promise<{ onboardingUrl: string }>{
-  const res = await http.post('/defi/kyc/start', {});
+export async function startKYC(token: string): Promise<{ onboardingUrl: string }>{
+  const res = await http.post('/defi/kyc/start', {}, authHeaders(token));
   return res.data;
 }
 
 /**
  * Poll KYC verification status.
  */
-export async function getKYCStatus(): Promise<KYCStatusResponse> {
-  const res = await http.get('/defi/kyc/status');
+export async function getKYCStatus(token: string): Promise<KYCStatusResponse> {
+  const res = await http.get('/defi/kyc/status', authHeaders(token));
   return res.data;
 }
 
@@ -87,21 +87,6 @@ export interface TradeDetailResponse {
   buyer_username: string | null;
 }
 
-export interface RampQuote {
-  id: string;
-  amount_in: number;
-  amount_out: number;
-  expires_at: string;
-}
-
-export interface RampOrder {
-  id: string;
-  status: string;
-  withdrawAnchorAccount?: string;
-  withdrawMemo?: string;
-  withdrawMemoType?: string;
-}
-
 export async function fetchTradeDetail(tradeId: string, buyerToken: string): Promise<TradeDetailResponse> {
   const res = await http.get(`/trades/${tradeId}`, authHeaders(buyerToken));
   return res.data;
@@ -112,26 +97,6 @@ export interface CancelTradeResponse {
   status: 'cancelled';
   refund_expected: boolean;
   lock_tx_hash: string | null;
-}
-
-export async function getOfframpQuote(cetesAmount: string, token: string): Promise<RampQuote> {
-  const res = await http.post('/defi/ramp/quote', { type: 'offramp', amount: cetesAmount }, authHeaders(token));
-  return res.data;
-}
-
-export async function createOfframpOrder(quoteId: string, token: string): Promise<RampOrder> {
-  const res = await http.post('/defi/ramp/order', { quote_id: quoteId, useAnchor: true }, authHeaders(token));
-  return res.data;
-}
-
-export async function regenerateOfframpTx(orderId: string, token: string): Promise<RampOrder> {
-  const res = await http.post(`/defi/ramp/order/${orderId}/regenerate_tx`, {}, authHeaders(token));
-  return res.data;
-}
-
-export async function getRampOrder(orderId: string, token: string): Promise<RampOrder> {
-  const res = await http.get(`/defi/ramp/order/${orderId}`, authHeaders(token));
-  return res.data;
 }
 
 export async function cancelTradeRequest(tradeId: string, buyerToken: string): Promise<CancelTradeResponse> {
@@ -719,14 +684,21 @@ export async function getRampQuote(
   return res.data as RampQuote;
 }
 
+/**
+ * Creates a ramp order (SPEI onramp deposit instructions, or offramp anchor
+ * account+memo). `bankAccountId` is resolved server-side from the caller's
+ * onboarded Etherfuse profile — the backend ignores it if sent, so it is not
+ * a parameter here. `useAnchor` (offramp only) requests anchor-rail withdraw
+ * instructions instead of a raw wallet payout.
+ */
 export async function createRampOrder(
   quoteId: string,
-  bankAccountId: string,
   token: string,
+  useAnchor = true,
 ): Promise<RampOrder> {
   const res = await http.post(
     '/defi/ramp/order',
-    { quoteId, bankAccountId },
+    { quoteId, useAnchor },
     authHeaders(token),
   );
   return res.data as RampOrder;
@@ -738,6 +710,11 @@ export async function getRampOrderStatus(
 ): Promise<RampOrderStatus> {
   const res = await http.get(`/defi/ramp/order/${orderId}`, authHeaders(token));
   return res.data as RampOrderStatus;
+}
+
+export async function regenerateRampOrderTx(orderId: string, token: string): Promise<RampOrder> {
+  const res = await http.post(`/defi/ramp/order/${orderId}/regenerate_tx`, {}, authHeaders(token));
+  return res.data as RampOrder;
 }
 
 export async function registerBankAccount(
@@ -757,7 +734,7 @@ http.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      removeKey('micopay_users');
+      removeKey('micopay_user');
       window.location.href = '/#/login';
     }
     return Promise.reject(error);

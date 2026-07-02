@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  getCETESRate, 
-  buyCETES, 
-  sellCETES, 
-  CETESRate, 
+  getCETESRate,
+  buyCETES,
+  sellCETES,
+  CETESRate,
   CETESTxResult,
   getMyProfile,
   UserProfile,
   RampQuote,
-  getOfframpQuote,
-  createOfframpOrder,
-  regenerateOfframpTx,
-  getRampOrder
+  getRampQuote,
+  createRampOrder,
+  regenerateRampOrderTx,
+  getRampOrderStatus,
 } from '../services/api';
 import { sendCETESToEtherfuse } from '../services/stellarRamp';
 import { extractApiErrorPayload } from '../utils/apiError';
@@ -71,9 +71,9 @@ const CETESScreen = ({ onBack, onBanco, userToken }: CETESScreenProps) => {
     if (rampOrderId && (orderState === 'pending' || orderState === 'funded') && userToken) {
       interval = setInterval(async () => {
         try {
-          const o = await getRampOrder(rampOrderId, userToken);
+          const o = await getRampOrderStatus(rampOrderId, userToken);
           setOrderState(o.status);
-          if (o.status === 'completed' || o.status === 'refunded') {
+          if (o.status === 'completed' || o.status === 'failed') {
             clearInterval(interval);
             setTxLoading(false);
           }
@@ -136,7 +136,7 @@ const CETESScreen = ({ onBack, onBanco, userToken }: CETESScreenProps) => {
     setTxLoading(true);
     setError(null);
     try {
-      const q = await getOfframpQuote(amount, userToken);
+      const q = await getRampQuote('offramp', amount, userToken);
       setQuote(q);
       setCountdown(120);
     } catch (err: unknown) {
@@ -151,14 +151,17 @@ const CETESScreen = ({ onBack, onBanco, userToken }: CETESScreenProps) => {
       setError(t('cetes.incompleteInfo'));
       return;
     }
-    
+
     setTxLoading(true);
     setError(null);
-    
+
     try {
-      let order = await createOfframpOrder(quote.id, userToken);
-      
-      const executeTx = async (orderData: any) => {
+      let order = await createRampOrder(quote.quoteId, userToken);
+
+      const executeTx = async (orderData: typeof order) => {
+        if (!orderData.withdrawAnchorAccount || !orderData.withdrawMemo) {
+          throw new Error('El agente no devolvió instrucciones de retiro válidas.');
+        }
         return await sendCETESToEtherfuse(
           amount,
           orderData.withdrawAnchorAccount,
@@ -172,7 +175,7 @@ const CETESScreen = ({ onBack, onBanco, userToken }: CETESScreenProps) => {
         result = await executeTx(order);
       } catch (e: any) {
         if (e.message === 'tx_too_late') {
-          order = await regenerateOfframpTx(order.id, userToken);
+          order = await regenerateRampOrderTx(order.orderId, userToken);
           result = await executeTx(order);
         } else {
           throw e;
@@ -186,9 +189,9 @@ const CETESScreen = ({ onBack, onBanco, userToken }: CETESScreenProps) => {
         amount,
         explorerUrl: result.explorerUrl
       });
-      
-      setRampOrderId(order.id);
-      setOrderState(order.status || 'pending');
+
+      setRampOrderId(order.orderId);
+      setOrderState('pending');
     } catch (err: unknown) {
       setError(extractApiErrorPayload(err).message);
       setTxLoading(false);
@@ -305,7 +308,7 @@ const CETESScreen = ({ onBack, onBanco, userToken }: CETESScreenProps) => {
               {quote && (
                 <div className="bg-primary/5 rounded-2xl px-4 py-3 flex flex-col items-center">
                   <span className="text-sm text-on-surface-variant">{t('cetes.willReceiveSpei')}</span>
-                  <span className="text-2xl font-extrabold text-primary">${quote.amount_out.toFixed(2)} MXN</span>
+                  <span className="text-2xl font-extrabold text-primary">${parseFloat(quote.destinationAmount).toFixed(2)} MXN</span>
                   {!rampOrderId && (
                     <span className="text-xs text-error mt-2 font-bold">
                       {t('cetes.quoteExpires')} {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}

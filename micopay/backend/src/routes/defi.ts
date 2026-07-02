@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { config } from '../config.js';
 import { UpstreamError, ValidationError } from '../utils/errors.js';
 import { getRampAssets } from '../services/etherfuse.service.js';
+import { authMiddleware } from '../middleware/auth.middleware.js';
 
 const CETES_APY = 5.6;
 const HORIZON_TESTNET = 'https://horizon-testnet.stellar.org';
@@ -104,6 +105,7 @@ export async function defiRoutes(app: FastifyInstance) {
    * On MAINNET with real key: builds + submits pathPaymentStrictReceive tx.
    */
   app.post('/defi/cetes/buy', {
+    preHandler: [authMiddleware],
     schema: {
       body: {
         type: 'object',
@@ -191,6 +193,7 @@ export async function defiRoutes(app: FastifyInstance) {
    * Body: { amount: string, destAsset: "XLM"|"USDC"|"MXNe" }
    */
   app.post('/defi/cetes/sell', {
+    preHandler: [authMiddleware],
     schema: {
       body: {
         type: 'object',
@@ -258,6 +261,7 @@ export async function defiRoutes(app: FastifyInstance) {
    * Supply tokens to Blend pool (platform keypair). Demo: simulated on testnet.
    */
   app.post('/defi/blend/supply', {
+    preHandler: [authMiddleware],
     schema: {
       body: {
         type: 'object',
@@ -296,6 +300,7 @@ export async function defiRoutes(app: FastifyInstance) {
    * Borrow against collateral. Demo: simulated on testnet.
    */
   app.post('/defi/blend/borrow', {
+    preHandler: [authMiddleware],
     schema: {
       body: {
         type: 'object',

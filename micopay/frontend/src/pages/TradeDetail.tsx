@@ -393,7 +393,20 @@ function CancelledView() {
   );
 }
 
-function ExpiredView({ isBuyer, onRefund, refunding, trade }: { isBuyer: boolean; onRefund: () => void; refunding: boolean; trade: TradeDetailData }) {
+/**
+ * Shown both for the (currently unreachable — the backend never persists
+ * status='expired') 'expired' state and for a 'cancelled' trade that still
+ * has real on-chain funds pending refund (lock_tx_hash set, release_tx_hash
+ * unset). See docs/AUDIT_MOBILE_MAINNET.md finding B3.
+ */
+function ExpiredView({ canRefund, onRefund, refunding, trade, title, description }: {
+  canRefund: boolean;
+  onRefund: () => void;
+  refunding: boolean;
+  trade: TradeDetailData;
+  title: string;
+  description: string;
+}) {
   return (
     <div className="flex flex-col items-center text-center">
       <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-6">
@@ -401,10 +414,8 @@ function ExpiredView({ isBuyer, onRefund, refunding, trade }: { isBuyer: boolean
           schedule
         </span>
       </div>
-      <h2 className="text-2xl font-bold text-on-surface mb-2">Operación expirada</h2>
-      <p className="text-on-surface-variant mb-6">
-        El tiempo para completar esta operación ha expirado.
-      </p>
+      <h2 className="text-2xl font-bold text-on-surface mb-2">{title}</h2>
+      <p className="text-on-surface-variant mb-6">{description}</p>
 
       <div className="bg-surface-container-low rounded-xl p-4 w-full mb-6">
         <div className="flex justify-between items-center mb-2">
@@ -417,7 +428,9 @@ function ExpiredView({ isBuyer, onRefund, refunding, trade }: { isBuyer: boolean
         </div>
       </div>
 
-      {isBuyer ? (
+      {/* Either participant may trigger the refund — the contract always pays
+          out to the seller (whoever locked funds) regardless of who calls it. */}
+      {canRefund ? (
         <button
           onClick={onRefund}
           disabled={refunding}
@@ -866,9 +879,36 @@ function TradeDetailContent({ buyerToken, sellerToken, onBack }: TradeDetailProp
       case 'completed':
         return <CompletedView trade={trade} />;
       case 'cancelled':
+        // A cancelled trade can still have real funds sitting in escrow —
+        // cancelling only stops the app-level flow, it doesn't itself settle
+        // on-chain (see docs/AUDIT_MOBILE_MAINNET.md finding B3). A backend
+        // sweep auto-refunds these once the contract timeout passes, but we
+        // also surface a manual "Recuperar fondos" retry here so the user
+        // isn't just waiting on a background job with no visible feedback.
+        if (trade.lock_tx_hash && !trade.release_tx_hash) {
+          return (
+            <ExpiredView
+              canRefund={isBuyer || isSeller}
+              onRefund={handleRefundClick}
+              refunding={isRefunding}
+              trade={trade}
+              title="Reembolso pendiente"
+              description="Esta operación fue cancelada. Tus fondos siguen en el contrato y se liberan automáticamente — también puedes recuperarlos ahora."
+            />
+          );
+        }
         return <CancelledView />;
       case 'expired':
-        return <ExpiredView isBuyer={isBuyer} onRefund={handleRefundClick} refunding={isRefunding} trade={trade} />;
+        return (
+          <ExpiredView
+            canRefund={isBuyer || isSeller}
+            onRefund={handleRefundClick}
+            refunding={isRefunding}
+            trade={trade}
+            title="Operación expirada"
+            description="El tiempo para completar esta operación ha expirado."
+          />
+        );
       case 'refunded':
         return <RefundedView trade={trade} />;
       default:
@@ -918,8 +958,10 @@ function TradeDetailContent({ buyerToken, sellerToken, onBack }: TradeDetailProp
         )}
       </main>
 
-      {/* Refund confirmation dialog */}
-      {trade.status === 'expired' && (
+      {/* Refund confirmation dialog — 'expired' is currently unreachable
+          (the backend never persists that status), so this also covers a
+          'cancelled' trade with funds still pending refund (see B3 above). */}
+      {(trade.status === 'expired' || (trade.status === 'cancelled' && trade.lock_tx_hash && !trade.release_tx_hash)) && (
         <RefundConfirmDialog
           open={showRefundConfirm}
           amount={trade.amount_mxn}

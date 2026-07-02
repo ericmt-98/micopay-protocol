@@ -218,4 +218,44 @@ export async function userRoutes(app: FastifyInstance) {
       }
     }
   );
+
+  /**
+   * PATCH /users/me/availability
+   * Sets whether the authenticated merchant is currently accepting new trades.
+   * `paused` is stored the same as `offline` (merchant_available=false) — the
+   * distinction is UI-only (temporary vs deliberate) for now.
+   */
+  app.patch(
+    "/users/me/availability",
+    {
+      preHandler: [authMiddleware],
+      schema: {
+        body: {
+          type: "object",
+          required: ["availability"],
+          properties: {
+            availability: { type: "string", enum: ["online", "offline", "paused"] },
+          },
+          additionalProperties: false,
+        },
+      },
+    },
+    async (request) => {
+      const { availability } = request.body as { availability: "online" | "offline" | "paused" };
+      const userId = request.user.id;
+      const merchant_available = availability === "online";
+
+      await db.execute(
+        `UPDATE users SET merchant_available = $1 WHERE id = $2`,
+        [merchant_available, userId],
+      );
+
+      request.log.info(
+        { user_id: userId, availability, category: "merchant" },
+        "[merchant] Availability updated",
+      );
+
+      return { merchant_available };
+    },
+  );
 }

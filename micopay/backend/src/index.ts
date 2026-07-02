@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { registerRequestId, toSupportCode } from './middleware/requestId.middleware.js';
 import { createProductionListener } from './services/event-listener.service.js';
 import type { EscrowEventListener } from './services/event-listener.service.js';
+import { sweepPendingRefunds } from './services/trade.service.js';
 
 // Resolve the absolute path to the public/ directory next to src/
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -399,6 +400,40 @@ async function startEventListener(): Promise<void> {
   }
 }
 
+// Holds the refund-sweep interval handle (null when disabled, e.g. mock mode).
+let refundSweepInterval: NodeJS.Timeout | null = null;
+const REFUND_SWEEP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Cancelling a locked/revealing trade doesn't itself settle on-chain funds —
+ * the contract's refund() only becomes callable once its timeout passes (see
+ * docs/AUDIT_MOBILE_MAINNET.md finding B3). This periodic sweep is the safety
+ * net that finishes those refunds automatically instead of leaving them
+ * depending on a user manually retrying from the app.
+ */
+function startRefundSweep(): void {
+  if (config.mockStellar) {
+    app.log.info({ category: 'refund-sweep' }, '[refund-sweep] Skipped (mock Stellar mode)');
+    return;
+  }
+
+  refundSweepInterval = setInterval(async () => {
+    try {
+      const { swept, failed } = await sweepPendingRefunds({ log: app.log });
+      if (swept > 0 || failed > 0) {
+        app.log.info({ swept, failed, category: 'refund-sweep' }, '[refund-sweep] Cycle complete');
+      }
+    } catch (err) {
+      app.log.error({ err, category: 'refund-sweep' }, '[refund-sweep] Cycle failed');
+    }
+  }, REFUND_SWEEP_INTERVAL_MS);
+
+  app.log.info(
+    { category: 'refund-sweep', interval_ms: REFUND_SWEEP_INTERVAL_MS },
+    '[refund-sweep] Started',
+  );
+}
+
 async function start() {
   try {
     // Validate config at startup. Will throw and crash if critical config is missing.
@@ -432,6 +467,7 @@ async function start() {
     app.log.info({ category: 'http', mockStellar: config.mockStellar }, `Mock Stellar: ${config.mockStellar ? 'ON (no on-chain verification)' : 'OFF (real Soroban RPC)'}`);
     app.log.info({ category: 'http', database: config.databaseUrl.replace(/\/\/.*@/, '//***@') }, 'Database connected');
     await startEventListener();
+    startRefundSweep();
   } catch (err) {
     app.log.error(err);
     process.exit(1);
@@ -442,6 +478,7 @@ async function start() {
 for (const sig of ['SIGTERM', 'SIGINT'] as const) {
   process.on(sig, () => {
     eventListener?.stop();
+    if (refundSweepInterval) clearInterval(refundSweepInterval);
     process.exit(0);
   });
 }

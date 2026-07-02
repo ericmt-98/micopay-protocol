@@ -64,10 +64,9 @@ export async function reportClientError(payload: {
   };
 
   // Fire and forget — don't let a reporting failure break the UX.
-  // The auth token lives nested under `micopay_users` (buyer/seller), not a flat `token` key.
-  readJSON<{ buyer?: { token?: string }; seller?: { token?: string } }>('micopay_users')
+  readJSON<{ token?: string }>('micopay_user')
     .then((stored) => {
-      const token = stored?.buyer?.token ?? stored?.seller?.token;
+      const token = stored?.token;
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
       return axios.post(`${BASE_URL}/client-errors`, safePayload, { headers });

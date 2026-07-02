@@ -898,6 +898,59 @@ export interface RefundTradeResult {
   refund_tx_hash: string;
 }
 
+/**
+ * Shared on-chain refund execution, used by both the user-triggered
+ * `refundTrade` and the automatic `sweepPendingRefunds` background job.
+ * The contract's `refund()` is permissionless and always pays out to
+ * `trade.seller` (whoever originally locked the funds) regardless of who
+ * calls it — `actorUserId` only identifies who/what triggered the call for
+ * the replay-guard and audit trail, not who receives the funds.
+ */
+async function executeRefundOnChain(
+  request: Pick<FastifyRequest, 'log'>,
+  tradeId: string,
+  trade: { status: string; secret_hash: string },
+  actorUserId: string,
+  extraMetadata: Record<string, unknown> = {},
+): Promise<RefundTradeResult> {
+  let refundTxHash: string;
+
+  if (!config.mockStellar) {
+    const secretHashBytes = Buffer.from(trade.secret_hash, 'hex');
+    const tradeIdBytes = createHash('sha256').update(secretHashBytes).digest();
+
+    const result = await callRefundOnChain({ request, tradeIdBytes });
+    refundTxHash = result.txHash;
+  } else {
+    refundTxHash = `mock_refund_${Date.now()}`;
+  }
+
+  await assertNotReplayed(refundTxHash, 'trade/refund', actorUserId);
+
+  await db.execute(
+    `UPDATE trades
+     SET status = 'refunded',
+         release_tx_hash = $2,
+         completed_at = NOW()
+     WHERE id = $1`,
+    [tradeId, refundTxHash],
+  );
+
+  await insertTradeAuditEvent({
+    tradeId,
+    fromState: trade.status,
+    toState: 'refunded',
+    actor: actorUserId,
+    metadata: {
+      success: true,
+      refund_tx_hash: refundTxHash,
+      ...extraMetadata,
+    },
+  });
+
+  return { status: 'refunded', refund_tx_hash: refundTxHash };
+}
+
 export async function refundTrade(
   request: FastifyRequest,
   tradeId: string,
@@ -911,8 +964,13 @@ export async function refundTrade(
     if (!trade) throw new NotFoundError('Trade not found');
     fromState = trade.status;
 
-    if (trade.buyer_id !== userId) {
-      throw new ForbiddenError('Solo el comprador puede solicitar un reembolso');
+    // Either participant may trigger the refund — the contract's refund() is
+    // permissionless and always pays out to trade.seller (whoever locked the
+    // funds), so it doesn't matter which side of the trade calls this. This
+    // matters most for the cashout flow, where the caller who locked their
+    // own crypto is `seller_id`, not `buyer_id`.
+    if (trade.seller_id !== userId && trade.buyer_id !== userId) {
+      throw new ForbiddenError('Not a participant of this trade');
     }
 
     if (!trade.lock_tx_hash) {
@@ -927,45 +985,16 @@ export async function refundTrade(
       );
     }
 
-    if (['completed', 'cancelled', 'refunded'].includes(trade.status)) {
+    // 'cancelled' is deliberately allowed through here: cancelling a
+    // locked/revealing trade (see cancelTrade below) no longer implies the
+    // on-chain funds have been settled — it only stops the app-level flow.
+    // Only 'completed' (buyer already released) and 'refunded' (already
+    // settled) are terminal on-chain states that make a refund() call moot.
+    if (['completed', 'refunded'].includes(trade.status)) {
       throw new ConflictError(`No se puede reembolsar un intercambio en estado ${trade.status}`);
     }
 
-    let refundTxHash: string;
-
-    if (!config.mockStellar) {
-      const secretHashBytes = Buffer.from(trade.secret_hash, 'hex');
-      const tradeIdBytes = createHash('sha256').update(secretHashBytes).digest();
-
-      const result = await callRefundOnChain({ request, tradeIdBytes });
-      refundTxHash = result.txHash;
-    } else {
-      refundTxHash = `mock_refund_${Date.now()}`;
-    }
-
-    await assertNotReplayed(refundTxHash, 'trade/refund', userId);
-
-    await db.execute(
-      `UPDATE trades
-       SET status = 'refunded',
-           release_tx_hash = $2,
-           completed_at = NOW()
-       WHERE id = $1`,
-      [tradeId, refundTxHash],
-    );
-
-    await insertTradeAuditEvent({
-      tradeId,
-      fromState,
-      toState: 'refunded',
-      actor: userId,
-      metadata: {
-        success: true,
-        refund_tx_hash: refundTxHash,
-      },
-    });
-
-    return { status: 'refunded', refund_tx_hash: refundTxHash };
+    return await executeRefundOnChain(request, tradeId, trade, userId);
   } catch (error) {
     await logTransitionFailure({
       tradeId,
@@ -975,6 +1004,63 @@ export async function refundTrade(
     }, error);
     throw error;
   }
+}
+
+/**
+ * Background safety net (see docs/AUDIT_MOBILE_MAINNET.md finding B3):
+ * cancelling a 'locked'/'revealing' trade only stops the app-level flow —
+ * the contract's refund() requires its on-chain timeout to have passed, so a
+ * cancelled trade can be left with real funds still sitting in escrow with
+ * no further app-driven trigger. This scans for exactly that situation and
+ * settles it automatically, so a user is never depending on remembering to
+ * manually retry a refund. Safe to call repeatedly — each trade is only
+ * refunded once (replay-guarded by `assertNotReplayed` + the `release_tx_hash
+ * IS NULL` filter). Errors are per-trade and non-fatal so one bad trade can't
+ * block the rest of the sweep.
+ */
+export async function sweepPendingRefunds(
+  request: Pick<FastifyRequest, 'log'>,
+): Promise<{ swept: number; failed: number }> {
+  // No `mockStellar` early-return here — `executeRefundOnChain` already
+  // branches on it per-trade (mock hash vs real on-chain call), same as
+  // `refundTrade`. Skipping the whole sweep in mock mode would leave
+  // mock-mode 'cancelled' trades permanently stuck, unlike production.
+  const candidates = await db.getMany<{
+    id: string; status: string; secret_hash: string; seller_id: string; expires_at: string;
+  }>(
+    `SELECT id, status, secret_hash, seller_id, expires_at FROM trades
+     WHERE status = 'cancelled'
+       AND lock_tx_hash IS NOT NULL
+       AND release_tx_hash IS NULL
+       AND expires_at < NOW()`,
+  );
+
+  let swept = 0;
+  let failed = 0;
+
+  for (const trade of candidates) {
+    // Defense in depth: don't rely solely on the SQL-level expiry filter —
+    // re-check in application code before ever calling on-chain refund().
+    // The contract itself would reject an early call (TimeoutNotReached),
+    // but failing fast here avoids a wasted RPC round-trip either way.
+    if (new Date(trade.expires_at) > new Date()) continue;
+    try {
+      // Attribute the audit trail to the seller (the actual funds recipient)
+      // since there's no HTTP-authenticated actor for a background sweep.
+      await executeRefundOnChain(request, trade.id, trade, trade.seller_id, {
+        triggered_by: 'refund_sweep',
+      });
+      swept++;
+    } catch (err) {
+      failed++;
+      logger.error(
+        { err, trade_id: trade.id, category: 'trade.lifecycle' },
+        '[refund-sweep] Failed to auto-refund cancelled trade',
+      );
+    }
+  }
+
+  return { swept, failed };
 }
 
 export async function getTradeAuditTrail(tradeId: string, userId: string) {

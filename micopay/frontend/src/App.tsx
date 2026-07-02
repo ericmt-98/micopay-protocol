@@ -526,7 +526,11 @@ function ExploreRoute() {
       <Explore
           onBack={() => navigate('/')}
           onNavigate={(page) => navigate(navMap[page] ?? '/')}
-          showDefi={true}
+          // CETES buy/sell and Blend supply/borrow don't move real user funds yet
+          // (platform-key-only simulation on mainnet, audit finding B2) — hidden
+          // until a real user-signed implementation lands. Opt in with
+          // VITE_ENABLE_DEFI_TRADING=true for internal/demo builds.
+          showDefi={import.meta.env.VITE_ENABLE_DEFI_TRADING === 'true'}
       />
   );
 }
@@ -539,6 +543,19 @@ function CetesRoute() {
           onBack={() => navigate('/explore')}
           onBanco={() => navigate('/deposit')}
           userToken={buyerUser?.token}
+      />
+  );
+}
+
+function KYCRoute() {
+  const { buyerUser } = useAppCtx();
+  return (
+      <KYCScreen
+          token={buyerUser?.token ?? null}
+          onApproved={() => {
+            // Cache hit will redirect into CETES screen; this matches the acceptance criteria.
+            window.location.hash = '/#/cetes';
+          }}
       />
   );
 }
@@ -1050,10 +1067,7 @@ function App() {
                 <Route path="/success" element={<ProtectedRoute><SuccessRoute /></ProtectedRoute>} />
                 <Route path="/explore" element={<ProtectedRoute><ExploreRoute /></ProtectedRoute>} />
                 <Route path="/cetes" element={<ProtectedRoute><CetesRoute /></ProtectedRoute>} />
-                <Route path="/kyc" element={<ProtectedRoute><KYCScreen onApproved={() => {
-                  // Cache hit will redirect into CETES screen; this matches the acceptance criteria.
-                  window.location.hash = '/#/cetes';
-                }} /></ProtectedRoute>} />
+                <Route path="/kyc" element={<ProtectedRoute><KYCRoute /></ProtectedRoute>} />
                 <Route path="/kyc-approved" element={<ProtectedRoute><KYCApprovedNextRoute /></ProtectedRoute>} />
 
                 <Route path="/blend" element={<ProtectedRoute><BlendRoute /></ProtectedRoute>} />

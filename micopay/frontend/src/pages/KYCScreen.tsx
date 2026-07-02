@@ -43,9 +43,10 @@ function StatusLine({ status }: { status: KYCStatus }) {
 
 type KYCScreenProps = {
   onApproved: () => void;
+  token: string | null;
 };
 
-export default function KYCScreen({ onApproved }: KYCScreenProps) {
+export default function KYCScreen({ onApproved, token }: KYCScreenProps) {
   const [status, setStatus] = useState<KYCStatus>('pending');
   const [reason, setReason] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -70,13 +71,17 @@ export default function KYCScreen({ onApproved }: KYCScreenProps) {
   }, []);
 
   const handleOpenHostedFlow = async () => {
+    if (!token) {
+      setStatusPollingError('Sesión no disponible. Vuelve a iniciar sesión e intenta de nuevo.');
+      return;
+    }
     setStatusPollingError(null);
     setReason(null);
     setLoading(true);
 
     try {
       // IMPORTANT: URL expires in ~15 minutes => generate on touch.
-      const { onboardingUrl } = await startKYC();
+      const { onboardingUrl } = await startKYC(token);
 
       startedAtRef.current = Date.now();
       setStartingToken(onboardingUrl);
@@ -122,9 +127,10 @@ export default function KYCScreen({ onApproved }: KYCScreenProps) {
   };
 
   const pollOnce = async () => {
+    if (!token) return null;
     setStatusPollingError(null);
     try {
-      const res = await getKYCStatus();
+      const res = await getKYCStatus(token);
       await applyStatus(res);
       return res;
     } catch (e: any) {
@@ -135,6 +141,7 @@ export default function KYCScreen({ onApproved }: KYCScreenProps) {
   };
 
   useEffect(() => {
+    if (!token) return;
     let intervalId: number | undefined;
     let cancelled = false;
 
@@ -169,8 +176,19 @@ export default function KYCScreen({ onApproved }: KYCScreenProps) {
 
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  }, [status, token]);
 
+  if (!token) {
+    return (
+      <div className="bg-surface text-on-surface font-body min-h-screen flex flex-col items-center justify-center px-6 text-center">
+        <span className="material-symbols-outlined text-error text-4xl mb-3">lock</span>
+        <h1 className="font-headline font-bold text-lg mb-2">Sesión no disponible</h1>
+        <p className="text-sm text-on-surface-variant">
+          No pudimos verificar tu sesión. Vuelve a iniciar sesión e intenta de nuevo.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-surface text-on-surface font-body min-h-screen flex flex-col">
